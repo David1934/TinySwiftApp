@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Algorithm>
+	<IndoorOffset>0.000</IndoorOffset>
+	<OutdoorOffset>0.000</OutdoorOffset>
+	<FhrFullOffset>0.000</FhrFullOffset>
+	<CPUConvolution>true</CPUConvolution>
+	<ComposedToDSPConv>false</ComposedToDSPConv>
+	<MultiPeakMinbinThreshold>12</MultiPeakMinbinThreshold>
+</Algorithm>

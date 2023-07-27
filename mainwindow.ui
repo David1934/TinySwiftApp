@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>400</width>
-    <height>300</height>
+    <width>745</width>
+    <height>601</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -17,8 +17,8 @@
    <widget class="QLabel" name="label">
     <property name="geometry">
      <rect>
-      <x>160</x>
-      <y>70</y>
+      <x>340</x>
+      <y>0</y>
       <width>81</width>
       <height>16</height>
      </rect>
@@ -27,31 +27,52 @@
      <string>QSTcamera</string>
     </property>
    </widget>
-   <widget class="QPushButton" name="photoButton">
+   <widget class="QLabel" name="mainlabel">
     <property name="geometry">
      <rect>
-      <x>60</x>
-      <y>140</y>
-      <width>80</width>
-      <height>25</height>
+      <x>50</x>
+      <y>20</y>
+      <width>640</width>
+      <height>480</height>
      </rect>
     </property>
+    <property name="font">
+     <font>
+      <pointsize>22</pointsize>
+     </font>
+    </property>
     <property name="text">
-     <string>take photo</string>
+     <string>Device is not ready yet.</string>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignCenter</set>
     </property>
    </widget>
-   <widget class="QPushButton" name="quitButton">
+   <widget class="QWidget" name="layoutWidget">
     <property name="geometry">
      <rect>
-      <x>240</x>
-      <y>140</y>
-      <width>80</width>
-      <height>25</height>
+      <x>220</x>
+      <y>520</y>
+      <width>239</width>
+      <height>27</height>
      </rect>
     </property>
-    <property name="text">
-     <string>quit</string>
-    </property>
+    <layout class="QHBoxLayout" name="horizontalLayout">
+     <item>
+      <widget class="QPushButton" name="photoButton">
+       <property name="text">
+        <string>take photo</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="quitButton">
+       <property name="text">
+        <string>quit</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
    </widget>
   </widget>
   <widget class="QMenuBar" name="menuBar">
@@ -59,7 +80,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>400</width>
+     <width>745</width>
      <height>22</height>
     </rect>
    </property>

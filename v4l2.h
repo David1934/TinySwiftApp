@@ -3,64 +3,115 @@
 
 #include <fcntl.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <sys/mman.h>
 #include <linux/videodev2.h>
+#include <linux/media.h>
+#include <sys/stat.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/types.h>
-#include <QDebug>
 #include <sys/ioctl.h>
-#include <QDateTime>
 #include <errno.h>
+#include <QDebug>
+#include <QDateTime>
+#include "common.h"
 
-#define Video_path	"/dev/video0"	//摄像头挂载路径
-#define Image_high	480	//分辨率
-#define Image_width	640	//分辨率
-#define Video_count	2	//缓冲帧数
-#define SAVEPICTURE	"/home/www/"	//图片保存的位置
-#define PICTURETAIL	".yuv"	//图片格式
+#define ENTITY_NAME_4_DTOF_SENSOR   "m00_b_ads6401 7-005e"
 
-typedef struct _buffer  //定义缓冲区结构体
+#define MEDIA_DEVNAME_4_DTOF_SENSOR "/dev/media2"
+#define VIDEO_DEV_4_DTOF_SENSOR     "/dev/video22"
+#define PIXELFORMAT_4_DTOF_SENSOR   V4L2_PIX_FMT_SBGGR8
+#define BUFFER_COUNT_4_DTOF_SENSOR  6
+
+#define MEDIA_DEVNAME_4_RGB_SENSOR  "/dev/media0"
+#define VIDEO_DEV_4_RGB_SENSOR      "/dev/video0"
+#define VIDEO_DEV_4_RGB_RK35XX      "/dev/video55"
+#define BUFFER_COUNT_4_RGB_SENSOR   5
+#define RGB_IMAGE_CHANEL            3
+
+#define DEV_NODE_LEN                32
+#define FMT_NUM_PLANES              1
+#define DATA_SAVE_PATH              "/sdcard/" // "/home/david/"
+
+struct buffer
 {
-
     void *start;
     unsigned int length;
-}buffer;
+};
 
-class V4L2
+struct sensor_data
 {
+    char *sensor_subdev;
+    char *media_devnode;
+    char *video_devnode;
+    int raw_w;
+    int raw_h;
+    int out_frm_width;
+    int out_frm_height;
+    int pixfmt;
+    int frm_buf_cnt; 
+    enum sensortype stype;
+    enum frame_data_type ftype;
+};
+
+class V4L2 : public QObject
+{
+Q_OBJECT
+
 public:
-    V4L2();
+    V4L2(struct sensor_params params);
     ~V4L2();
 
-public:
-    int fd;             //驱动文件句柄
-    bool state;         //是否打开成功
-    buffer *buffers;    //原始数据
-    int n_buffer;
-
-    struct v4l2_capability	cap;        //V4l2 参数结构体
-    struct v4l2_fmtdesc fmtdesc;        //V4L2 枚举格式结构体
-    struct v4l2_format      fmt;        //V4L2 数据流格式结构体
-    struct v4l2_streamparm	setfps;     //V4L2 流类型相关参数
-    struct v4l2_requestbuffers	req;	//V4L2 内存映射缓冲区结构体
-    struct v4l2_buffer	buf;            //V4L2 视频缓冲区信息结构体
-    enum	v4l2_buf_type	type;       //V4L2 缓冲区类型
-
-    bool V4l2_Init(void);               //V4l2 初始化
-    bool V4l2_Malloc(void);             //申请缓存区
-    bool V4l2_capturing(void);          //采集视频数据
-    bool Take_photo(void);              //拍照
-    bool V4l2_Close(void);              //关闭
+    void nv12_2_rgb(unsigned char *nv12, unsigned char *rgb, int width, int height);
+    void yuyv_2_rgb(unsigned char *yuyv, unsigned char *rgb, int width, int height);
+    bool Initilize(void);
+    bool Start_streaming(void);
+    bool Capture_frame();
+    void Stop_streaming(void);
+    void Close(void);
+#if defined(USE_CALLBACK_4_NEW_FRAME_PROCESS)
+    void Set_new_frame_callback(bool(*func) (unsigned int frm_sequence, void *frm_buf, int frm_len, struct timeval frm_timestamp, enum frame_data_type ftype));
+#endif
+    void Get_output_frame_size(int *in_width, int *in_height, int *out_width, int *out_height);
+    int adaps_readTemperatureOfDtofSubdev(float *temperature);
+    void* adaps_getEEPROMData(void);
 
 private:
-    void uninit_device(void);	//断开映射，释放内存
-    void close_device(void);	//关闭设备
-    void stop_capturing(void);	//停止采集
-    bool Get_Frame(void);	//获取视频图像帧
-    bool Free_Frame(void);	//更新视频图像帧
-    char* qstringToChar(QString sourceTmp);//QString 转 char*
+    enum frame_data_type frm_type;
+    int fd;
+    struct buffer *buffers;
 
+    struct v4l2_requestbuffers	req_bufs;
+    enum	v4l2_buf_type	buf_type;
+    unsigned int	pixel_format;
+
+    char        sensor_sd_name[DEV_NODE_LEN];
+    char        media_dev[DEV_NODE_LEN];
+    char        video_dev[DEV_NODE_LEN];
+    struct sensor_params tof_param;
+    int         frame_buffer_count;
+    struct sensor_data *sensordata;
+
+    char        sd_devnode_4_dtof[DEV_NODE_LEN];
+    int         fd_4_dtof;
+    struct adaps_get_eeprom *p_eeprominfo;
+
+    int init();
+    int adaps_readEEPROMData(void);
+    bool save_eeprom(void *buf, int len);
+    int adaps_setParam4DtofSubdev(void);
+    bool alloc_buffers(void);
+    void free_buffers(void);
+    int get_devnode_from_sysfs(struct media_entity_desc *entity_desc, char *p_devname);
+    int get_subdev_node_4_sensor();
+#if defined(USE_CALLBACK_4_NEW_FRAME_PROCESS)
+    bool(*m_new_frame_cb)(unsigned int frm_sequence, void *frm_buf, int frm_len, struct timeval frm_timestamp, enum frame_data_type ftype);
+#else
+
+signals:
+    void new_frame_process(unsigned int frm_sequence, void *frm_buf, int frm_len, struct timeval frm_timestamp, enum frame_data_type ftype);
+#endif
 };
 
 #endif // V4L2_H
