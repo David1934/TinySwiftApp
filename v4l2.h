@@ -70,9 +70,6 @@ public:
     bool Capture_frame();
     void Stop_streaming(void);
     void Close(void);
-#if defined(USE_CALLBACK_4_NEW_FRAME_PROCESS)
-    void Set_new_frame_callback(bool(*func) (unsigned int frm_sequence, void *frm_buf, int frm_len, struct timeval frm_timestamp, enum frame_data_type ftype));
-#endif
     void Get_output_frame_size(int *in_width, int *in_height, int *out_width, int *out_height);
     int adaps_readTemperatureOfDtofSubdev(float *temperature);
     void* adaps_getEEPROMData(void);
@@ -105,13 +102,9 @@ private:
     void free_buffers(void);
     int get_devnode_from_sysfs(struct media_entity_desc *entity_desc, char *p_devname);
     int get_subdev_node_4_sensor();
-#if defined(USE_CALLBACK_4_NEW_FRAME_PROCESS)
-    bool(*m_new_frame_cb)(unsigned int frm_sequence, void *frm_buf, int frm_len, struct timeval frm_timestamp, enum frame_data_type ftype);
-#else
 
 signals:
     void new_frame_process(unsigned int frm_sequence, void *frm_buf, int frm_len, struct timeval frm_timestamp, enum frame_data_type ftype);
-#endif
 };
 
 #endif // V4L2_H

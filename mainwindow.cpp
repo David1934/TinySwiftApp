@@ -1,6 +1,6 @@
 #include "mainwindow.h"
+#include "majorimageprocessingthread.h"
 #include "ui_mainwindow.h"
-
 #define UNUSED(X) (void)X
 
 MainWindow::MainWindow(QWidget *parent) :
@@ -13,7 +13,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui->quitButton, SIGNAL(clicked()), this, SLOT(clickQuitButton()));
     connect(ui->photoButton, SIGNAL(clicked()), this, SLOT(clickPhotoButton()));
     connect(imageprocessthread, SIGNAL(SendMajorImageProcessing(QImage)),
-            this, SLOT(new_frame_display_4_rgb(QImage)));
+            this, SLOT(new_frame_display(QImage)));
 }
 
 MainWindow::~MainWindow()
@@ -41,7 +41,7 @@ char * MainWindow::qstringToChar(QString srcString)
 }
 
 
-bool MainWindow::new_frame_display_4_rgb(QImage image)
+bool MainWindow::new_frame_display(QImage image)
 {
     ui->mainlabel->clear();
     if(image.isNull())
@@ -50,11 +50,10 @@ bool MainWindow::new_frame_display_4_rgb(QImage image)
     }
     else
     {
+        image = image.scaled(ui->mainlabel->width(),ui->mainlabel->height(),Qt::IgnoreAspectRatio,Qt::SmoothTransformation);
         QPixmap pix = QPixmap::fromImage(image,Qt::AutoColor);
-//        ui->mainlabel->setPixmap(QPixmap::fromImage(img.scaled(ui->mainlabel->resize(width,height))));
-//        ui->mainlabel->setPixmap(QPixmap::fromImage(img.scaled(img.size())));
         ui->mainlabel->setPixmap(pix);
-//        ui->mainlabel->setPixmap(QPixmap::fromImage(img.scaled(ui->mainlabel->size())));
+
     }
 
     return true;
@@ -62,6 +61,17 @@ bool MainWindow::new_frame_display_4_rgb(QImage image)
 
 void MainWindow::clickPhotoButton(void)
 {
+//    ui->photoButton->setDisabled(1);
     imageprocessthread->init(0);
     imageprocessthread->start();
 }
+
+void MainWindow::on_stopButton_clicked()
+{
+    imageprocessthread->stop();
+    ui->mainlabel->setText("Device is ready");
+    ui->photoButton->setDisabled(0);
+}
+
+
+

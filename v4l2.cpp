@@ -478,6 +478,7 @@ bool V4L2::Initilize(void)
         DBG_INFO("Buffer type:\tV4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE");
     }
 
+#if 0
     fmtdesc.index       = 0;
     fmtdesc.type        = buf_type;
     DBG_INFO("Support formats:");
@@ -506,8 +507,10 @@ bool V4L2::Initilize(void)
         }
         fmtdesc.index++;
     }
+#endif
 
-    DBG_INFO("VIDIOC_S_FMT %d X %d, pixel_format: 0x%x...\n",tof_param.raw_width, tof_param.raw_height, pixel_format);
+    DBG_INFO("VIDIOC_S_FMT %d X %d, pixel_format: 0x%x, raw_width:%d, raw_height:%d...\n",
+    tof_param.raw_width, tof_param.raw_height, pixel_format, tof_param.raw_width, tof_param.raw_height);
     CLEAR(fmt);
     fmt.type            = buf_type;
     fmt.fmt.pix.pixelformat = pixel_format;
@@ -625,11 +628,7 @@ bool V4L2::Capture_frame()
         v4l2_buf.index,bytesused, buffers[v4l2_buf.index].length, timestamp_ms);
 #endif
 
-#if defined(USE_CALLBACK_4_NEW_FRAME_PROCESS)
-    m_new_frame_cb(v4l2_buf.sequence, buffers[v4l2_buf.index].start, bytesused, v4l2_buf.timestamp, frm_type);
-#else
     emit new_frame_process(v4l2_buf.sequence, buffers[v4l2_buf.index].start, bytesused, v4l2_buf.timestamp, frm_type);
-#endif
 
 #if 0 //defined(DEBUG)
     DBG_INFO("before VIDIOC_QBUF--buff index=%d  buf_type=0x%x, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE:0x%x-",
@@ -675,13 +674,6 @@ void V4L2::Close(void)
 
     return;
 }
-
-#if defined(USE_CALLBACK_4_NEW_FRAME_PROCESS)
-void V4L2::Set_new_frame_callback(bool(*func) (unsigned int frm_sequence, void *frm_buf, int frm_len, struct timeval frm_timestamp))
-{
-    m_new_frame_cb = func;
-}
-#endif
 
 void V4L2::nv12_2_rgb(unsigned char *nv12 , unsigned char *rgb, int width , int height)
 {

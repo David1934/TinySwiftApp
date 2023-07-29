@@ -15,7 +15,6 @@
 #include <errno.h>
 #include <QDebug>
 #include <QDateTime>
-#include "common.h"
 #include "v4l2.h"
 
 const int DEPTH_MASK = 0x1FFF; // For depth16 format, the low 13 bits is distance

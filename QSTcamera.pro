@@ -5,14 +5,16 @@
 #-------------------------------------------------
 
 QT       += core gui
-
+# CONFIG+= console
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 TARGET = QSTcamera
 TEMPLATE = app
 
 
-SOURCES += main.cpp\
+SOURCES +=\
+        globalapplication.cpp \
+        main.cpp \
         mainwindow.cpp \
         adaps_dtof.cpp \
         majorimageprocessingthread.cpp \
@@ -20,7 +22,11 @@ SOURCES += main.cpp\
 
 HEADERS  += mainwindow.h \
         adaps_dtof.h \
+        common.h \
+        depthmapwrapper.h \
+        globalapplication.h \
         majorimageprocessingthread.h \
+        rk-camera-module.h \
         v4l2.h
 
 FORMS    += mainwindow.ui

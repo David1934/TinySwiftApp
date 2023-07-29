@@ -2,7 +2,6 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include"v4l2.h"
 #include "majorimageprocessingthread.h"
 
 namespace Ui {
@@ -20,12 +19,15 @@ public:
 private slots:
     void clickQuitButton(void);
     void clickPhotoButton(void);
-    bool new_frame_display_4_rgb(QImage image);
+    bool new_frame_display(QImage image);
+
+    void on_stopButton_clicked();
 
 private:
     Ui::MainWindow *ui;
     int         width;
     int         height;
+
     char* qstringToChar(QString srcString);
     MajorImageProcessingThread *imageprocessthread;
 };

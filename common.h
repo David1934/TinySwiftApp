@@ -1,20 +1,19 @@
 #ifndef COMMON_H
 #define COMMON_H
 
+#include <QObject>
 #include "rk-camera-module.h"
 #include "depthmapwrapper.h"
+#include <QString>
 
 #define DEBUG                       1
-//#define USE_CALLBACK_4_NEW_FRAME_PROCESS
-#define SAVE_FRAME_CNT              1
-#define FRAME_INTERVAL              5   // unit is ms
+#define FRAME_INTERVAL              1   // unit is ms
+#define APP_NAME                    "QSTCamera"
+#define APP_VERSION                 "v1.0_build20230729a"
 
-//#define SELECTED_WORK_MODE            WK_RGB_NV12
-//#define SELECTED_SENSOR_TYPE          SENSOR_TYPE_RGB
-//#define SELECTED_WORK_MODE            WK_DTOF_PCM
-//#define SELECTED_SENSOR_TYPE          SENSOR_TYPE_DTOF
-#define SELECTED_WORK_MODE            WK_DTOF_PHR
-#define SELECTED_SENSOR_TYPE          SENSOR_TYPE_DTOF
+#define DEFAULT_SENSOR_TYPE         SENSOR_TYPE_RGB
+#define DEFAULT_WORK_MODE           WK_RGB_YUYV
+#define DEFAULT_SAVE_FRAME_CNT      1
 
 #define DBG_ERROR(fmt, args ...)						\
         qCritical("ERR: <%s> %d " fmt "\n",				\
@@ -67,5 +66,7 @@ struct sensor_params
     AdapsEnvironmentType advisedEnvType;
     AdapsMeasurementType advisedMeasureType;
 };
+
+
 
 #endif // COMMON_H

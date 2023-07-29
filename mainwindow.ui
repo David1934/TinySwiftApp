@@ -32,8 +32,8 @@
      <rect>
       <x>50</x>
       <y>20</y>
-      <width>640</width>
-      <height>480</height>
+      <width>321</width>
+      <height>231</height>
      </rect>
     </property>
     <property name="font">
@@ -51,9 +51,9 @@
    <widget class="QWidget" name="layoutWidget">
     <property name="geometry">
      <rect>
-      <x>220</x>
+      <x>150</x>
       <y>520</y>
-      <width>239</width>
+      <width>431</width>
       <height>27</height>
      </rect>
     </property>
@@ -66,14 +66,48 @@
       </widget>
      </item>
      <item>
+      <widget class="QPushButton" name="photo2Button">
+       <property name="text">
+        <string>view2</string>
+       </property>
+      </widget>
+     </item>
+     <item>
       <widget class="QPushButton" name="quitButton">
        <property name="text">
         <string>quit</string>
        </property>
       </widget>
      </item>
+     <item>
+      <widget class="QPushButton" name="stopButton">
+       <property name="text">
+        <string>stop</string>
+       </property>
+      </widget>
+     </item>
     </layout>
    </widget>
+   <widget class="QLabel" name="label_2">
+    <property name="geometry">
+     <rect>
+      <x>52</x>
+      <y>34</y>
+      <width>631</width>
+      <height>461</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Devices2 dont open</string>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignCenter</set>
+    </property>
+   </widget>
+   <zorder>label_2</zorder>
+   <zorder>label</zorder>
+   <zorder>mainlabel</zorder>
+   <zorder>layoutWidget</zorder>
   </widget>
   <widget class="QMenuBar" name="menuBar">
    <property name="geometry">
@@ -81,7 +115,7 @@
      <x>0</x>
      <y>0</y>
      <width>745</width>
-     <height>22</height>
+     <height>21</height>
     </rect>
    </property>
   </widget>

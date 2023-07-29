@@ -1,9 +1,10 @@
-#include <QApplication>
 #include "mainwindow.h"
+#include <globalapplication.h>
 
 int main(int argc, char *argv[])
 {
-    QApplication a(argc, argv);
+    GlobalApplication a(argc, argv);
+
     MainWindow w;
     w.show();
 
