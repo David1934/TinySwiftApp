@@ -16,19 +16,10 @@ GlobalApplication::GlobalApplication(int argc, char *argv[]):QApplication(argc, 
     QCommandLineParser parser;
     parser.addHelpOption();
     parser.addVersionOption();
-#if 1
-    QCommandLineOption sensor_wk_mode_opt({"m", "mode"}, "Work mode for the sensor", "mode");
-    QCommandLineOption sensor_type_opt({"t", "type"}, "Type of the sensor", "type");
-    QCommandLineOption save_frame_cnt_opt({"s", "save"}, "Number of frames to save", "count");
-#else
-    QCommandLineOption sensor_wk_mode_opt({"m", "mode"});
-    QCommandLineOption sensor_type_opt({"t", "type"});
-    QCommandLineOption save_frame_cnt_opt({"s", "save"});
 
-    sensor_wk_mode_opt.setDescription("select work mode: PCM PHR FHR NV12 YUYV.");
-    sensor_type_opt.setDescription("select sensor type: RGB DTOF.");
-    save_frame_cnt_opt.setDescription("frame count to be saved: < 100.");
-#endif
+    QCommandLineOption sensor_wk_mode_opt({"m", "mode"}, "Work mode for the sensor (PCM PHR FHR NV12 YUYV)", "mode");
+    QCommandLineOption sensor_type_opt({"t", "type"}, "Type of the sensor (RGB DTOF)", "type");
+    QCommandLineOption save_frame_cnt_opt({"s", "save"}, "Number of frames to save (>=0)", "count");
 
     parser.addOption(sensor_wk_mode_opt);
     parser.addOption(sensor_type_opt);
@@ -37,9 +28,7 @@ GlobalApplication::GlobalApplication(int argc, char *argv[]):QApplication(argc, 
     //parser.process(qApp->arguments());
     parser.process(*this);
 
-    DBG_INFO( "---------------");
     if (parser.isSet(sensor_wk_mode_opt)) {
-        DBG_INFO( "---------------");
         option1Value = parser.value(sensor_wk_mode_opt);
         selected_wk_mode = string_2_workmode(option1Value);
     }
@@ -95,9 +84,7 @@ sensortype GlobalApplication::string_2_sensortype(QString& str)
 
 sensor_workmode GlobalApplication::string_2_workmode(QString& str)
 {
-    if (!str.compare("PHR"))
-        return WK_DTOF_PHR;
-    else if (!str.compare("PCM"))
+    if (!str.compare("PCM"))
         return WK_DTOF_PCM;
     else if (!str.compare("FHR"))
         return WK_DTOF_FHR;
@@ -106,5 +93,5 @@ sensor_workmode GlobalApplication::string_2_workmode(QString& str)
     else if (!str.compare("YUYV"))
         return WK_RGB_YUYV;
     else
-        return WK_DTOF_PCM;
+        return WK_DTOF_PHR;
 }

@@ -8,11 +8,11 @@
 
 #define DEBUG                       1
 #define FRAME_INTERVAL              1   // unit is ms
-#define APP_NAME                    "QSTCamera"
-#define APP_VERSION                 "v1.0_build20230729a"
+#define APP_NAME                    "SpadisQT"
+#define APP_VERSION                 "v1.0_build20230731a"
 
-#define DEFAULT_SENSOR_TYPE         SENSOR_TYPE_RGB
-#define DEFAULT_WORK_MODE           WK_RGB_YUYV
+#define DEFAULT_SENSOR_TYPE         SENSOR_TYPE_DTOF
+#define DEFAULT_WORK_MODE           WK_DTOF_PHR
 #define DEFAULT_SAVE_FRAME_CNT      1
 
 #define DBG_ERROR(fmt, args ...)						\

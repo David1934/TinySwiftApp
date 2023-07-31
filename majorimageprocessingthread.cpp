@@ -5,6 +5,8 @@ MajorImageProcessingThread::MajorImageProcessingThread()
 {
     stopped = false;
     majorindex = -1;
+    rgb_buffer = NULL;
+    depth_buffer = NULL;
     sns_param.sensor_type = qApp->get_sensor_type();
     sns_param.save_frame_cnt = qApp->get_save_cnt();
 
@@ -33,6 +35,78 @@ MajorImageProcessingThread::MajorImageProcessingThread()
             this, SLOT(new_frame_handle(unsigned int, void *, int, struct timeval, enum frame_data_type)), Qt::DirectConnection);
 #endif
 }
+
+void MajorImageProcessingThread::change(QString sensortype)
+{
+    if(!sensortype.compare("RGB"))
+    {
+        sns_param.sensor_type = SENSOR_TYPE_RGB;
+        sns_param.work_mode = WK_RGB_NV12;
+        sns_param.env_type = AdapsEnvTypeUninitilized;
+        sns_param.measure_type = AdapsMeasurementTypeUninitilized;
+        v4l2->change(sns_param);
+        v4l2->Get_output_frame_size(&sns_param.raw_width, &sns_param.raw_height, &sns_param.out_frm_width, &sns_param.out_frm_height);
+        if (NULL != adaps_dtof) adaps_dtof->release();
+    }
+    else
+    {
+        sns_param.sensor_type = SENSOR_TYPE_DTOF;
+        sns_param.env_type = AdapsEnvTypeIndoor;
+        sns_param.measure_type = AdapsMeasurementTypeNormal;
+        if(!sensortype.compare("PHR"))
+        {
+            sns_param.work_mode = WK_DTOF_PHR;
+        }
+        else if(!sensortype.compare("PCM"))
+        {
+            sns_param.work_mode = WK_DTOF_PCM;
+        }
+        else if(!sensortype.compare("FHR"))
+        {
+            sns_param.work_mode = WK_DTOF_FHR;
+        }
+        v4l2->change(sns_param);
+        v4l2->Get_output_frame_size(&sns_param.raw_width, &sns_param.raw_height, &sns_param.out_frm_width, &sns_param.out_frm_height);
+        if (NULL != adaps_dtof) adaps_dtof->change(sns_param, v4l2);
+    }
+
+}
+
+void MajorImageProcessingThread::save_depth(void *frm_buf,unsigned int frm_sequence,int frm_len)
+{
+    Q_UNUSED(frm_sequence);
+    QDateTime       localTime = QDateTime::currentDateTime();
+    QString         currentTime = localTime.toString("yyyyMMddhhmmss");
+    char *          LocalTimeStr = (char *) currentTime.toStdString().c_str();
+
+    char path[50]={0};
+    int16_t *p_temp=(int16_t*)frm_buf;
+    if(1)
+    {
+        sprintf(path,"%sframe%03d_%s_%d%s",DATA_SAVE_PATH,frm_sequence, LocalTimeStr, frm_len, ".txt");
+        FILE*fp = NULL;
+        fp=fopen(path, "w+");
+        if (fp == NULL)
+        {
+            DBG_INFO(" fopen output file %s failed!\n",  path);
+            return;
+        }
+    printf(">\n");
+    for (int i = 0; i < 160; i++)
+    {
+      int offset = i * 210;
+        for (int j = 0; j < 210; j++)
+      {
+        fprintf(fp, "%6u ", (*(p_temp + offset + j))&0x1fff);  //do not printf high 3 bit confidence
+      }
+        fprintf(fp, "\n");
+    }
+    fflush(fp);
+    fclose(fp);
+   }
+
+}
+
 bool MajorImageProcessingThread::save_frame(unsigned int frm_sequence, void *frm_buf, int buf_size, int frm_w, int frm_h, struct timeval frm_timestamp, enum frame_data_type ftype)
 {
     const char extName[FDATA_TYPE_COUNT][16]   = {
@@ -49,7 +123,7 @@ bool MajorImageProcessingThread::save_frame(unsigned int frm_sequence, void *frm
     QDateTime       localTime = QDateTime::currentDateTime();
     QString         currentTime = localTime.toString("yyyyMMddhhmmss");
     char *          LocalTimeStr = (char *) currentTime.toStdString().c_str();
-    char *          filename = new char[50];
+    char *          filename = new char[128];
     sprintf(filename,"%sframe%03d_%dx%d_%s_%d%s", DATA_SAVE_PATH, frm_sequence, frm_w, frm_h,LocalTimeStr, buf_size, extName[ftype]);
     FILE *fp = fopen(filename, "wb");
 
@@ -166,7 +240,7 @@ bool MajorImageProcessingThread::new_frame_handle(unsigned int frm_sequence, voi
     {
         sns_param.save_frame_cnt--;
     }
-    QImage img = QImage(rgb_buffer, sns_param.out_frm_width, sns_param.out_frm_height, QImage::Format_RGB888);
+    QImage img = QImage(rgb_buffer, sns_param.out_frm_width, sns_param.out_frm_height, sns_param.out_frm_width*RGB_IMAGE_CHANEL,QImage::Format_RGB888);
     emit SendMajorImageProcessing(img);
 
     return true;
@@ -174,18 +248,28 @@ bool MajorImageProcessingThread::new_frame_handle(unsigned int frm_sequence, voi
 
 void MajorImageProcessingThread::stop()
 {
-//    stopped = true;
+    stopped = true;
     v4l2->Stop_streaming();
     v4l2->Close();
     if (SENSOR_TYPE_DTOF == sns_param.sensor_type)
     {
+/*
         if (adaps_dtof)
         {
             adaps_dtof->release();
         }
-        free(depth_buffer);
+*/
+        if (NULL != depth_buffer)
+        {
+            free(depth_buffer);
+            depth_buffer = NULL;
+        }
     }
-    free(rgb_buffer);
+    if (NULL != rgb_buffer)
+    {
+        free(rgb_buffer);
+        rgb_buffer = NULL;
+    }
 }
 
 void MajorImageProcessingThread::init(int index)

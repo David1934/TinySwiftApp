@@ -24,14 +24,21 @@ ADAPS_DTOF::~ADAPS_DTOF()
     m_v4l2 = NULL;
 }
 
+void ADAPS_DTOF::change(struct sensor_params params, V4L2 *v4l2)
+{
+    memcpy(&m_sns_param, &params, sizeof(struct sensor_params));
+    m_conversionLibInited = false;
+    m_v4l2 = v4l2;
+}
+
 u8 ADAPS_DTOF::normalizeGreyscale(u16 range) {
-    float normalized = (float) range - RANGE_MIN;
+    u16 normalized = range - RANGE_MIN;
     // Clamp to min/max
     normalized = MAX(RANGE_MIN, normalized);
     normalized = MIN(RANGE_MAX, normalized);
     // Normalize to 0 to 255
     normalized = normalized - RANGE_MIN;
-    normalized = normalized / (RANGE_MAX - RANGE_MIN) * 255;
+    normalized = (normalized * 255) / (RANGE_MAX - RANGE_MIN);
     return (u8) normalized;
 }
 

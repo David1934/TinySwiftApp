@@ -27,87 +27,92 @@
      <string>QSTcamera</string>
     </property>
    </widget>
-   <widget class="QLabel" name="mainlabel">
+   <widget class="QWidget" name="horizontalLayoutWidget">
     <property name="geometry">
      <rect>
-      <x>50</x>
+      <x>20</x>
       <y>20</y>
-      <width>321</width>
-      <height>231</height>
+      <width>691</width>
+      <height>421</height>
      </rect>
     </property>
-    <property name="font">
-     <font>
-      <pointsize>22</pointsize>
-     </font>
+    <layout class="QHBoxLayout" name="horizontalLayout_2">
+     <item>
+      <widget class="QLabel" name="mainlabel">
+       <property name="font">
+        <font>
+         <pointsize>22</pointsize>
+        </font>
+       </property>
+       <property name="text">
+        <string>Device is not ready yet.</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+   <widget class="QWidget" name="verticalLayoutWidget">
+    <property name="geometry">
+     <rect>
+      <x>30</x>
+      <y>454</y>
+      <width>101</width>
+      <height>91</height>
+     </rect>
     </property>
-    <property name="text">
-     <string>Device is not ready yet.</string>
-    </property>
-    <property name="alignment">
-     <set>Qt::AlignCenter</set>
-    </property>
+    <layout class="QVBoxLayout" name="verticalLayout">
+     <item>
+      <widget class="QPushButton" name="PCMButton">
+       <property name="text">
+        <string>PCM</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="RGBButton">
+       <property name="text">
+        <string>RGB</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="PHRButton">
+       <property name="text">
+        <string>PHR</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
    </widget>
    <widget class="QWidget" name="layoutWidget">
     <property name="geometry">
      <rect>
       <x>150</x>
-      <y>520</y>
-      <width>431</width>
-      <height>27</height>
+      <y>460</y>
+      <width>531</width>
+      <height>71</height>
      </rect>
     </property>
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
-      <widget class="QPushButton" name="photoButton">
+      <widget class="QPushButton" name="stopButton">
        <property name="text">
-        <string>take photo</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="photo2Button">
-       <property name="text">
-        <string>view2</string>
+        <string>STOP</string>
        </property>
       </widget>
      </item>
      <item>
       <widget class="QPushButton" name="quitButton">
        <property name="text">
-        <string>quit</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="stopButton">
-       <property name="text">
-        <string>stop</string>
+        <string>QUIT</string>
        </property>
       </widget>
      </item>
     </layout>
    </widget>
-   <widget class="QLabel" name="label_2">
-    <property name="geometry">
-     <rect>
-      <x>52</x>
-      <y>34</y>
-      <width>631</width>
-      <height>461</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Devices2 dont open</string>
-    </property>
-    <property name="alignment">
-     <set>Qt::AlignCenter</set>
-    </property>
-   </widget>
-   <zorder>label_2</zorder>
-   <zorder>label</zorder>
-   <zorder>mainlabel</zorder>
-   <zorder>layoutWidget</zorder>
   </widget>
   <widget class="QMenuBar" name="menuBar">
    <property name="geometry">

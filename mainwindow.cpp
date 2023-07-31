@@ -11,9 +11,11 @@ MainWindow::MainWindow(QWidget *parent) :
     imageprocessthread = new MajorImageProcessingThread;
 
     connect(ui->quitButton, SIGNAL(clicked()), this, SLOT(clickQuitButton()));
-    connect(ui->photoButton, SIGNAL(clicked()), this, SLOT(clickPhotoButton()));
     connect(imageprocessthread, SIGNAL(SendMajorImageProcessing(QImage)),
             this, SLOT(new_frame_display(QImage)));
+
+    imageprocessthread->init(0);
+    imageprocessthread->start();
 }
 
 MainWindow::~MainWindow()
@@ -59,19 +61,44 @@ bool MainWindow::new_frame_display(QImage image)
     return true;
 }
 
-void MainWindow::clickPhotoButton(void)
-{
-//    ui->photoButton->setDisabled(1);
-    imageprocessthread->init(0);
-    imageprocessthread->start();
-}
-
 void MainWindow::on_stopButton_clicked()
 {
     imageprocessthread->stop();
     ui->mainlabel->setText("Device is ready");
-    ui->photoButton->setDisabled(0);
+
+}
+
+void MainWindow::on_RGBButton_clicked()
+{
+    if(imageprocessthread->isRunning())
+    {
+        imageprocessthread->stop();
+    }
+    imageprocessthread->change("RGB");
+    imageprocessthread->init(0);
+    imageprocessthread->start();
+
+}
+
+void MainWindow::on_PHRButton_clicked()
+{
+    if(imageprocessthread->isRunning())
+    {
+        imageprocessthread->stop();
+    }
+    imageprocessthread->change("PHR");
+    imageprocessthread->init(0);
+    imageprocessthread->start();
 }
 
 
-
+void MainWindow::on_PCMButton_clicked()
+{
+    if(imageprocessthread->isRunning())
+    {
+        imageprocessthread->stop();
+    }
+    imageprocessthread->change("PCM");
+    imageprocessthread->init(0);
+    imageprocessthread->start();
+}

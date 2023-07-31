@@ -17,11 +17,14 @@ public:
     ~MainWindow();
 
 private slots:
-    void clickQuitButton(void);
-    void clickPhotoButton(void);
+
     bool new_frame_display(QImage image);
 
+    void clickQuitButton(void);
     void on_stopButton_clicked();
+    void on_RGBButton_clicked();
+    void on_PHRButton_clicked();
+    void on_PCMButton_clicked();
 
 private:
     Ui::MainWindow *ui;

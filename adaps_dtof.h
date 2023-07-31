@@ -66,6 +66,7 @@ public:
     void ConvertGreyscaleToColoredMap(u16 depth16_buffer[], u8 depth_colored_map[], int outImgWidth, int outImgHeight);
     int dtof_decode(unsigned char *frm_rawdata , u16 depth16_buffer[], enum sensor_workmode swk);
     void release();
+    void change(struct sensor_params params, V4L2 *v4l2);
 
 private:
     V4L2 *m_v4l2;

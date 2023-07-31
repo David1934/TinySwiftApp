@@ -68,6 +68,7 @@ public:
     bool Initilize(void);
     bool Start_streaming(void);
     bool Capture_frame();
+    void change(struct sensor_params params);
     void Stop_streaming(void);
     void Close(void);
     void Get_output_frame_size(int *in_width, int *in_height, int *out_width, int *out_height);

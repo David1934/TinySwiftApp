@@ -4,6 +4,9 @@
 
 V4L2::V4L2(struct sensor_params params)
 {
+    p_eeprominfo = NULL;
+    buffers = NULL;
+    sensordata = NULL;
     init();
     memcpy(&tof_param, &params, sizeof(struct sensor_params));
 
@@ -40,12 +43,42 @@ V4L2::V4L2(struct sensor_params params)
 
 V4L2::~V4L2()
 {
-    free(sensordata);
+    if (NULL != sensordata)
+    {
+        free(sensordata);
+        sensordata = NULL;
+    }
+}
+
+void V4L2::change(struct sensor_params params)
+{
+    memcpy(&tof_param, &params, sizeof(struct sensor_params));
+
+    if (NULL != sensordata[params.work_mode].sensor_subdev)
+    {
+        memcpy(sensor_sd_name, sensordata[params.work_mode].sensor_subdev, DEV_NODE_LEN);
+    }
+    else {
+        memset(sensor_sd_name, 0, DEV_NODE_LEN);
+    }
+    memcpy(media_dev, sensordata[params.work_mode].media_devnode, DEV_NODE_LEN);
+    memcpy(video_dev, sensordata[params.work_mode].video_devnode, DEV_NODE_LEN);
+    tof_param.raw_width = sensordata[params.work_mode].raw_w;
+    tof_param.raw_height = sensordata[params.work_mode].raw_h;
+    pixel_format = sensordata[params.work_mode].pixfmt;
+    frame_buffer_count = sensordata[params.work_mode].frm_buf_cnt;
+    tof_param.sensor_type = sensordata[params.work_mode].stype;
+    frm_type = sensordata[params.work_mode].ftype;
+    tof_param.out_frm_width = sensordata[params.work_mode].out_frm_width;
+    tof_param.out_frm_height = sensordata[params.work_mode].out_frm_height;
 }
 
 int V4L2::init()
 {
-    sensordata = (struct sensor_data *)malloc(sizeof(struct sensor_data)*WK_COUNT);
+    if (NULL == sensordata)
+    {
+        sensordata = (struct sensor_data *)malloc(sizeof(struct sensor_data)*WK_COUNT);
+    }
 
     sensordata[WK_DTOF_PHR] = {
         ENTITY_NAME_4_DTOF_SENSOR,
@@ -296,15 +329,19 @@ void V4L2::free_buffers(void)
 {
     unsigned int    i;
 
-    for (i = 0; i < req_bufs.count; ++i) {
-        if (-1 == munmap(buffers[i].start, buffers[i].length)) {
-            DBG_ERROR("Fail to munmap, errno: %s (%d)...", 
-                strerror(errno), errno);
-            return;
+    if (NULL != buffers)
+    {
+        for (i = 0; i < req_bufs.count; ++i) {
+            if (-1 == munmap(buffers[i].start, buffers[i].length)) {
+                DBG_ERROR("Fail to munmap, errno: %s (%d)...", 
+                    strerror(errno), errno);
+                return;
+            }
         }
-    }
 
-    free(buffers);
+        free(buffers);
+        buffers = NULL;
+    }
 }
 
 bool V4L2::save_eeprom(void *buf, int len)
@@ -344,8 +381,11 @@ int V4L2::adaps_readEEPROMData(void)
             DBG_ERROR("Fail to read eeprom of dtof sub device, errno: %s (%d)...", 
                    strerror(errno), errno);
             ret = -1;
-            free(p_eeprominfo);
-            p_eeprominfo = NULL;
+            if (NULL != p_eeprominfo)
+            {
+                free(p_eeprominfo);
+                p_eeprominfo = NULL;
+            }
         }else
         {     
             DBG_INFO("adaps_get_eeprom  adaps_get_eeprom.pRawData=%x  sizeof swift_eeprom_data_t=%ld in user space  \n   ",
@@ -656,8 +696,11 @@ void V4L2::Close(void)
 {
     if (SENSOR_TYPE_DTOF == tof_param.sensor_type)
     {
-        free(p_eeprominfo);
-        p_eeprominfo = NULL;
+        if (NULL != p_eeprominfo)
+        {
+            free(p_eeprominfo);
+            p_eeprominfo = NULL;
+        }
         if (-1 == close(fd_4_dtof)) {
             DBG_ERROR("Fail to close device, errno: %s (%d)...", 
                 strerror(errno), errno);
