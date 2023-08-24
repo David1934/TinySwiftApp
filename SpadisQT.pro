@@ -18,6 +18,7 @@ SOURCES +=\
         mainwindow.cpp \
         adaps_dtof.cpp \
         majorimageprocessingthread.cpp \
+        utils.cpp \
         v4l2.cpp
 
 HEADERS  += mainwindow.h \

@@ -853,21 +853,34 @@ typedef struct SwiftEepromData
     __u32        refSpadSelection; // 4 bytes
     __u32        driverChannelOffset[4];  // 16 bytes
     __u32        distanceTemperatureCoefficient;
-    // Page 67 - 187
+    // Page 67 - 186
     float           spotPos[SWIFT_SPOT_BOX]; // 7680 bytes, 120 pages
-    // Page 188 - 248
+    // Page 187 - 246
     float           spotOffset[SWIFT_OFFSET_SIZE]; // 3840 bytes, 60 pages
-    // Page 249
+    // Page 247
     __u32        tdcDelay[16]; // 8 bytes
-    // Page 250, 0 - 16 byte
+    // Page 248
     float           indoorCalibTemperature; // Calibration temperature.
     float           indoorCalibRefDistance; // Calibration reference distance.
     float           outdoorCalibTemperature; // Calibration temperature.
     float           outdoorCalibRefDistance; // Calibration reference distance.
     float           calibrationInfo[12]; // reserved
-    // Page 251 - 254 
-    __u8         pxyHistogram[256]; // pxy histogram
-
+    // Page 249 - 252 
+    uint8_t         pxyHistogram[248]; // pxy histogram
+    float           pxyDepth;          // pxy depth
+    float           pxyNumberOfPulse;  // pxy number of pulse
+    // Page 253
+    uint16_t        markedPixels[32];  // 16 hot pixels, 16 dead pixels.
+    // Page 254
+    char            moduleInfo[64]; // adaps calibration info.
+    // Page 255
+    char            reservedPage255[SWIFT_DEVICE_NAME_LENGTH];
+    // Page 256
+    __u32            totalChecksum;
+    __u32            sramDataChecksum;
+    __u32            spotPositionChecksum;
+    __u32            spotOffsetChecksum;
+    __u32            proximityChecksum;
 }swift_eeprom_data_t;
 
 
@@ -904,6 +917,10 @@ typedef struct SwiftEepromData
 
 #define  AD4001_EEPROM_PROX_HISTOGRAM_OFFSET        OFFSET(swift_eeprom_data_t, pxyHistogram)               /// 15824+12x(sizeof(float))=15872
 #define  AD4001_EEPROM_PROX_HISTOGRAM_SIZE          MEMBER_SIZE(swift_eeprom_data_t, pxyHistogram)          /// 256
+
+#define  AD4001_EEPROM_TOTAL_CHECKSUM_OFFSET        OFFSET(swift_eeprom_data_t, totalChecksum)
+#define  AD4001_EEPROM_TOTAL_CHECKSUM_SIZE          MEMBER_SIZE(swift_eeprom_data_t, totalChecksum)
+
 #pragma pack()
 
 
@@ -932,7 +949,7 @@ struct adaps_get_param_perframe{
     __u32 internal_temperature; //since kernel doesn't use float type, the temperate is a expanded integer value (x100)
     __u8 laser_exposure_period;
     __u8 fine_exposure_time; 
- };
+};
 
 #pragma pack(4)
  struct adaps_get_eeprom{

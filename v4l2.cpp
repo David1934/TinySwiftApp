@@ -1,4 +1,5 @@
 #include "v4l2.h"
+#include "utils.h"
 
 #define CLEAR(x) memset(&(x), 0, sizeof(x))
 
@@ -387,11 +388,30 @@ int V4L2::adaps_readEEPROMData(void)
                 p_eeprominfo = NULL;
             }
         }else
-        {     
-            DBG_INFO("adaps_get_eeprom  adaps_get_eeprom.pRawData=%x  sizeof swift_eeprom_data_t=%ld in user space  \n   ",
-                    p_eeprominfo->pRawData,
-                    sizeof(swift_eeprom_data_t));
-            //save_eeprom(p_eeprominfo->pRawData, sizeof(swift_eeprom_data_t));
+        {
+            uint32_t saved_crc32  = 0;
+            swift_eeprom_data_t *p_swift_eeprom_data;
+            Utils *utils = new Utils();
+            uint32_t calc_crc32 = utils->crc32(0, (const unsigned char *)p_eeprominfo->pRawData, AD4001_EEPROM_TOTAL_CHECKSUM_OFFSET - AD4001_EEPROM_VERSION_INFO_OFFSET);
+            delete utils;
+            p_swift_eeprom_data = (swift_eeprom_data_t *)p_eeprominfo->pRawData;
+            saved_crc32 = p_swift_eeprom_data->totalChecksum;
+            if (calc_crc32 == saved_crc32)
+            {
+                DBG_INFO("EEPROM crc32 matched!!! sizeof(swift_eeprom_data_t)=%ld, length before totalChecksum:%ld,calc_crc32:0x%x,saved_crc32:0x%x",
+                        sizeof(swift_eeprom_data_t),
+                        AD4001_EEPROM_TOTAL_CHECKSUM_OFFSET - AD4001_EEPROM_VERSION_INFO_OFFSET,
+                        calc_crc32,
+                        saved_crc32);
+                save_eeprom(p_eeprominfo->pRawData, sizeof(swift_eeprom_data_t));
+            }
+            else {
+                DBG_ERROR("EEPROM crc32 mismatched!!! sizeof(swift_eeprom_data_t)=%ld, length before totalChecksum:%ld,calc_crc32:0x%x,saved_crc32:0x%x",
+                        sizeof(swift_eeprom_data_t),
+                        AD4001_EEPROM_TOTAL_CHECKSUM_OFFSET - AD4001_EEPROM_VERSION_INFO_OFFSET,
+                        calc_crc32,
+                        saved_crc32);
+            }
         }
     }
 
