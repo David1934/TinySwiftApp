@@ -1,6 +1,9 @@
-#include "majorimageprocessingthread.h"
 #include <mainwindow.h>
 #include <globalapplication.h>
+
+#include "majorimageprocessingthread.h"
+#include "utils.h"
+
 MajorImageProcessingThread::MajorImageProcessingThread()
 {
     stopped = false;
@@ -81,7 +84,7 @@ void MajorImageProcessingThread::save_depth(void *frm_buf,unsigned int frm_seque
 
     char path[50]={0};
     int16_t *p_temp=(int16_t*)frm_buf;
-    if(1)
+    if (Utils::is_env_var_true(ENV_VAR_SAVE_DEPTH_ENABLE))
     {
         sprintf(path,"%sframe%03d_%s_%d%s",DATA_SAVE_PATH,frm_sequence, LocalTimeStr, frm_len, ".txt");
         FILE*fp = NULL;
@@ -91,18 +94,18 @@ void MajorImageProcessingThread::save_depth(void *frm_buf,unsigned int frm_seque
             DBG_INFO(" fopen output file %s failed!\n",  path);
             return;
         }
-    printf(">\n");
-    for (int i = 0; i < 160; i++)
-    {
-      int offset = i * 210;
-        for (int j = 0; j < 210; j++)
-      {
-        fprintf(fp, "%6u ", (*(p_temp + offset + j))&0x1fff);  //do not printf high 3 bit confidence
-      }
-        fprintf(fp, "\n");
-    }
-    fflush(fp);
-    fclose(fp);
+        printf(">\n");
+        for (int i = 0; i < OUTPUT_HEIGHT_4_DTOF_SENSOR; i++)
+        {
+            int offset = i * OUTPUT_WIDTH_4_DTOF_SENSOR;
+            for (int j = 0; j < OUTPUT_WIDTH_4_DTOF_SENSOR; j++)
+            {
+                fprintf(fp, "%6u ", (*(p_temp + offset + j))&0x1fff);  //do not printf high 3 bit confidence
+            }
+            fprintf(fp, "\n");
+        }
+        fflush(fp);
+        fclose(fp);
    }
 
 }
@@ -124,6 +127,12 @@ bool MajorImageProcessingThread::save_frame(unsigned int frm_sequence, void *frm
     QString         currentTime = localTime.toString("yyyyMMddhhmmss");
     char *          LocalTimeStr = (char *) currentTime.toStdString().c_str();
     char *          filename = new char[128];
+
+    if (false == Utils::is_env_var_true(ENV_VAR_SAVE_FRAME_ENABLE))
+    {
+        return false;
+    }
+
     sprintf(filename,"%sframe%03d_%dx%d_%s_%d%s", DATA_SAVE_PATH, frm_sequence, frm_w, frm_h,LocalTimeStr, buf_size, extName[ftype]);
     FILE *fp = fopen(filename, "wb");
 
@@ -317,7 +326,10 @@ void MajorImageProcessingThread::run()
         {
             msleep(FRAME_INTERVAL);
 
-            ret=v4l2->Capture_frame();
+            if(!stopped)
+            {
+                ret=v4l2->Capture_frame();
+            }
             if(ret==false)
             {
                 stopped=true;

@@ -9,21 +9,33 @@
 #define DEBUG                       1
 #define FRAME_INTERVAL              1   // unit is ms
 #define APP_NAME                    "SpadisQT"
-#define APP_VERSION                 "v1.0_build20230731a"
+#define APP_VERSION                 "v1.0_build20240219a"
 
 #define DEFAULT_SENSOR_TYPE         SENSOR_TYPE_DTOF
 #define DEFAULT_WORK_MODE           WK_DTOF_PHR
 #define DEFAULT_SAVE_FRAME_CNT      1
 
-#define DBG_ERROR(fmt, args ...)						\
-        qCritical("ERR: <%s> %d " fmt "\n",				\
-			__func__, __LINE__, ##args)
+#define DBG_ERROR(fmt, args ...)                                                                    \
+    do {                                                                                            \
+        struct timespec ts;                                                                         \
+        clock_gettime(CLOCK_REALTIME, &ts);                                                         \
+        struct tm tm = *localtime(&ts.tv_sec);                                                      \
+        char timestamp[120];                                                                        \
+        strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", &tm);                           \
+        qCritical("[%s.%03ld.%03ld.%03ld] ERROR: <%s> %d " fmt "\n", timestamp, ts.tv_nsec/1000000, \
+            (ts.tv_nsec/1000)%1000, ts.tv_nsec%1000, __func__, __LINE__, ##args);                   \
+    }while(0)
 
-#define DBG_INFO(fmt, args ...) 									\
-	if (DEBUG) {						\
-        qCritical("INFO: <%s> %d " fmt "\n",				\
-			__func__, __LINE__, ##args);				\
-	}
+#define DBG_INFO(fmt, args ...)                                                                     \
+    if (DEBUG) {                                                                                    \
+        struct timespec ts;                                                                         \
+        clock_gettime(CLOCK_REALTIME, &ts);                                                         \
+        struct tm tm = *localtime(&ts.tv_sec);                                                      \
+        char timestamp[120];                                                                        \
+        strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", &tm);                           \
+        qCritical("[%s.%03ld.%03ld.%03ld] INFO: <%s> %d " fmt "\n", timestamp, ts.tv_nsec/1000000,  \
+            (ts.tv_nsec/1000)%1000, ts.tv_nsec%1000, __func__, __LINE__, ##args);                   \
+    }
 
 typedef unsigned char u8;
 typedef unsigned short u16;
@@ -67,6 +79,5 @@ struct sensor_params
     AdapsMeasurementType advisedMeasureType;
 };
 
-
-
 #endif // COMMON_H
+

@@ -25,6 +25,7 @@ private slots:
     void on_RGBButton_clicked();
     void on_PHRButton_clicked();
     void on_PCMButton_clicked();
+    void on_FHRButton_clicked();
 
 private:
     Ui::MainWindow *ui;

@@ -86,9 +86,9 @@ int V4L2::init()
         MEDIA_DEVNAME_4_DTOF_SENSOR,
         VIDEO_DEV_4_DTOF_SENSOR,
         1032,
-        32,
-        210,
-        160,
+        MIPI_RAW_HEIGHT_4_DTOF_SENSOR,
+        OUTPUT_WIDTH_4_DTOF_SENSOR,
+        OUTPUT_HEIGHT_4_DTOF_SENSOR,
         PIXELFORMAT_4_DTOF_SENSOR,
         BUFFER_COUNT_4_DTOF_SENSOR,
         SENSOR_TYPE_DTOF,
@@ -100,9 +100,9 @@ int V4L2::init()
         MEDIA_DEVNAME_4_DTOF_SENSOR,
         VIDEO_DEV_4_DTOF_SENSOR,
         2560,
-        32,
-        210,
-        160,
+        MIPI_RAW_HEIGHT_4_DTOF_SENSOR,
+        OUTPUT_WIDTH_4_DTOF_SENSOR,
+        OUTPUT_HEIGHT_4_DTOF_SENSOR,
         PIXELFORMAT_4_DTOF_SENSOR,
         BUFFER_COUNT_4_DTOF_SENSOR,
         SENSOR_TYPE_DTOF,
@@ -114,9 +114,9 @@ int V4L2::init()
         MEDIA_DEVNAME_4_DTOF_SENSOR,
         VIDEO_DEV_4_DTOF_SENSOR,
         4104,
-        32,
-        210,
-        160,
+        MIPI_RAW_HEIGHT_4_DTOF_SENSOR,
+        OUTPUT_WIDTH_4_DTOF_SENSOR,
+        OUTPUT_HEIGHT_4_DTOF_SENSOR,
         PIXELFORMAT_4_DTOF_SENSOR,
         BUFFER_COUNT_4_DTOF_SENSOR,
         SENSOR_TYPE_DTOF,
@@ -403,7 +403,10 @@ int V4L2::adaps_readEEPROMData(void)
                         AD4001_EEPROM_TOTAL_CHECKSUM_OFFSET - AD4001_EEPROM_VERSION_INFO_OFFSET,
                         calc_crc32,
                         saved_crc32);
-                save_eeprom(p_eeprominfo->pRawData, sizeof(swift_eeprom_data_t));
+                if (Utils::is_env_var_true(ENV_VAR_SAVE_EEPROM_ENABLE))
+                {
+                    save_eeprom(p_eeprominfo->pRawData, sizeof(swift_eeprom_data_t));
+                }
             }
             else {
                 DBG_ERROR("EEPROM crc32 mismatched!!! sizeof(swift_eeprom_data_t)=%ld, length before totalChecksum:%ld,calc_crc32:0x%x,saved_crc32:0x%x",
@@ -671,8 +674,8 @@ bool V4L2::Capture_frame()
         v4l2_buf.length = FMT_NUM_PLANES;
     }
 
-    if (ioctl(fd, VIDIOC_DQBUF, &v4l2_buf) == -1) {
-        DBG_ERROR("Fail to dequeue buffer, errno: %s (%d)...", 
+    if (0 == fd || ioctl(fd, VIDIOC_DQBUF, &v4l2_buf) == -1) {
+        DBG_ERROR("Fail to dequeue buffer, fd: %d errno: %s (%d)...", fd,
             strerror(errno), errno);
         return false;
     }
@@ -694,7 +697,7 @@ bool V4L2::Capture_frame()
     DBG_INFO("before VIDIOC_QBUF--buff index=%d  buf_type=0x%x, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE:0x%x-",
         v4l2_buf.index, buf_type, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE);
 #endif
-    if (-1 == ioctl(fd, VIDIOC_QBUF, &v4l2_buf)) {
+    if (0 == fd || -1 == ioctl(fd, VIDIOC_QBUF, &v4l2_buf)) {
         DBG_ERROR("Fail to queue buffer, errno: %s (%d)...", 
             strerror(errno), errno);
         return false;
@@ -734,6 +737,7 @@ void V4L2::Close(void)
             strerror(errno), errno);
         return;
     }
+    fd = 0;
 
     return;
 }

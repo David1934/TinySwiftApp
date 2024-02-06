@@ -23,6 +23,9 @@
 #define VIDEO_DEV_4_DTOF_SENSOR     "/dev/video22"
 #define PIXELFORMAT_4_DTOF_SENSOR   V4L2_PIX_FMT_SBGGR8
 #define BUFFER_COUNT_4_DTOF_SENSOR  6
+#define OUTPUT_WIDTH_4_DTOF_SENSOR  210
+#define OUTPUT_HEIGHT_4_DTOF_SENSOR 160
+#define MIPI_RAW_HEIGHT_4_DTOF_SENSOR 32
 
 #define MEDIA_DEVNAME_4_RGB_SENSOR  "/dev/media0"
 #define VIDEO_DEV_4_RGB_SENSOR      "/dev/video0"
@@ -33,6 +36,10 @@
 #define DEV_NODE_LEN                32
 #define FMT_NUM_PLANES              1
 #define DATA_SAVE_PATH              "/sdcard/" // "/home/david/"
+
+#define ENV_VAR_SAVE_EEPROM_ENABLE                "save_eeprom_enable"
+#define ENV_VAR_SAVE_DEPTH_ENABLE                 "save_depth_enable"
+#define ENV_VAR_SAVE_FRAME_ENABLE                 "save_frame_enable"
 
 struct buffer
 {

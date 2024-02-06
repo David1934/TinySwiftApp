@@ -102,3 +102,15 @@ void MainWindow::on_PCMButton_clicked()
     imageprocessthread->init(0);
     imageprocessthread->start();
 }
+
+void MainWindow::on_FHRButton_clicked()
+{
+    if(imageprocessthread->isRunning())
+    {
+        imageprocessthread->stop();
+    }
+    imageprocessthread->change("FHR");
+    imageprocessthread->init(0);
+    imageprocessthread->start();
+}
+
