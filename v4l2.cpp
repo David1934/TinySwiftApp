@@ -1,3 +1,4 @@
+#include <sys/sysmacros.h>
 #include "v4l2.h"
 #include "utils.h"
 
@@ -334,7 +335,7 @@ void V4L2::free_buffers(void)
     {
         for (i = 0; i < req_bufs.count; ++i) {
             if (-1 == munmap(buffers[i].start, buffers[i].length)) {
-                DBG_ERROR("Fail to munmap, errno: %s (%d)...", 
+                DBG_ERROR("Fail to munmap, errno: %s (%d)...",
                     strerror(errno), errno);
                 return;
             }
@@ -647,6 +648,10 @@ bool V4L2::Initilize(void)
 
 bool V4L2::Start_streaming(void)
 {
+    firstFrameTimeUsec = 0;
+    rxFrameCnt = 0;
+    fps = 0;
+    streamed_timeUs = 0;
     if (-1 == ioctl(fd, VIDIOC_STREAMON, &buf_type))
     {
         DBG_ERROR("Fail to stream_on, errno: %s (%d)...", 
@@ -662,6 +667,8 @@ bool V4L2::Capture_frame()
     struct v4l2_buffer  v4l2_buf;
     struct v4l2_plane v4l2_planes[FMT_NUM_PLANES];
     int bytesused;
+    struct timeval tv;
+    long currTimeUsec;
 
     CLEAR(v4l2_buf);
 
@@ -685,6 +692,19 @@ bool V4L2::Capture_frame()
     else
         bytesused = v4l2_buf.bytesused;
 
+    gettimeofday(&tv,NULL);
+    rxFrameCnt++;
+    if (0 == firstFrameTimeUsec)
+    {
+        firstFrameTimeUsec = tv.tv_sec*1000000 + tv.tv_usec;
+    }
+    else {
+        currTimeUsec = tv.tv_sec*1000000 + tv.tv_usec;
+        streamed_timeUs = (currTimeUsec - firstFrameTimeUsec);
+        fps = (rxFrameCnt * 1000000) / streamed_timeUs;
+    }
+
+    emit update_info(fps, streamed_timeUs);
 #if 0 //defined(DEBUG)
     long timestamp_ms = 1000 * v4l2_buf.timestamp.tv_sec + v4l2_buf.timestamp.tv_usec / 1000;
     DBG_INFO("after VIDIOC_DQBUF--buff index=%d  -bytesused=%d, buffers[v4l2_buf.index].length:%d---timestamp=%ld-",

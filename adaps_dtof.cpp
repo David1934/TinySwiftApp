@@ -162,7 +162,7 @@ int ADAPS_DTOF::initilize()
             else
             {
                 m_conversionLibInited = true;
-                DBG_INFO( "Successfully creating DepthMapWrapper %p \n ",m_DepthMapWrapper);
+                DBG_INFO( "Successfully creating DepthMapWrapper %p \n",m_DepthMapWrapper);
              }
          }
     }

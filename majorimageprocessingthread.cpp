@@ -17,7 +17,7 @@ MajorImageProcessingThread::MajorImageProcessingThread()
     {
         sns_param.work_mode = qApp->get_wk_mode();
         sns_param.env_type = AdapsEnvTypeIndoor;
-        sns_param.measure_type = AdapsMeasurementTypeNormal;
+        sns_param.measure_type = AdapsMeasurementTypeFull; // AdapsMeasurementTypeNormal;
         v4l2 = new V4L2(sns_param);
         v4l2->Get_output_frame_size(&sns_param.raw_width, &sns_param.raw_height, &sns_param.out_frm_width, &sns_param.out_frm_height);
         DBG_INFO( "raw_width: %d raw_height: %d FRAME_INTERVAL: %d ms\n", sns_param.raw_width, sns_param.raw_height, FRAME_INTERVAL);
@@ -37,6 +37,8 @@ MajorImageProcessingThread::MajorImageProcessingThread()
     connect(v4l2, SIGNAL(new_frame_process(unsigned int, void *, int, struct timeval, enum frame_data_type)),
             this, SLOT(new_frame_handle(unsigned int, void *, int, struct timeval, enum frame_data_type)), Qt::DirectConnection);
 #endif
+
+    connect(v4l2, SIGNAL(update_info(int, unsigned long)),  this, SLOT(info_update(int, unsigned long)));
 }
 
 void MajorImageProcessingThread::change(QString sensortype)
@@ -44,7 +46,7 @@ void MajorImageProcessingThread::change(QString sensortype)
     if(!sensortype.compare("RGB"))
     {
         sns_param.sensor_type = SENSOR_TYPE_RGB;
-        sns_param.work_mode = WK_RGB_NV12;
+        sns_param.work_mode = WKMODE_4_RGB_SENSOR;
         sns_param.env_type = AdapsEnvTypeUninitilized;
         sns_param.measure_type = AdapsMeasurementTypeUninitilized;
         v4l2->change(sns_param);
@@ -149,9 +151,16 @@ bool MajorImageProcessingThread::save_frame(unsigned int frm_sequence, void *frm
     return true;
 }
 
+bool MajorImageProcessingThread::info_update(int fps, unsigned long streamed_time)
+{
+    emit update_runtime_display(fps, streamed_time);
+
+    return true;
+}
+
 bool MajorImageProcessingThread::new_frame_handle(unsigned int frm_sequence, void *frm_rawdata, int buf_len, struct timeval frm_timestamp, enum frame_data_type ftype)
 {
-    int decodeRet;
+    int decodeRet = 0;
 
     Q_UNUSED(frm_sequence);
     Q_UNUSED(frm_timestamp);
@@ -187,9 +196,6 @@ bool MajorImageProcessingThread::new_frame_handle(unsigned int frm_sequence, voi
                             frm_timestamp, FDATA_TYPE_RGB);
                     }
                 }
-                else {
-                    return false; // don't show the frame until a complete image frame is decoded.
-                }
             }
             break;
 
@@ -221,9 +227,6 @@ bool MajorImageProcessingThread::new_frame_handle(unsigned int frm_sequence, voi
                             frm_timestamp, FDATA_TYPE_RGB);
                     }
                 }
-                else {
-                    return false; // don't show the frame until a complete image frame is decoded.
-                }
             }
             break;
 
@@ -243,14 +246,18 @@ bool MajorImageProcessingThread::new_frame_handle(unsigned int frm_sequence, voi
 
         default:
             DBG_ERROR("Unsupported input frame type (%d)...", ftype);
+            decodeRet = -EINVAL;
             break;
     }
     if (sns_param.save_frame_cnt > 0)
     {
         sns_param.save_frame_cnt--;
     }
-    QImage img = QImage(rgb_buffer, sns_param.out_frm_width, sns_param.out_frm_height, sns_param.out_frm_width*RGB_IMAGE_CHANEL,QImage::Format_RGB888);
-    emit SendMajorImageProcessing(img);
+    if (0 == decodeRet)
+    {
+        QImage img = QImage(rgb_buffer, sns_param.out_frm_width, sns_param.out_frm_height, sns_param.out_frm_width*RGB_IMAGE_CHANEL,QImage::Format_RGB888);
+        emit newFrameReady4Display(img);
+    }
 
     return true;
 }

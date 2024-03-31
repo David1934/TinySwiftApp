@@ -86,6 +86,10 @@ private:
     enum frame_data_type frm_type;
     int fd;
     struct buffer *buffers;
+    unsigned long firstFrameTimeUsec;
+    unsigned long rxFrameCnt;
+    int fps;
+    unsigned long streamed_timeUs;
 
     struct v4l2_requestbuffers	req_bufs;
     enum	v4l2_buf_type	buf_type;
@@ -113,6 +117,7 @@ private:
 
 signals:
     void new_frame_process(unsigned int frm_sequence, void *frm_buf, int frm_len, struct timeval frm_timestamp, enum frame_data_type ftype);
+    void update_info(int fps, unsigned long streamed_time);
 };
 
 #endif // V4L2_H

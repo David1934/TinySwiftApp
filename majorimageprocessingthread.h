@@ -35,9 +35,11 @@ private:
 
 private slots:
     bool new_frame_handle(unsigned int frm_sequence, void *frm_buf, int buf_len, struct timeval frm_timestamp, enum frame_data_type);
+    bool info_update(int fps, unsigned long streamed_time);
 
 signals:
-    void SendMajorImageProcessing(QImage image);
+    void newFrameReady4Display(QImage image);
+    bool update_runtime_display(int fps, unsigned long streamed_time);
 };
 
 #endif // MajorImageProcessingThread_H

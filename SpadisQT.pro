@@ -6,6 +6,8 @@
 
 QT       += core gui
 # CONFIG+= console
+# CONFIG += debug
+# QMAKE_CXXFLAGS += -g
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 TARGET = SpadisQT

@@ -19,7 +19,9 @@ public:
 private slots:
 
     bool new_frame_display(QImage image);
+    bool update_streaming_info(int fps, unsigned long streamed_time_us);
 
+    void updateTime(void);
     void clickQuitButton(void);
     void on_stopButton_clicked();
     void on_RGBButton_clicked();

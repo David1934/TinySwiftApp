@@ -20,6 +20,7 @@ static void handler(int signo) {
         return;
     }
   
+    DBG_ERROR("=========>>>catch signal %d <<<=========\n", signo);
     DBG_ERROR("=========> stack trace: %d <=========", size);
     for(i = 0; i < size; ++i)
         DBG_ERROR("%d %s", i, funs[i]);
