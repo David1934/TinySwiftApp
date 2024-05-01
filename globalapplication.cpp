@@ -17,9 +17,9 @@ GlobalApplication::GlobalApplication(int argc, char *argv[]):QApplication(argc, 
     parser.addHelpOption();
     parser.addVersionOption();
 #if 1
-    QCommandLineOption sensor_wk_mode_opt({"m", "mode"}, "Work mode for the sensor", "mode");
-    QCommandLineOption sensor_type_opt({"t", "type"}, "Type of the sensor", "type");
-    QCommandLineOption save_frame_cnt_opt({"s", "save"}, "Number of frames to save", "count");
+    QCommandLineOption sensor_wk_mode_opt({"m", "mode"}, "Work mode for the sensor (PCM PHR FHR NV12 YUYV)", "mode");
+    QCommandLineOption sensor_type_opt({"t", "type"}, "Type of the sensor (RGB DTOF)", "type");
+    QCommandLineOption save_frame_cnt_opt({"s", "save"}, "Number of frames to save (>=0)", "count");
 #else
     QCommandLineOption sensor_wk_mode_opt({"m", "mode"});
     QCommandLineOption sensor_type_opt({"t", "type"});

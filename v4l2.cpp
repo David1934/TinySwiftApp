@@ -1,4 +1,6 @@
 #include <sys/sysmacros.h>
+#include <linux/v4l2-subdev.h>
+
 #include "v4l2.h"
 #include "utils.h"
 
@@ -9,8 +11,9 @@ V4L2::V4L2(struct sensor_params params)
     p_eeprominfo = NULL;
     buffers = NULL;
     sensordata = NULL;
+    fd_4_dtof = 0;
     init();
-    memcpy(&tof_param, &params, sizeof(struct sensor_params));
+    memcpy(&snr_param, &params, sizeof(struct sensor_params));
 
     if (NULL != sensordata[params.work_mode].sensor_subdev)
     {
@@ -21,25 +24,23 @@ V4L2::V4L2(struct sensor_params params)
     }
     memcpy(media_dev, sensordata[params.work_mode].media_devnode, DEV_NODE_LEN);
     memcpy(video_dev, sensordata[params.work_mode].video_devnode, DEV_NODE_LEN);
-    tof_param.raw_width = sensordata[params.work_mode].raw_w;
-    tof_param.raw_height = sensordata[params.work_mode].raw_h;
+    snr_param.raw_width = sensordata[params.work_mode].raw_w;
+    snr_param.raw_height = sensordata[params.work_mode].raw_h;
     pixel_format = sensordata[params.work_mode].pixfmt;
     frame_buffer_count = sensordata[params.work_mode].frm_buf_cnt;
-    tof_param.sensor_type = sensordata[params.work_mode].stype;
+    snr_param.sensor_type = sensordata[params.work_mode].stype;
     frm_type = sensordata[params.work_mode].ftype;
-    tof_param.out_frm_width = sensordata[params.work_mode].out_frm_width;
-    tof_param.out_frm_height = sensordata[params.work_mode].out_frm_height;
+    snr_param.out_frm_width = sensordata[params.work_mode].out_frm_width;
+    snr_param.out_frm_height = sensordata[params.work_mode].out_frm_height;
 
-#if defined(DEBUG)
     DBG_INFO("sensor_sd_name: %s", sensor_sd_name);
     DBG_INFO("media_dev: %s", media_dev);
     DBG_INFO("video_dev: %s", video_dev);
-    DBG_INFO("preset width: %d", tof_param.raw_width);
-    DBG_INFO("preset height: %d", tof_param.raw_height);
+    DBG_INFO("preset width: %d", snr_param.raw_width);
+    DBG_INFO("preset height: %d", snr_param.raw_height);
     DBG_INFO("preset pixel_format: 0x%x", pixel_format);
     DBG_INFO("preset frame_buffer_count: %d", frame_buffer_count);
-    DBG_INFO("preset sensor_type: %d", tof_param.sensor_type);
-#endif
+    DBG_INFO("preset sensor_type: %d", snr_param.sensor_type);
 }
 
 
@@ -52,9 +53,9 @@ V4L2::~V4L2()
     }
 }
 
-void V4L2::change(struct sensor_params params)
+void V4L2::mode_switch(struct sensor_params params)
 {
-    memcpy(&tof_param, &params, sizeof(struct sensor_params));
+    memcpy(&snr_param, &params, sizeof(struct sensor_params));
 
     if (NULL != sensordata[params.work_mode].sensor_subdev)
     {
@@ -65,14 +66,14 @@ void V4L2::change(struct sensor_params params)
     }
     memcpy(media_dev, sensordata[params.work_mode].media_devnode, DEV_NODE_LEN);
     memcpy(video_dev, sensordata[params.work_mode].video_devnode, DEV_NODE_LEN);
-    tof_param.raw_width = sensordata[params.work_mode].raw_w;
-    tof_param.raw_height = sensordata[params.work_mode].raw_h;
+    snr_param.raw_width = sensordata[params.work_mode].raw_w;
+    snr_param.raw_height = sensordata[params.work_mode].raw_h;
     pixel_format = sensordata[params.work_mode].pixfmt;
     frame_buffer_count = sensordata[params.work_mode].frm_buf_cnt;
-    tof_param.sensor_type = sensordata[params.work_mode].stype;
+    snr_param.sensor_type = sensordata[params.work_mode].stype;
     frm_type = sensordata[params.work_mode].ftype;
-    tof_param.out_frm_width = sensordata[params.work_mode].out_frm_width;
-    tof_param.out_frm_height = sensordata[params.work_mode].out_frm_height;
+    snr_param.out_frm_width = sensordata[params.work_mode].out_frm_width;
+    snr_param.out_frm_height = sensordata[params.work_mode].out_frm_height;
 }
 
 int V4L2::init()
@@ -93,7 +94,7 @@ int V4L2::init()
         PIXELFORMAT_4_DTOF_SENSOR,
         BUFFER_COUNT_4_DTOF_SENSOR,
         SENSOR_TYPE_DTOF,
-        FDATA_TYPE_DTOF_DEPTH
+        FDATA_TYPE_DTOF_RAW_DEPTH
     };
 
     sensordata[WK_DTOF_PCM] = {
@@ -107,7 +108,7 @@ int V4L2::init()
         PIXELFORMAT_4_DTOF_SENSOR,
         BUFFER_COUNT_4_DTOF_SENSOR,
         SENSOR_TYPE_DTOF,
-        FDATA_TYPE_DTOF_GRAYSCALE
+        FDATA_TYPE_DTOF_RAW_GRAYSCALE
     };
 
     sensordata[WK_DTOF_FHR] = {
@@ -121,7 +122,7 @@ int V4L2::init()
         PIXELFORMAT_4_DTOF_SENSOR,
         BUFFER_COUNT_4_DTOF_SENSOR,
         SENSOR_TYPE_DTOF,
-        FDATA_TYPE_DTOF_DEPTH
+        FDATA_TYPE_DTOF_RAW_DEPTH
     };
 
     sensordata[WK_RGB_NV12] = {
@@ -207,12 +208,11 @@ int V4L2::get_subdev_node_4_sensor()
         return ret;
     }
 
-#if defined(DEBUG)
     DBG_INFO("searching sensor %s...",sensor_sd_name);
     DBG_INFO("enum entities...");
     DBG_INFO("major:minor   id      entity_name       device node");
     DBG_INFO("-------------------------------------------------------");
-#endif
+
     memset(&entity_desc, 0, sizeof(entity_desc));
     while(1)
     {
@@ -225,18 +225,35 @@ int V4L2::get_subdev_node_4_sensor()
 
         id = entity_desc.id;
         get_devnode_from_sysfs(&entity_desc,cur_devnode);
-#if defined(DEBUG)
         DBG_INFO("   %2d:%2d      %2d    %16s   %s", entity_desc.v4l.major, entity_desc.v4l.minor, id,entity_desc.name,cur_devnode);
-#endif
         if(strcmp(sensor_sd_name, entity_desc.name) == 0)
         {
             strcpy(sd_devnode_4_dtof, cur_devnode);
-#if defined(DEBUG)
             DBG_INFO("sd_devnode_4_dtof: %s", sd_devnode_4_dtof);
-#endif
             ret = 0;
             break;
         }
+    }
+
+    return ret;
+}
+
+int V4L2::Set_param_4_sensor_sub_device(int raw_w_4_curr_wkmode, int raw_h_4_curr_wkmode)
+{
+    int ret = 0;
+    struct v4l2_subdev_format sensorFmt;
+
+    memset(&sensorFmt, 0, sizeof(sensorFmt));
+    sensorFmt.pad           = 0;
+    sensorFmt.which         = V4L2_SUBDEV_FORMAT_ACTIVE;
+    sensorFmt.format.width  = raw_w_4_curr_wkmode;
+    sensorFmt.format.height = raw_h_4_curr_wkmode;
+    DBG_INFO("--VIDIOC_SUBDEV_S_FMT--fd_4_dtof:%d, sd_devnode_4_dtof:%s, width:%d, height:%d", fd_4_dtof, sd_devnode_4_dtof, raw_w_4_curr_wkmode, raw_h_4_curr_wkmode);
+
+    ret = xioctl(fd_4_dtof, VIDIOC_SUBDEV_S_FMT, &sensorFmt);
+    if (-1 == ret) {
+        DBG_ERROR("Fail to set format for dtof sub device, errno: %s (%d)...", 
+               strerror(errno), errno);
     }
 
     return ret;
@@ -304,9 +321,7 @@ bool V4L2::alloc_buffers(void)
                 strerror(errno), errno);
             return false;
         }
-#if defined(DEBUG)
         DBG_INFO("buffer[%d].start: %p, length: %d", i, buffers[i].start, buffers[i].length);
-#endif
 
         v4l2_buf.type = buf_type;
         v4l2_buf.memory = V4L2_MEMORY_MMAP;
@@ -376,7 +391,7 @@ void* V4L2::adaps_getEEPROMData(void)
 int V4L2::adaps_readEEPROMData(void)
 {
     int ret = 0;
-    if (SENSOR_TYPE_DTOF == tof_param.sensor_type)
+    if (SENSOR_TYPE_DTOF == snr_param.sensor_type)
     {
         p_eeprominfo = (struct adaps_get_eeprom *)malloc(sizeof(struct adaps_get_eeprom));
         if (-1 == ioctl(fd_4_dtof, ADAPS_GET_EEPROM, p_eeprominfo)) {
@@ -426,12 +441,12 @@ int V4L2::adaps_setParam4DtofSubdev(void)
 {
     int ret = 0;
     struct adaps_set_param_in_config set_inconfig;
-    set_inconfig.env_type = tof_param.env_type;
-    set_inconfig.measure_type = tof_param.measure_type;
+    set_inconfig.env_type = snr_param.env_type;
+    set_inconfig.measure_type = snr_param.measure_type;
     set_inconfig.framerate_type = AdapsFramerateType30FPS;
     set_inconfig.vcselzonecount_type = AdapsVcselZoneCount4;
 
-    if (SENSOR_TYPE_DTOF == tof_param.sensor_type)
+    if (SENSOR_TYPE_DTOF == snr_param.sensor_type)
     {
         if (-1 == ioctl(fd_4_dtof, ADAPS_SET_PARAM_IN_CONFIG, &set_inconfig)) {
             DBG_ERROR("Fail to set param for dtof sub device, errno: %s (%d)...", 
@@ -455,7 +470,7 @@ int V4L2::adaps_readTemperatureOfDtofSubdev(float *temperature)
     struct adaps_get_param_perframe perframe;
     memset(&perframe,0,sizeof(perframe));
 
-    if (SENSOR_TYPE_DTOF == tof_param.sensor_type)
+    if (SENSOR_TYPE_DTOF == snr_param.sensor_type)
     {
         if (-1 == ioctl(fd_4_dtof, ADAPS_GET_PARAM_PERFRAME, &perframe)) {
             DBG_ERROR("Fail to read per frame param from dtof sub device, errno: %s (%d)...", 
@@ -478,10 +493,10 @@ bool V4L2::Initilize(void)
     int ret = 0;
     struct v4l2_capability	cap;
     struct v4l2_format      fmt;
-    struct v4l2_frmsizeenum frmsize;
-    struct v4l2_fmtdesc fmtdesc;
+//    struct v4l2_frmsizeenum frmsize;
+//    struct v4l2_fmtdesc fmtdesc;
 
-    if (SENSOR_TYPE_DTOF == tof_param.sensor_type)
+    if (SENSOR_TYPE_DTOF == snr_param.sensor_type)
     {
         ret = get_subdev_node_4_sensor();
         if (ret < 0)
@@ -573,13 +588,23 @@ bool V4L2::Initilize(void)
     }
 #endif
 
+    if (0 != fd_4_dtof)
+    {
+        ret = Set_param_4_sensor_sub_device(snr_param.raw_width, snr_param.raw_height);
+        if (0 > ret) {
+            DBG_ERROR("Fail to Set_param_4_sensor_sub_device, errno: %s (%d)...", 
+                   strerror(errno), errno);
+            return ret;
+        }
+    }
+
     DBG_INFO("VIDIOC_S_FMT %d X %d, pixel_format: 0x%x, raw_width:%d, raw_height:%d...\n",
-    tof_param.raw_width, tof_param.raw_height, pixel_format, tof_param.raw_width, tof_param.raw_height);
+    snr_param.raw_width, snr_param.raw_height, pixel_format, snr_param.raw_width, snr_param.raw_height);
     CLEAR(fmt);
     fmt.type            = buf_type;
     fmt.fmt.pix.pixelformat = pixel_format;
-    fmt.fmt.pix.width  = tof_param.raw_width;
-    fmt.fmt.pix.height   = tof_param.raw_height;
+    fmt.fmt.pix.width  = snr_param.raw_width;
+    fmt.fmt.pix.height   = snr_param.raw_height;
     //fmt.fmt.pix.field   = V4L2_FIELD_INTERLACED;
     //fmt.fmt.pix.quantization = V4L2_QUANTIZATION_FULL_RANGE;
 
@@ -627,7 +652,7 @@ bool V4L2::Initilize(void)
         return false;
     }
 
-    if (SENSOR_TYPE_DTOF == tof_param.sensor_type)
+    if (SENSOR_TYPE_DTOF == snr_param.sensor_type)
     {
         if (-1 == adaps_readEEPROMData())
         {
@@ -640,9 +665,7 @@ bool V4L2::Initilize(void)
         }
     }
 
-#if defined(DEBUG)
     DBG_INFO("init dev %s [OK]", video_dev);
-#endif
     return true;
 }
 
@@ -687,6 +710,15 @@ bool V4L2::Capture_frame()
         return false;
     }
 
+    if (v4l2_buf.flags & V4L2_BUF_FLAG_ERROR) {
+        u64 rxTimeUsec;
+        rxTimeUsec = v4l2_buf.timestamp.tv_sec*1000000 + v4l2_buf.timestamp.tv_usec;
+
+        DBG_ERROR("Error (flags:0x%x) in dequeue frame#%d timestampUs: %lld buffer...", 
+            v4l2_buf.flags, v4l2_buf.sequence, rxTimeUsec);
+        goto error_exit;
+    }
+
     if (V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE == buf_type)
         bytesused = v4l2_buf.m.planes[0].bytesused;
     else
@@ -705,18 +737,10 @@ bool V4L2::Capture_frame()
     }
 
     emit update_info(fps, streamed_timeUs);
-#if 0 //defined(DEBUG)
-    long timestamp_ms = 1000 * v4l2_buf.timestamp.tv_sec + v4l2_buf.timestamp.tv_usec / 1000;
-    DBG_INFO("after VIDIOC_DQBUF--buff index=%d  -bytesused=%d, buffers[v4l2_buf.index].length:%d---timestamp=%ld-",
-        v4l2_buf.index,bytesused, buffers[v4l2_buf.index].length, timestamp_ms);
-#endif
 
     emit new_frame_process(v4l2_buf.sequence, buffers[v4l2_buf.index].start, bytesused, v4l2_buf.timestamp, frm_type);
 
-#if 0 //defined(DEBUG)
-    DBG_INFO("before VIDIOC_QBUF--buff index=%d  buf_type=0x%x, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE:0x%x-",
-        v4l2_buf.index, buf_type, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE);
-#endif
+error_exit:
     if (0 == fd || -1 == ioctl(fd, VIDIOC_QBUF, &v4l2_buf)) {
         DBG_ERROR("Fail to queue buffer, errno: %s (%d)...", 
             strerror(errno), errno);
@@ -737,7 +761,7 @@ void V4L2::Stop_streaming(void)
 
 void V4L2::Close(void)
 {
-    if (SENSOR_TYPE_DTOF == tof_param.sensor_type)
+    if (SENSOR_TYPE_DTOF == snr_param.sensor_type)
     {
         if (NULL != p_eeprominfo)
         {
@@ -829,11 +853,11 @@ void V4L2::yuyv_2_rgb(unsigned char *yuyv, unsigned char *rgb, int width, int he
     }
 }
 
-void V4L2::Get_output_frame_size(int *in_width, int *in_height, int *out_width, int *out_height)
+void V4L2::Get_frame_size_4_curr_wkmode(int *in_width, int *in_height, int *out_width, int *out_height)
 {
-    *in_width = tof_param.raw_width;
-    *in_height = tof_param.raw_height;
-    *out_width = tof_param.out_frm_width;
-    *out_height = tof_param.out_frm_height;
+    *in_width = snr_param.raw_width;
+    *in_height = snr_param.raw_height;
+    *out_width = snr_param.out_frm_width;
+    *out_height = snr_param.out_frm_height;
 }
 

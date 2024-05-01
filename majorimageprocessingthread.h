@@ -15,7 +15,7 @@ public:
 
     QImage majorImage;
     void stop();
-    void change(QString sensortype);
+    void mode_switch(QString sensortype);
     void init(int index);
 
 protected:

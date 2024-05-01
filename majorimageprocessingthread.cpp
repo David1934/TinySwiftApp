@@ -19,29 +19,23 @@ MajorImageProcessingThread::MajorImageProcessingThread()
         sns_param.env_type = AdapsEnvTypeIndoor;
         sns_param.measure_type = AdapsMeasurementTypeFull; // AdapsMeasurementTypeNormal;
         v4l2 = new V4L2(sns_param);
-        v4l2->Get_output_frame_size(&sns_param.raw_width, &sns_param.raw_height, &sns_param.out_frm_width, &sns_param.out_frm_height);
+        v4l2->Get_frame_size_4_curr_wkmode(&sns_param.raw_width, &sns_param.raw_height, &sns_param.out_frm_width, &sns_param.out_frm_height);
         DBG_INFO( "raw_width: %d raw_height: %d FRAME_INTERVAL: %d ms\n", sns_param.raw_width, sns_param.raw_height, FRAME_INTERVAL);
         adaps_dtof = new ADAPS_DTOF(sns_param, v4l2);
     }
     else {
         sns_param.work_mode = qApp->get_wk_mode();
         v4l2 = new V4L2(sns_param);
-        v4l2->Get_output_frame_size(&sns_param.raw_width, &sns_param.raw_height, &sns_param.out_frm_width, &sns_param.out_frm_height);
+        v4l2->Get_frame_size_4_curr_wkmode(&sns_param.raw_width, &sns_param.raw_height, &sns_param.out_frm_width, &sns_param.out_frm_height);
         adaps_dtof = NULL;
     }
-#if defined(USE_CALLBACK_4_NEW_FRAME_PROCESS)
-    v4l2->Set_new_frame_callback(save_frame);
-#else
-    //connect(v4l2, SIGNAL(new_frame_process(unsigned int, void *, int, struct timeval, enum frame_data_type)),
-    //    this, SLOT(save_frame(unsigned int, void *, int, struct timeval, enum frame_data_type)), Qt::DirectConnection);
     connect(v4l2, SIGNAL(new_frame_process(unsigned int, void *, int, struct timeval, enum frame_data_type)),
             this, SLOT(new_frame_handle(unsigned int, void *, int, struct timeval, enum frame_data_type)), Qt::DirectConnection);
-#endif
 
     connect(v4l2, SIGNAL(update_info(int, unsigned long)),  this, SLOT(info_update(int, unsigned long)));
 }
 
-void MajorImageProcessingThread::change(QString sensortype)
+void MajorImageProcessingThread::mode_switch(QString sensortype)
 {
     if(!sensortype.compare("RGB"))
     {
@@ -49,8 +43,8 @@ void MajorImageProcessingThread::change(QString sensortype)
         sns_param.work_mode = WKMODE_4_RGB_SENSOR;
         sns_param.env_type = AdapsEnvTypeUninitilized;
         sns_param.measure_type = AdapsMeasurementTypeUninitilized;
-        v4l2->change(sns_param);
-        v4l2->Get_output_frame_size(&sns_param.raw_width, &sns_param.raw_height, &sns_param.out_frm_width, &sns_param.out_frm_height);
+        v4l2->mode_switch(sns_param);
+        v4l2->Get_frame_size_4_curr_wkmode(&sns_param.raw_width, &sns_param.raw_height, &sns_param.out_frm_width, &sns_param.out_frm_height);
         if (NULL != adaps_dtof) adaps_dtof->release();
     }
     else
@@ -70,9 +64,9 @@ void MajorImageProcessingThread::change(QString sensortype)
         {
             sns_param.work_mode = WK_DTOF_FHR;
         }
-        v4l2->change(sns_param);
-        v4l2->Get_output_frame_size(&sns_param.raw_width, &sns_param.raw_height, &sns_param.out_frm_width, &sns_param.out_frm_height);
-        if (NULL != adaps_dtof) adaps_dtof->change(sns_param, v4l2);
+        v4l2->mode_switch(sns_param);
+        v4l2->Get_frame_size_4_curr_wkmode(&sns_param.raw_width, &sns_param.raw_height, &sns_param.out_frm_width, &sns_param.out_frm_height);
+        if (NULL != adaps_dtof) adaps_dtof->mode_switch(sns_param, v4l2);
     }
 
 }
@@ -86,29 +80,27 @@ void MajorImageProcessingThread::save_depth(void *frm_buf,unsigned int frm_seque
 
     char path[50]={0};
     int16_t *p_temp=(int16_t*)frm_buf;
-    if (Utils::is_env_var_true(ENV_VAR_SAVE_DEPTH_ENABLE))
+
+    sprintf(path,"%sframe%03d_%s_%d_depth16%s",DATA_SAVE_PATH,frm_sequence, LocalTimeStr, frm_len, ".txt");
+    FILE*fp = NULL;
+    fp=fopen(path, "w+");
+    if (fp == NULL)
     {
-        sprintf(path,"%sframe%03d_%s_%d%s",DATA_SAVE_PATH,frm_sequence, LocalTimeStr, frm_len, ".txt");
-        FILE*fp = NULL;
-        fp=fopen(path, "w+");
-        if (fp == NULL)
+        DBG_INFO("fopen output file %s failed!\n",  path);
+        return;
+    }
+    for (int i = 0; i < OUTPUT_HEIGHT_4_DTOF_SENSOR; i++)
+    {
+        int offset = i * OUTPUT_WIDTH_4_DTOF_SENSOR;
+        for (int j = 0; j < OUTPUT_WIDTH_4_DTOF_SENSOR; j++)
         {
-            DBG_INFO(" fopen output file %s failed!\n",  path);
-            return;
+            fprintf(fp, "%6u ", (*(p_temp + offset + j))&0x1fff);  //do not printf high 3 bit confidence
         }
-        printf(">\n");
-        for (int i = 0; i < OUTPUT_HEIGHT_4_DTOF_SENSOR; i++)
-        {
-            int offset = i * OUTPUT_WIDTH_4_DTOF_SENSOR;
-            for (int j = 0; j < OUTPUT_WIDTH_4_DTOF_SENSOR; j++)
-            {
-                fprintf(fp, "%6u ", (*(p_temp + offset + j))&0x1fff);  //do not printf high 3 bit confidence
-            }
-            fprintf(fp, "\n");
-        }
-        fflush(fp);
-        fclose(fp);
-   }
+        fprintf(fp, "\n");
+    }
+    fflush(fp);
+    fclose(fp);
+    DBG_INFO("Save depth file %s success!\n",  path);
 
 }
 
@@ -118,8 +110,8 @@ bool MajorImageProcessingThread::save_frame(unsigned int frm_sequence, void *frm
                                     ".nv12",
                                     ".yuyv",
                                     ".rgb",
-                                    ".gray_raw",
-                                    ".depth_raw",
+                                    ".raw_gray",
+                                    ".raw_depth",
                                     ".depth16"
                                 };
 
@@ -129,11 +121,6 @@ bool MajorImageProcessingThread::save_frame(unsigned int frm_sequence, void *frm
     QString         currentTime = localTime.toString("yyyyMMddhhmmss");
     char *          LocalTimeStr = (char *) currentTime.toStdString().c_str();
     char *          filename = new char[128];
-
-    if (false == Utils::is_env_var_true(ENV_VAR_SAVE_FRAME_ENABLE))
-    {
-        return false;
-    }
 
     sprintf(filename,"%sframe%03d_%dx%d_%s_%d%s", DATA_SAVE_PATH, frm_sequence, frm_w, frm_h,LocalTimeStr, buf_size, extName[ftype]);
     FILE *fp = fopen(filename, "wb");
@@ -165,49 +152,61 @@ bool MajorImageProcessingThread::new_frame_handle(unsigned int frm_sequence, voi
     Q_UNUSED(frm_sequence);
     Q_UNUSED(frm_timestamp);
     Q_UNUSED(buf_len);
-#if 0 //defined(DEBUG)
+#if 0
     DBG_INFO("frm_sequence:%d, buf_len:%d, out_frm_width:%d, out_frm_height:%d", frm_sequence, buf_len, sns_param.out_frm_width, sns_param.out_frm_height);
 #endif
 
     switch (ftype) {
-        case FDATA_TYPE_DTOF_GRAYSCALE:
+        case FDATA_TYPE_DTOF_RAW_GRAYSCALE:
             if (adaps_dtof)
             {
                 if (sns_param.save_frame_cnt > 0)
                 {
-                    save_frame(frm_sequence,frm_rawdata,buf_len,
-                        sns_param.raw_width, sns_param.raw_height,
-                        frm_timestamp, FDATA_TYPE_DTOF_GRAYSCALE);
+                    if (true == Utils::is_env_var_true(ENV_VAR_SAVE_FRAME_ENABLE))
+                    {
+                        save_frame(frm_sequence,frm_rawdata,buf_len,
+                            sns_param.raw_width, sns_param.raw_height,
+                            frm_timestamp, FDATA_TYPE_DTOF_RAW_GRAYSCALE);
+                    }
                 }
                 decodeRet = adaps_dtof->dtof_decode((unsigned char *)frm_rawdata,depth_buffer,sns_param.work_mode);
                 if (0 == decodeRet)
                 {
                     if (sns_param.save_frame_cnt > 0)
                     {
-                        save_frame(frm_sequence,depth_buffer,sns_param.out_frm_width*sns_param.out_frm_height*sizeof(u16),
-                            sns_param.out_frm_width, sns_param.out_frm_height,
-                            frm_timestamp, FDATA_TYPE_DTOF_DEPTH16);
+                        if (true == Utils::is_env_var_true(ENV_VAR_SAVE_FRAME_ENABLE))
+                        {
+                            save_frame(frm_sequence,depth_buffer,sns_param.out_frm_width*sns_param.out_frm_height*sizeof(u16),
+                                sns_param.out_frm_width, sns_param.out_frm_height,
+                                frm_timestamp, FDATA_TYPE_DTOF_DEPTH16);
+                        }
                     }
                     adaps_dtof->ConvertGreyscaleToColoredMap(depth_buffer,rgb_buffer,sns_param.out_frm_width,sns_param.out_frm_height);
                     if (sns_param.save_frame_cnt > 0)
                     {
-                        save_frame(frm_sequence,rgb_buffer,sns_param.out_frm_width*sns_param.out_frm_height*RGB_IMAGE_CHANEL,
-                            sns_param.out_frm_width, sns_param.out_frm_height,
-                            frm_timestamp, FDATA_TYPE_RGB);
+                        if (true == Utils::is_env_var_true(ENV_VAR_SAVE_FRAME_ENABLE))
+                        {
+                            save_frame(frm_sequence,rgb_buffer,sns_param.out_frm_width*sns_param.out_frm_height*RGB_IMAGE_CHANEL,
+                                sns_param.out_frm_width, sns_param.out_frm_height,
+                                frm_timestamp, FDATA_TYPE_RGB);
+                        }
                     }
                 }
             }
             break;
 
-        case FDATA_TYPE_DTOF_DEPTH:
+        case FDATA_TYPE_DTOF_RAW_DEPTH:
             if (adaps_dtof)
             {
                 //DBG_INFO("frm_sequence:%d, buf_len:%d, save_frame_cnt:%d", frm_sequence, buf_len, sns_param.save_frame_cnt);
                 if (sns_param.save_frame_cnt > 0)
                 {
-                    save_frame(frm_sequence,frm_rawdata,buf_len,
-                        sns_param.raw_width, sns_param.raw_height,
-                        frm_timestamp, FDATA_TYPE_DTOF_DEPTH);
+                    if (true == Utils::is_env_var_true(ENV_VAR_SAVE_FRAME_ENABLE))
+                    {
+                        save_frame(frm_sequence,frm_rawdata,buf_len,
+                            sns_param.raw_width, sns_param.raw_height,
+                            frm_timestamp, FDATA_TYPE_DTOF_RAW_DEPTH);
+                    }
                 }
 
                 decodeRet = adaps_dtof->dtof_decode((unsigned char *)frm_rawdata,depth_buffer,sns_param.work_mode);
@@ -215,16 +214,27 @@ bool MajorImageProcessingThread::new_frame_handle(unsigned int frm_sequence, voi
                 {
                     if (sns_param.save_frame_cnt > 0)
                     {
-                        save_frame(frm_sequence,depth_buffer,sns_param.out_frm_width*sns_param.out_frm_height*sizeof(u16),
-                            sns_param.out_frm_width, sns_param.out_frm_height,
-                            frm_timestamp, FDATA_TYPE_DTOF_DEPTH16);
+                        if (true == Utils::is_env_var_true(ENV_VAR_SAVE_FRAME_ENABLE))
+                        {
+                            save_frame(frm_sequence,depth_buffer,sns_param.out_frm_width*sns_param.out_frm_height*sizeof(u16),
+                                sns_param.out_frm_width, sns_param.out_frm_height,
+                                frm_timestamp, FDATA_TYPE_DTOF_DEPTH16);
+                        }
+
+                        if (Utils::is_env_var_true(ENV_VAR_SAVE_DEPTH_ENABLE))
+                        {
+                            save_depth(depth_buffer, frm_sequence, sns_param.out_frm_width*sns_param.out_frm_height*sizeof(u16));
+                        }
                     }
                     adaps_dtof->ConvertDepthToColoredMap(depth_buffer,rgb_buffer,sns_param.out_frm_width,sns_param.out_frm_height);
                     if (sns_param.save_frame_cnt > 0)
                     {
-                        save_frame(frm_sequence,rgb_buffer,sns_param.out_frm_width*sns_param.out_frm_height*RGB_IMAGE_CHANEL,
-                            sns_param.out_frm_width, sns_param.out_frm_height,
-                            frm_timestamp, FDATA_TYPE_RGB);
+                        if (true == Utils::is_env_var_true(ENV_VAR_SAVE_FRAME_ENABLE))
+                        {
+                            save_frame(frm_sequence,rgb_buffer,sns_param.out_frm_width*sns_param.out_frm_height*RGB_IMAGE_CHANEL,
+                                sns_param.out_frm_width, sns_param.out_frm_height,
+                                frm_timestamp, FDATA_TYPE_RGB);
+                        }
                     }
                 }
             }

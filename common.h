@@ -6,16 +6,32 @@
 #include "depthmapwrapper.h"
 #include <QString>
 
-#define DEBUG                       1
+#define VERSION_MAJOR                       1
+#define VERSION_MINOR                       0
+#define VERSION_REVISION                    0
+#define LAST_MODIFIED_TIME                  "20240506a"
+
+#define ENTITY_NAME_4_DTOF_SENSOR   "m00_b_ads6401 7-005e"
+#define DATA_SAVE_PATH              "/tmp/" // "/sdcard/"
+#define DEFAULT_SAVE_FRAME_CNT      1
+#define RTCTIME_DISPLAY_FMT         "hh:mm:ss"  // "yyyy/MM/dd hh:mm:ss"
 #define FRAME_INTERVAL              1   // unit is ms
-#define APP_NAME                    "SpadisQT"
-#define APP_VERSION                 "v1.0_build20240331a"
+
+// query the video node by the command 'v4l2-ctl --list-devices' or 'media-ctl -p -d /dev/media0'
+
+#define MEDIA_DEVNAME_4_DTOF_SENSOR "/dev/media2"
+#define VIDEO_DEV_4_DTOF_SENSOR     "/dev/video22"
+#define PIXELFORMAT_4_DTOF_SENSOR   V4L2_PIX_FMT_SBGGR8
+
+#define MEDIA_DEVNAME_4_RGB_SENSOR  "/dev/media0"
+#define VIDEO_DEV_4_RGB_SENSOR      "/dev/video0"
+#define VIDEO_DEV_4_RGB_RK35XX      "/dev/video55"
 
 #if defined(RUN_ON_RK3588)
 #define WKMODE_4_RGB_SENSOR         WK_RGB_NV12    // On DELL notebook, it is WK_MODE_YUYV, on Apple notebookm it is WK_MODE_NV12?
 
 #define DEFAULT_SENSOR_TYPE         SENSOR_TYPE_DTOF
-#define DEFAULT_WORK_MODE           WK_DTOF_PHR
+#define DEFAULT_WORK_MODE           WK_DTOF_FHR
 #else
 #define WKMODE_4_RGB_SENSOR         WK_RGB_YUYV    // On DELL notebook, it is WK_MODE_YUYV, on Apple notebookm it is WK_MODE_NV12?
 
@@ -23,9 +39,22 @@
 #define DEFAULT_WORK_MODE           WKMODE_4_RGB_SENSOR
 #endif
 
-#define DEFAULT_SAVE_FRAME_CNT      1
+#define DEBUG_PRO
+#define ENV_VAR_SAVE_EEPROM_ENABLE              "save_eeprom_enable"
+#define ENV_VAR_SAVE_DEPTH_ENABLE               "save_depth_enable"
+#define ENV_VAR_SAVE_FRAME_ENABLE               "save_frame_enable"
+#define ENV_VAR_DBGINFO_ENABLE                  "debug_info_enable"
 
-#define RTCTIME_DISPLAY_FMT         "hh:mm:ss"  // "yyyy/MM/dd hh:mm:ss"
+#define __tostr(x)                          #x
+#define __stringify(x)                      __tostr(x)
+    
+#define VERSION_STRING                      __stringify(VERSION_MAJOR) "."  \
+            __stringify(VERSION_MINOR) "."  \
+            __stringify(VERSION_REVISION)
+    
+#define APP_NAME                          "SpadisQT"
+#define APP_VERSION_CODE                 (VERSION_MAJOR << 16 | VERSION_MINOR << 8 | VERSION_REVISION)
+#define APP_VERSION                      VERSION_STRING "_LM" LAST_MODIFIED_TIME
 
 inline const char* get_filename(const char* path) {
     const char* file = strrchr(path, '/');
@@ -62,6 +91,20 @@ inline char *get_env_var_stringvalue(const char *var_name)
     return getenv(var_name);
 }
 
+#if defined(TRACE_IOCTL)
+#define xioctl(fh, request, arg) ({                    \
+    int ret_val;                                       \
+    do {                                               \
+        printf("<%s> %d XIOCTL(%d, 0x%x, 0x%x) \n", get_filename(__FILE__), __LINE__, fh, request, arg);   \
+        ret_val = ioctl(fh, request, arg);             \
+    } while (-1 == ret_val && EINTR == errno);         \
+    ret_val;                                           \
+})
+#else
+#define xioctl                  ioctl
+#endif
+
+#if defined(DEBUG_PRO)
 #define DBG_ERROR(fmt, args ...)                                                                    \
     do {                                                                                            \
         struct timespec ts;                                                                         \
@@ -69,23 +112,47 @@ inline char *get_env_var_stringvalue(const char *var_name)
         struct tm tm = *localtime(&ts.tv_sec);                                                      \
         char timestamp[120];                                                                        \
         strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", &tm);                           \
-        qCritical("[%s.%03ld.%03ld.%03ld] ERROR: <%s> %d " fmt "\n", timestamp, ts.tv_nsec/1000000, \
-            (ts.tv_nsec/1000)%1000, ts.tv_nsec%1000, __func__, __LINE__, ##args);                   \
+        qCritical("[%s.%03ld.%03ld.%03ld] ERROR: <%s-%s() %d> " fmt "\n", timestamp, ts.tv_nsec/1000000,    \
+            (ts.tv_nsec/1000)%1000, ts.tv_nsec%1000, get_filename(__FILE__), __func__, __LINE__, ##args);                   \
     }while(0)
 
-#define DBG_INFO(fmt, args ...)                                                                     \
-    if (DEBUG) {                                                                                    \
-        struct timespec ts;                                                                         \
-        clock_gettime(CLOCK_REALTIME, &ts);                                                         \
-        struct tm tm = *localtime(&ts.tv_sec);                                                      \
-        char timestamp[120];                                                                        \
-        strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", &tm);                           \
-        qCritical("[%s.%03ld.%03ld.%03ld] INFO: <%s> %d " fmt "\n", timestamp, ts.tv_nsec/1000000,  \
-            (ts.tv_nsec/1000)%1000, ts.tv_nsec%1000, __func__, __LINE__, ##args);                   \
+#define DBG_NOTICE(fmt, args ...)                                           \
+    do {                                                                                            \
+        struct timespec ts;                                                                     \
+        clock_gettime(CLOCK_REALTIME, &ts);                                                     \
+        struct tm tm = *localtime(&ts.tv_sec);                                                  \
+        char timestamp[120];                                                                    \
+        sprintf(timestamp, "%4d-%02d-%02d %02d:%02d:%02d.%03ld.%03ld.%03ld", tm.tm_year+1900,   \
+            tm.tm_mon+1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec,                          \
+            ts.tv_nsec/1000000, (ts.tv_nsec/1000)%1000, ts.tv_nsec%1000);                       \
+        qCritical("[%s] NOTICE: <%s-%s() %d> " fmt "\n", timestamp, get_filename(__FILE__), __func__, __LINE__, ##args);                \
+    }while(0)
+
+#define DBG_INFO(fmt, args ...)                                                                 \
+    if (is_env_var_true(ENV_VAR_DBGINFO_ENABLE)) {                                                \
+        struct timespec ts;                                                                     \
+        clock_gettime(CLOCK_REALTIME, &ts);                                                     \
+        struct tm tm = *localtime(&ts.tv_sec);                                                  \
+        char timestamp[120];                                                                    \
+        sprintf(timestamp, "%4d-%02d-%02d %02d:%02d:%02d.%03ld.%03ld.%03ld", tm.tm_year+1900,   \
+            tm.tm_mon+1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec,                          \
+            ts.tv_nsec/1000000, (ts.tv_nsec/1000)%1000, ts.tv_nsec%1000);                       \
+        qCritical("[%s] INFO: <%s-%s() %d> " fmt "\n", timestamp, get_filename(__FILE__), __func__, __LINE__, ##args);                \
     }
+#else
+#define DBG_ERROR       printf
+#define DBG_NOTICE      printf
+#define DBG_INFO        printf
+#endif
+
+#define LOG_ERROR                DBG_ERROR
+#define LOG_INFO                DBG_INFO
 
 typedef unsigned char u8;
 typedef unsigned short u16;
+typedef signed short s16;
+typedef unsigned int u32;
+typedef unsigned long long u64;
 
 enum sensortype{
     SENSOR_TYPE_RGB,
@@ -96,8 +163,8 @@ enum frame_data_type{
     FDATA_TYPE_NV12,
     FDATA_TYPE_YUYV,
     FDATA_TYPE_RGB,
-    FDATA_TYPE_DTOF_GRAYSCALE,
-    FDATA_TYPE_DTOF_DEPTH,
+    FDATA_TYPE_DTOF_RAW_GRAYSCALE,
+    FDATA_TYPE_DTOF_RAW_DEPTH,
     FDATA_TYPE_DTOF_DEPTH16,
     FDATA_TYPE_COUNT
 };

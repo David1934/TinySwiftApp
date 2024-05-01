@@ -17,29 +17,19 @@
 #include <QDateTime>
 #include "common.h"
 
-#define ENTITY_NAME_4_DTOF_SENSOR   "m00_b_ads6401 7-005e"
 
-#define MEDIA_DEVNAME_4_DTOF_SENSOR "/dev/media2"
-#define VIDEO_DEV_4_DTOF_SENSOR     "/dev/video22"
-#define PIXELFORMAT_4_DTOF_SENSOR   V4L2_PIX_FMT_SBGGR8
 #define BUFFER_COUNT_4_DTOF_SENSOR  6
 #define OUTPUT_WIDTH_4_DTOF_SENSOR  210
 #define OUTPUT_HEIGHT_4_DTOF_SENSOR 160
+
 #define MIPI_RAW_HEIGHT_4_DTOF_SENSOR 32
 
-#define MEDIA_DEVNAME_4_RGB_SENSOR  "/dev/media0"
-#define VIDEO_DEV_4_RGB_SENSOR      "/dev/video0"
-#define VIDEO_DEV_4_RGB_RK35XX      "/dev/video55"
 #define BUFFER_COUNT_4_RGB_SENSOR   5
 #define RGB_IMAGE_CHANEL            3
 
 #define DEV_NODE_LEN                32
 #define FMT_NUM_PLANES              1
-#define DATA_SAVE_PATH              "/sdcard/" // "/home/david/"
 
-#define ENV_VAR_SAVE_EEPROM_ENABLE                "save_eeprom_enable"
-#define ENV_VAR_SAVE_DEPTH_ENABLE                 "save_depth_enable"
-#define ENV_VAR_SAVE_FRAME_ENABLE                 "save_frame_enable"
 
 struct buffer
 {
@@ -75,10 +65,10 @@ public:
     bool Initilize(void);
     bool Start_streaming(void);
     bool Capture_frame();
-    void change(struct sensor_params params);
+    void mode_switch(struct sensor_params params);
     void Stop_streaming(void);
     void Close(void);
-    void Get_output_frame_size(int *in_width, int *in_height, int *out_width, int *out_height);
+    void Get_frame_size_4_curr_wkmode(int *in_width, int *in_height, int *out_width, int *out_height);
     int adaps_readTemperatureOfDtofSubdev(float *temperature);
     void* adaps_getEEPROMData(void);
 
@@ -98,7 +88,7 @@ private:
     char        sensor_sd_name[DEV_NODE_LEN];
     char        media_dev[DEV_NODE_LEN];
     char        video_dev[DEV_NODE_LEN];
-    struct sensor_params tof_param;
+    struct sensor_params snr_param;
     int         frame_buffer_count;
     struct sensor_data *sensordata;
 
@@ -114,6 +104,7 @@ private:
     void free_buffers(void);
     int get_devnode_from_sysfs(struct media_entity_desc *entity_desc, char *p_devname);
     int get_subdev_node_4_sensor();
+    int Set_param_4_sensor_sub_device(int raw_w_4_curr_wkmode, int raw_h_4_curr_wkmode);
 
 signals:
     void new_frame_process(unsigned int frm_sequence, void *frm_buf, int frm_len, struct timeval frm_timestamp, enum frame_data_type ftype);

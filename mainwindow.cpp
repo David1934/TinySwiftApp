@@ -116,7 +116,7 @@ void MainWindow::on_RGBButton_clicked()
     {
         imageprocessthread->stop();
     }
-    imageprocessthread->change("RGB");
+    imageprocessthread->mode_switch("RGB");
     imageprocessthread->init(0);
     imageprocessthread->start();
 
@@ -128,7 +128,7 @@ void MainWindow::on_PHRButton_clicked()
     {
         imageprocessthread->stop();
     }
-    imageprocessthread->change("PHR");
+    imageprocessthread->mode_switch("PHR");
     imageprocessthread->init(0);
     imageprocessthread->start();
 }
@@ -140,7 +140,7 @@ void MainWindow::on_PCMButton_clicked()
     {
         imageprocessthread->stop();
     }
-    imageprocessthread->change("PCM");
+    imageprocessthread->mode_switch("PCM");
     imageprocessthread->init(0);
     imageprocessthread->start();
 }
@@ -151,7 +151,7 @@ void MainWindow::on_FHRButton_clicked()
     {
         imageprocessthread->stop();
     }
-    imageprocessthread->change("FHR");
+    imageprocessthread->mode_switch("FHR");
     imageprocessthread->init(0);
     imageprocessthread->start();
 }

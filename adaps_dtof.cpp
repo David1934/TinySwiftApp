@@ -24,7 +24,7 @@ ADAPS_DTOF::~ADAPS_DTOF()
     m_v4l2 = NULL;
 }
 
-void ADAPS_DTOF::change(struct sensor_params params, V4L2 *v4l2)
+void ADAPS_DTOF::mode_switch(struct sensor_params params, V4L2 *v4l2)
 {
     memcpy(&m_sns_param, &params, sizeof(struct sensor_params));
     m_conversionLibInited = false;
