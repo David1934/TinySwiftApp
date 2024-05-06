@@ -134,7 +134,7 @@ int ADAPS_DTOF::initilize()
     if (NULL == m_hDepthLib)
     {
         DBG_ERROR("Error Loading Library: %s, error:%s\n", libFullName, dlerror());
-        return -1;
+        return 0 - __LINE__;
     }
 
     if (NULL != m_hDepthLib)
@@ -148,7 +148,7 @@ int ADAPS_DTOF::initilize()
         if (NULL == m_createDepthMapWrapper || NULL == m_destroyDepthMapWrapper || NULL == m_processFrame)
         {
             DBG_ERROR("Error getting function address(es) from library: %s", libFullName);
-            result = -1;
+            result = 0 - __LINE__;
         }
         else
         {   
@@ -157,7 +157,7 @@ int ADAPS_DTOF::initilize()
             if (NULL == m_DepthMapWrapper)
             {
                  DBG_ERROR("Error creating depth map wrapper \n");
-                 result = -1;
+                 result = 0 - __LINE__;
             }
             else
             {
@@ -169,7 +169,7 @@ int ADAPS_DTOF::initilize()
     else
     {
         DBG_ERROR( "Error loading lib %s \n", libFullName);
-        result = -1;
+        result = 0 - __LINE__;
     }
     return result;
 }

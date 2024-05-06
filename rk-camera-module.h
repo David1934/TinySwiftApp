@@ -776,7 +776,9 @@ typedef enum
 {
     AdapsFramerateTypeUninitilized,
     AdapsFramerateType15FPS,
+    AdapsFramerateType25FPS,
     AdapsFramerateType30FPS,
+    AdapsFramerateType60FPS,
 } AdapsFramerateType;
 typedef enum
 {

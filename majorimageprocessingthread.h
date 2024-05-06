@@ -14,9 +14,10 @@ public:
     MajorImageProcessingThread();
 
     QImage majorImage;
-    void stop();
+    void stop(int stop_request_code);
     void mode_switch(QString sensortype);
-    void init(int index);
+    int init(int index);
+    void set_skip_frame_process(bool val);
 
 protected:
     void run();
@@ -24,22 +25,27 @@ protected:
 private:
     volatile int majorindex;
     volatile bool stopped;
+    volatile bool skip_frame_process;
     struct sensor_params sns_param;
 
     ADAPS_DTOF *adaps_dtof;
     V4L2 *v4l2;
     u16 *depth_buffer;
     unsigned char *rgb_buffer;
+    int stop_req_code;
     bool save_frame(unsigned int frm_sequence, void *frm_buf, int buf_size, int frm_w, int frm_h, struct timeval frm_timestamp, enum frame_data_type);
     void save_depth(void *frm_buf,unsigned int frm_sequence,int frm_len);
 
 private slots:
     bool new_frame_handle(unsigned int frm_sequence, void *frm_buf, int buf_len, struct timeval frm_timestamp, enum frame_data_type);
     bool info_update(int fps, unsigned long streamed_time);
+    void onThreadLoopExit();
 
 signals:
     void newFrameReady4Display(QImage image);
     bool update_runtime_display(int fps, unsigned long streamed_time);
+    void threadLoopExit();
+    void threadEnd(int exit_request_code);
 };
 
 #endif // MajorImageProcessingThread_H

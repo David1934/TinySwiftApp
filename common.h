@@ -9,9 +9,11 @@
 #define VERSION_MAJOR                       1
 #define VERSION_MINOR                       0
 #define VERSION_REVISION                    0
-#define LAST_MODIFIED_TIME                  "20240506a"
+#define LAST_MODIFIED_TIME                  "20240507a"
 
-#define ENTITY_NAME_4_DTOF_SENSOR   "m00_b_ads6401 7-005e"
+#define ENTITY_NAME_4_DTOF_SENSOR           "m00_b_ads6401 7-005e"
+#define DEFAULT_DTOF_FRAMERATE              AdapsFramerateType30FPS // AdapsFramerateType60FPS
+
 #define DATA_SAVE_PATH              "/tmp/" // "/sdcard/"
 #define DEFAULT_SAVE_FRAME_CNT      1
 #define RTCTIME_DISPLAY_FMT         "hh:mm:ss"  // "yyyy/MM/dd hh:mm:ss"
@@ -44,6 +46,7 @@
 #define ENV_VAR_SAVE_DEPTH_ENABLE               "save_depth_enable"
 #define ENV_VAR_SAVE_FRAME_ENABLE               "save_frame_enable"
 #define ENV_VAR_DBGINFO_ENABLE                  "debug_info_enable"
+#define ENV_VAR_SKIP_FRAME_PROCESS              "skip_frame_process"
 
 #define __tostr(x)                          #x
 #define __stringify(x)                      __tostr(x)
@@ -153,6 +156,15 @@ typedef unsigned short u16;
 typedef signed short s16;
 typedef unsigned int u32;
 typedef unsigned long long u64;
+
+enum stop_request_code{
+    STOP_REQUEST_RGB,
+    STOP_REQUEST_PHR,
+    STOP_REQUEST_PCM,
+    STOP_REQUEST_FHR,
+    STOP_REQUEST_STOP,
+    STOP_REQUEST_QUIT,
+};
 
 enum sensortype{
     SENSOR_TYPE_RGB,

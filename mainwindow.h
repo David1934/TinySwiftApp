@@ -28,6 +28,8 @@ private slots:
     void on_PHRButton_clicked();
     void on_PCMButton_clicked();
     void on_FHRButton_clicked();
+    void on_skipFrameProcessCheckbox_StateChanged(bool checked);
+    void onThreadEnd(int stop_request_code);
 
 private:
     Ui::MainWindow *ui;

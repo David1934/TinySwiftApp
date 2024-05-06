@@ -12,6 +12,10 @@ V4L2::V4L2(struct sensor_params params)
     buffers = NULL;
     sensordata = NULL;
     fd_4_dtof = 0;
+    firstFrameTimeUsec = 0;
+    rxFrameCnt = 0;
+    fps = 0;
+    streamed_timeUs = 0;
     init();
     memcpy(&snr_param, &params, sizeof(struct sensor_params));
 
@@ -391,6 +395,7 @@ void* V4L2::adaps_getEEPROMData(void)
 int V4L2::adaps_readEEPROMData(void)
 {
     int ret = 0;
+
     if (SENSOR_TYPE_DTOF == snr_param.sensor_type)
     {
         p_eeprominfo = (struct adaps_get_eeprom *)malloc(sizeof(struct adaps_get_eeprom));
@@ -425,7 +430,8 @@ int V4L2::adaps_readEEPROMData(void)
                 }
             }
             else {
-                DBG_ERROR("EEPROM crc32 mismatched!!! sizeof(swift_eeprom_data_t)=%ld, length before totalChecksum:%ld,calc_crc32:0x%x,saved_crc32:0x%x",
+                DBG_ERROR("EEPROM crc32 mismatched!!! eeprominfo->pRawData: %p, sizeof(swift_eeprom_data_t)=%ld, length before totalChecksum:%ld,calc_crc32:0x%x,saved_crc32:0x%x",
+                        p_eeprominfo->pRawData,
                         sizeof(swift_eeprom_data_t),
                         AD4001_EEPROM_TOTAL_CHECKSUM_OFFSET - AD4001_EEPROM_VERSION_INFO_OFFSET,
                         calc_crc32,
@@ -443,7 +449,7 @@ int V4L2::adaps_setParam4DtofSubdev(void)
     struct adaps_set_param_in_config set_inconfig;
     set_inconfig.env_type = snr_param.env_type;
     set_inconfig.measure_type = snr_param.measure_type;
-    set_inconfig.framerate_type = AdapsFramerateType30FPS;
+    set_inconfig.framerate_type = DEFAULT_DTOF_FRAMERATE;
     set_inconfig.vcselzonecount_type = AdapsVcselZoneCount4;
 
     if (SENSOR_TYPE_DTOF == snr_param.sensor_type)
@@ -454,7 +460,7 @@ int V4L2::adaps_setParam4DtofSubdev(void)
             ret = -1;
         }else
         {     
-            DBG_INFO("adaps_set_param_in_config set_inconfig.env_type=%d   set_inconfig.measure_type=%d  set_inconfig.framerate_type=%d  \n   ",
+            DBG_INFO("adaps_set_param_in_config set_inconfig.env_type=%d   set_inconfig.measure_type=%d  set_inconfig.framerate_type=%d     ",
                 set_inconfig.env_type,
                 set_inconfig.measure_type,
                 set_inconfig.framerate_type);
@@ -488,7 +494,7 @@ int V4L2::adaps_readTemperatureOfDtofSubdev(float *temperature)
     return ret;
 }
 
-bool V4L2::Initilize(void)
+int V4L2::Initilize(void)
 {
     int ret = 0;
     struct v4l2_capability	cap;
@@ -502,14 +508,14 @@ bool V4L2::Initilize(void)
         if (ret < 0)
         {
             DBG_ERROR("Fail to get subdev node for dtof sensor...");
-            return false;
+            return 0 - errno;
         }
 
         if ((fd_4_dtof = open(sd_devnode_4_dtof, O_RDWR)) == -1)
         {
             DBG_ERROR("Fail to open device %s , errno: %s (%d)...", 
                 sd_devnode_4_dtof, strerror(errno), errno);
-            return false;
+            return 0 - errno;
         }
     }
 
@@ -517,14 +523,14 @@ bool V4L2::Initilize(void)
     {
         DBG_ERROR("Fail to open device %s , errno: %s (%d)...", 
             video_dev, strerror(errno), errno);
-        return false;
+        return 0 - errno;
     }
 
     if (ioctl(fd, VIDIOC_QUERYCAP, &cap) == -1)
     {
         DBG_ERROR("Fail to query device capabilities, errno: %s (%d)...", 
             strerror(errno), errno);
-        return false;
+        return 0 - errno;
     }
     else
     {
@@ -540,13 +546,13 @@ bool V4L2::Initilize(void)
             !(cap.capabilities & V4L2_CAP_VIDEO_CAPTURE_MPLANE)) {
         DBG_ERROR("this device seems not support video capture, capabilities: 0x%x...",
             cap.capabilities);
-        return false;
+        return 0 - __LINE__;
     }
 
     if (!(cap.capabilities & V4L2_CAP_STREAMING)) {
         DBG_ERROR("this device seems not support streaming, capabilities: 0x%x...",
             cap.capabilities);
-        return false;
+        return 0 - __LINE__;
     }
 
     if (cap.capabilities & V4L2_CAP_VIDEO_CAPTURE) {
@@ -609,16 +615,16 @@ bool V4L2::Initilize(void)
     //fmt.fmt.pix.quantization = V4L2_QUANTIZATION_FULL_RANGE;
 
     if (ioctl(fd, VIDIOC_S_FMT, &fmt) == -1) {
-        DBG_ERROR("Fail to set format, errno: %s (%d)...", 
+        DBG_ERROR("Fail to set format for dev: %s (%d), errno: %s (%d)...", video_dev, fd,
             strerror(errno), errno);
-        return false;
+        return 0 - errno;
     }
 
     if (ioctl(fd, VIDIOC_G_FMT, &fmt) == -1) //重新读取 结构体，以确认完成设置
     {
         DBG_ERROR("Fail to get format , errno: %s (%d)...", 
             strerror(errno), errno);
-        return false;
+        return 0 - errno;
     }
     else {
         DBG_INFO("fmt.type:\t%d", fmt.type);
@@ -634,13 +640,13 @@ bool V4L2::Initilize(void)
 
     if (ioctl(fd, VIDIOC_S_PARM, &setfps) == -1) {
         qDebug("Unable to set fps on <%s> line:%d, errno: %s (%d)...", __FUNCTION__, __LINE__, strerror(errno), errno);
-        return false;
+        return 0 - errno;
     }
 
     if (ioctl(fd, VIDIOC_G_PARM, &setfps) == -1) //重新读取结构体，以确认完成设置
     {
         qDebug() << "Unable to get fps";
-        return false;
+        return 0 - errno;
     }
     else {
         qDebug() << "fps:\t" << setfps.parm.capture.timeperframe.denominator / setfps.parm.capture.timeperframe.numerator;
@@ -649,27 +655,27 @@ bool V4L2::Initilize(void)
 
     if (false == alloc_buffers())
     {
-        return false;
+        return 0 - __LINE__;
     }
 
     if (SENSOR_TYPE_DTOF == snr_param.sensor_type)
     {
-        if (-1 == adaps_readEEPROMData())
+        if (0 > adaps_readEEPROMData())
         {
-            return false;
+            return 0 - __LINE__;
         }
-        
-        if (-1 == adaps_setParam4DtofSubdev())
+
+        if (0 > adaps_setParam4DtofSubdev())
         {
-            return false;
+            return 0 - __LINE__;
         }
     }
 
     DBG_INFO("init dev %s [OK]", video_dev);
-    return true;
+    return 0;
 }
 
-bool V4L2::Start_streaming(void)
+int V4L2::Start_streaming(void)
 {
     firstFrameTimeUsec = 0;
     rxFrameCnt = 0;
@@ -679,13 +685,13 @@ bool V4L2::Start_streaming(void)
     {
         DBG_ERROR("Fail to stream_on, errno: %s (%d)...", 
             strerror(errno), errno);
-        return false;
+        return 0 - errno;
     }
 
-    return true;
+    return 0;
 }
 
-bool V4L2::Capture_frame()
+int V4L2::Capture_frame()
 {
     struct v4l2_buffer  v4l2_buf;
     struct v4l2_plane v4l2_planes[FMT_NUM_PLANES];
@@ -707,7 +713,7 @@ bool V4L2::Capture_frame()
     if (0 == fd || ioctl(fd, VIDIOC_DQBUF, &v4l2_buf) == -1) {
         DBG_ERROR("Fail to dequeue buffer, fd: %d errno: %s (%d)...", fd,
             strerror(errno), errno);
-        return false;
+        return 0 - errno;
     }
 
     if (v4l2_buf.flags & V4L2_BUF_FLAG_ERROR) {
@@ -729,6 +735,10 @@ bool V4L2::Capture_frame()
     if (0 == firstFrameTimeUsec)
     {
         firstFrameTimeUsec = tv.tv_sec*1000000 + tv.tv_usec;
+
+        bits_per_pixel = 8; // TODO: get from v4l2 api
+        total_bytes_per_line = bytesused/snr_param.raw_height;
+        padding_bytes_per_line = total_bytes_per_line - (snr_param.raw_width * bits_per_pixel)/8;
     }
     else {
         currTimeUsec = tv.tv_sec*1000000 + tv.tv_usec;
@@ -744,14 +754,25 @@ error_exit:
     if (0 == fd || -1 == ioctl(fd, VIDIOC_QBUF, &v4l2_buf)) {
         DBG_ERROR("Fail to queue buffer, errno: %s (%d)...", 
             strerror(errno), errno);
-        return false;
+        return 0 - errno;
     }
 
-    return true;
+    return 0;
 }
 
 void V4L2::Stop_streaming(void)
 {
+    int streamed_second = streamed_timeUs/1000000;
+
+    if (rxFrameCnt <= 0) // not started yet.
+        return;
+
+    DBG_NOTICE("\n------Test Statistics------streamed: %02d:%02d:%02d, rxFrameCnt: %ld, fps: %d, raw size: %d X %d, bits_per_pixel: %d, padding_bytes_per_line: %d, total_bytes_per_line: %d---\n",
+        streamed_second/3600,streamed_second/60,streamed_second%60,
+        rxFrameCnt, fps, 
+        snr_param.raw_width, snr_param.raw_height,
+        bits_per_pixel, padding_bytes_per_line, total_bytes_per_line);
+
     if (-1 == ioctl(fd, VIDIOC_STREAMOFF, &buf_type)) {
         DBG_ERROR("Fail to stream off, errno: %s (%d)...", 
             strerror(errno), errno);

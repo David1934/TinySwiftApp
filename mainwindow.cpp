@@ -1,9 +1,11 @@
-#include "mainwindow.h"
-#include "majorimageprocessingthread.h"
-#include "ui_mainwindow.h"
 #include <QLCDNumber>
 #include <QTimer>
 #include <QTime>
+
+#include "common.h"
+#include "mainwindow.h"
+#include "majorimageprocessingthread.h"
+#include "ui_mainwindow.h"
 
 #define UNUSED(X) (void)X
 
@@ -11,6 +13,7 @@ MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
 {
+    int ret = 0;
     char AppNameVersion[64];
 
     ui->setupUi(this);
@@ -32,8 +35,15 @@ MainWindow::MainWindow(QWidget *parent) :
             this, SLOT(new_frame_display(QImage)));
     connect(imageprocessthread, SIGNAL(update_runtime_display(int, unsigned long)),
             this, SLOT(update_streaming_info(int, unsigned long)));
+    connect(ui->skipFrameProcessCheckbox, &QCheckBox::stateChanged, this, &MainWindow::on_skipFrameProcessCheckbox_StateChanged);
+    connect(imageprocessthread, SIGNAL(threadEnd(int)), this, SLOT(onThreadEnd(int)));
 
-    imageprocessthread->init(0);
+    ret = imageprocessthread->init(0);
+    if (ret < 0)
+    {
+        DBG_ERROR("Fail to imageprocessthread init()...");
+        return;
+    }
     imageprocessthread->start();
 }
 
@@ -41,6 +51,45 @@ MainWindow::~MainWindow()
 {
     delete imageprocessthread;
     delete ui;
+}
+
+void MainWindow::onThreadEnd(int stop_request_code)
+{
+    switch (stop_request_code) {
+        case STOP_REQUEST_RGB:
+            imageprocessthread->mode_switch("RGB");
+            imageprocessthread->init(0);
+            imageprocessthread->start();
+            break;
+
+        case STOP_REQUEST_PHR:
+            imageprocessthread->mode_switch("PHR");
+            imageprocessthread->init(0);
+            imageprocessthread->start();
+            break;
+
+        case STOP_REQUEST_PCM:
+            imageprocessthread->mode_switch("PCM");
+            imageprocessthread->init(0);
+            imageprocessthread->start();
+            break;
+
+        case STOP_REQUEST_FHR:
+            imageprocessthread->mode_switch("FHR");
+            imageprocessthread->init(0);
+            imageprocessthread->start();
+            break;
+
+        case STOP_REQUEST_QUIT:
+            this->close();
+            break;
+
+        case STOP_REQUEST_STOP:
+        default:
+            ui->mainlabel->setText("Device is ready");
+            break;
+    }
+
 }
 
 void MainWindow::updateTime()
@@ -52,8 +101,7 @@ void MainWindow::updateTime()
 
 void MainWindow::clickQuitButton(void)
 {
-    imageprocessthread->stop();
-    this->close();
+    imageprocessthread->stop(STOP_REQUEST_QUIT);
 }
 
 /* QString 转 char* */
@@ -105,32 +153,33 @@ bool MainWindow::new_frame_display(QImage image)
 
 void MainWindow::on_stopButton_clicked()
 {
-    imageprocessthread->stop();
-    ui->mainlabel->setText("Device is ready");
-
+    imageprocessthread->stop(STOP_REQUEST_STOP);
 }
 
 void MainWindow::on_RGBButton_clicked()
 {
     if(imageprocessthread->isRunning())
     {
-        imageprocessthread->stop();
+        imageprocessthread->stop(STOP_REQUEST_RGB);
     }
-    imageprocessthread->mode_switch("RGB");
-    imageprocessthread->init(0);
-    imageprocessthread->start();
-
+    else {
+        imageprocessthread->mode_switch("RGB");
+        imageprocessthread->init(0);
+        imageprocessthread->start();
+    }
 }
 
 void MainWindow::on_PHRButton_clicked()
 {
     if(imageprocessthread->isRunning())
     {
-        imageprocessthread->stop();
+        imageprocessthread->stop(STOP_REQUEST_PHR);
     }
-    imageprocessthread->mode_switch("PHR");
-    imageprocessthread->init(0);
-    imageprocessthread->start();
+    else {
+        imageprocessthread->mode_switch("PHR");
+        imageprocessthread->init(0);
+        imageprocessthread->start();
+    }
 }
 
 
@@ -138,21 +187,47 @@ void MainWindow::on_PCMButton_clicked()
 {
     if(imageprocessthread->isRunning())
     {
-        imageprocessthread->stop();
+        imageprocessthread->stop(STOP_REQUEST_PCM);
     }
-    imageprocessthread->mode_switch("PCM");
-    imageprocessthread->init(0);
-    imageprocessthread->start();
+    else {
+        imageprocessthread->mode_switch("PCM");
+        imageprocessthread->init(0);
+        imageprocessthread->start();
+    }
 }
 
 void MainWindow::on_FHRButton_clicked()
 {
     if(imageprocessthread->isRunning())
     {
-        imageprocessthread->stop();
+        imageprocessthread->stop(STOP_REQUEST_FHR);
     }
-    imageprocessthread->mode_switch("FHR");
-    imageprocessthread->init(0);
-    imageprocessthread->start();
+    else {
+        imageprocessthread->mode_switch("FHR");
+        imageprocessthread->init(0);
+        imageprocessthread->start();
+    }
+}
+
+void MainWindow::on_skipFrameProcessCheckbox_StateChanged(bool checked)
+{
+#if 1
+    imageprocessthread->set_skip_frame_process(checked);
+#else
+    int ret = 0;
+    if (checked) {
+        ret = setenv(ENV_VAR_SKIP_FRAME_PROCESS, "true", 0);
+        if (0 != ret) {
+            DBG_ERROR("Fail to set environment variable %s, ret:%d errno: %s (%d)...", ENV_VAR_SKIP_FRAME_PROCESS, ret,
+                strerror(errno), errno);
+        }
+    } else {
+        ret = unsetenv(ENV_VAR_SKIP_FRAME_PROCESS);
+        if (0 != ret) {
+            DBG_ERROR("Fail to unset environment variable %s, ret:%d errno: %s (%d)...", ENV_VAR_SKIP_FRAME_PROCESS, ret,
+                strerror(errno), errno);
+        }
+    }
+#endif
 }
 

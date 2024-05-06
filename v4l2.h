@@ -15,8 +15,8 @@
 #include <errno.h>
 #include <QDebug>
 #include <QDateTime>
-#include "common.h"
 
+#include "common.h"
 
 #define BUFFER_COUNT_4_DTOF_SENSOR  6
 #define OUTPUT_WIDTH_4_DTOF_SENSOR  210
@@ -62,9 +62,9 @@ public:
 
     void nv12_2_rgb(unsigned char *nv12, unsigned char *rgb, int width, int height);
     void yuyv_2_rgb(unsigned char *yuyv, unsigned char *rgb, int width, int height);
-    bool Initilize(void);
-    bool Start_streaming(void);
-    bool Capture_frame();
+    int Initilize(void);
+    int Start_streaming(void);
+    int Capture_frame();
     void mode_switch(struct sensor_params params);
     void Stop_streaming(void);
     void Close(void);
@@ -84,6 +84,9 @@ private:
     struct v4l2_requestbuffers	req_bufs;
     enum	v4l2_buf_type	buf_type;
     unsigned int	pixel_format;
+    int bits_per_pixel;
+    int padding_bytes_per_line;
+    int total_bytes_per_line;
 
     char        sensor_sd_name[DEV_NODE_LEN];
     char        media_dev[DEV_NODE_LEN];

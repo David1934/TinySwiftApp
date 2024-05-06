@@ -6,7 +6,7 @@
 
 MajorImageProcessingThread::MajorImageProcessingThread()
 {
-    stopped = false;
+    stopped = true;
     majorindex = -1;
     rgb_buffer = NULL;
     depth_buffer = NULL;
@@ -33,6 +33,14 @@ MajorImageProcessingThread::MajorImageProcessingThread()
             this, SLOT(new_frame_handle(unsigned int, void *, int, struct timeval, enum frame_data_type)), Qt::DirectConnection);
 
     connect(v4l2, SIGNAL(update_info(int, unsigned long)),  this, SLOT(info_update(int, unsigned long)));
+    connect(this, SIGNAL(threadLoopExit()), this, SLOT(onThreadLoopExit()));
+}
+
+void MajorImageProcessingThread::set_skip_frame_process(bool val)
+{
+    skip_frame_process = val;
+
+    return;
 }
 
 void MajorImageProcessingThread::mode_switch(QString sensortype)
@@ -152,8 +160,9 @@ bool MajorImageProcessingThread::new_frame_handle(unsigned int frm_sequence, voi
     Q_UNUSED(frm_sequence);
     Q_UNUSED(frm_timestamp);
     Q_UNUSED(buf_len);
+
 #if 0
-    DBG_INFO("frm_sequence:%d, buf_len:%d, out_frm_width:%d, out_frm_height:%d", frm_sequence, buf_len, sns_param.out_frm_width, sns_param.out_frm_height);
+    DBG_INFO("skipFrameProcess:%d, frm_sequence:%d, buf_len:%d", skip_frame_process, frm_sequence, buf_len);
 #endif
 
     switch (ftype) {
@@ -169,7 +178,15 @@ bool MajorImageProcessingThread::new_frame_handle(unsigned int frm_sequence, voi
                             frm_timestamp, FDATA_TYPE_DTOF_RAW_GRAYSCALE);
                     }
                 }
-                decodeRet = adaps_dtof->dtof_decode((unsigned char *)frm_rawdata,depth_buffer,sns_param.work_mode);
+
+                if (skip_frame_process)
+                {
+                    decodeRet = -EINVAL;
+                }
+                else {
+                    decodeRet = adaps_dtof->dtof_decode((unsigned char *)frm_rawdata,depth_buffer,sns_param.work_mode);
+                }
+
                 if (0 == decodeRet)
                 {
                     if (sns_param.save_frame_cnt > 0)
@@ -209,7 +226,14 @@ bool MajorImageProcessingThread::new_frame_handle(unsigned int frm_sequence, voi
                     }
                 }
 
-                decodeRet = adaps_dtof->dtof_decode((unsigned char *)frm_rawdata,depth_buffer,sns_param.work_mode);
+                if (skip_frame_process)
+                {
+                    decodeRet = -EINVAL;
+                }
+                else {
+                    decodeRet = adaps_dtof->dtof_decode((unsigned char *)frm_rawdata,depth_buffer,sns_param.work_mode);
+                }
+
                 if (0 == decodeRet)
                 {
                     if (sns_param.save_frame_cnt > 0)
@@ -272,11 +296,13 @@ bool MajorImageProcessingThread::new_frame_handle(unsigned int frm_sequence, voi
     return true;
 }
 
-void MajorImageProcessingThread::stop()
+void MajorImageProcessingThread::onThreadLoopExit()
 {
-    stopped = true;
-    v4l2->Stop_streaming();
-    v4l2->Close();
+    if (v4l2)
+    {
+        v4l2->Stop_streaming();
+        v4l2->Close();
+    }
     if (SENSOR_TYPE_DTOF == sns_param.sensor_type)
     {
 /*
@@ -296,32 +322,51 @@ void MajorImageProcessingThread::stop()
         free(rgb_buffer);
         rgb_buffer = NULL;
     }
+
+    emit threadEnd(stop_req_code);
 }
 
-void MajorImageProcessingThread::init(int index)
+void MajorImageProcessingThread::stop(int stop_request_code)
 {
-    bool ret = 0;
-    stopped = false;
-    majorindex = index;
+    stop_req_code = stop_request_code;
+    if(!stopped)
+    {
+        stopped = true;
+    }
+    else {
+        emit threadLoopExit();
+    }
+}
+
+int MajorImageProcessingThread::init(int index)
+{
+    int ret = 0;
     ret = v4l2->Initilize();
-    if (false == ret)
+    if (ret < 0)
     {
         //ui->mainlabel->clear();
         //ui->mainlabel->setText("No camera detected.");
-        DBG_ERROR("Fail to v4l2->Initilize(), errno: %s (%d)...", 
+        DBG_ERROR("Fail to v4l2->Initilize(),ret:%d, errno: %s (%d)...", ret,
             strerror(errno), errno);
-        return;
+        return ret;
     }
     else {
         if (SENSOR_TYPE_DTOF == sns_param.sensor_type)
         {
-            if ((NULL == adaps_dtof) || (-1 == adaps_dtof->initilize()))
+            if (NULL == adaps_dtof)
+            {
+                DBG_ERROR("adaps_dtof is NULL" );
+                return 0 - __LINE__;
+            }
+
+            ret = adaps_dtof->initilize();
+            if (0 > ret)
             {
                 //ui->mainlabel->clear();
                 //ui->mainlabel->setText("No camera detected.");
-                DBG_ERROR("Fail to adaps_dtof->initilize(), errno: %s (%d)...", 
-                    strerror(errno), errno);
-                return;
+                DBG_ERROR("Fail to adaps_dtof->initilize(),ret:%d, errno: %s (%d)...", 
+                    ret, strerror(errno), errno);
+                return 0 - __LINE__;
             }
             else {
                 //ui->mainlabel->clear();
@@ -331,12 +376,19 @@ void MajorImageProcessingThread::init(int index)
         }
         rgb_buffer = (unsigned char *)malloc(sizeof(unsigned char)*sns_param.out_frm_width*sns_param.out_frm_height*RGB_IMAGE_CHANEL);
         ret = v4l2->Start_streaming();
+        if (0 == ret)
+        {
+            stopped = false;
+            majorindex = index;
+        }
     }
+
+    return ret;
 }
 
 void MajorImageProcessingThread::run()
 {
-    bool ret ;
+    int ret = 0;
     if(majorindex != -1)
     {
         while(!stopped)
@@ -347,11 +399,13 @@ void MajorImageProcessingThread::run()
             {
                 ret=v4l2->Capture_frame();
             }
-            if(ret==false)
+            if(ret < 0)
             {
                 stopped=true;
             }
         }
+
+        emit threadLoopExit();
     }
 }
 
