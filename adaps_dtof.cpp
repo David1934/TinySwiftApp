@@ -1,5 +1,4 @@
 #include "adaps_dtof.h"
-#include <dlfcn.h>
 
 ADAPS_DTOF::ADAPS_DTOF(struct sensor_params params, V4L2 *v4l2)
 {
@@ -60,6 +59,7 @@ int ADAPS_DTOF::GetAdapsTofEepromInfo(uint8_t* pRawData, uint32_t rawDataSize, S
     setparam->adapsSpodOffsetData     = reinterpret_cast<float*>(pRawData + AD4001_EEPROM_SPODOFFSET_OFFSET);
     setparam->proximity_hist          = pRawData + AD4001_EEPROM_PROX_HISTOGRAM_OFFSET;
     setparam->accurateSpotPosData     = reinterpret_cast<float*>(pRawData + AD4001_EEPROM_ACCURATESPODPOS_OFFSET);
+    setparam->spot_cali_data          = pRawData + AD4001_EEPROM_SPODPOS_OFFSET;
 
     setparam->cali_ref_tempe[AdapsEnvTypeIndoor - 1]  = *reinterpret_cast<float*>(pRawData + AD4001_EEPROM_INDOOR_CALIBTEMPERATURE_OFFSET);
     setparam->cali_ref_tempe[AdapsEnvTypeOutdoor - 1] = *reinterpret_cast<float*>(pRawData + AD4001_EEPROM_OUTDOOR_CALIBTEMPERATURE_OFFSET);
@@ -72,7 +72,6 @@ int ADAPS_DTOF::GetAdapsTofEepromInfo(uint8_t* pRawData, uint32_t rawDataSize, S
 void ADAPS_DTOF::initParams(WrapperDepthInitInputParams  *     initInputParams,WrapperDepthInitOutputParams      *initOutputParams)
 {
     SetWrapperParam set_param;
-    unsigned char version[32];
 
     memset(&set_param, 0, sizeof(SetWrapperParam));
     set_param.work_mode = static_cast<int>(m_sns_param.work_mode);
@@ -84,7 +83,9 @@ void ADAPS_DTOF::initParams(WrapperDepthInitInputParams  *     initInputParams,W
     set_param.env_type = m_sns_param.env_type;
     set_param.measure_type = m_sns_param.measure_type;
 
-    set_param.OutAlgoVersion = (uint8_t*)version;
+    DepthMapWrapperGetVersion(m_DepthLibversion);
+    set_param.OutAlgoVersion = (uint8_t*)m_DepthLibversion;
+    DBG_INFO("depth algo lib version: %s", m_DepthLibversion);
 
     p_eeprominfo = (struct adaps_get_eeprom *) m_v4l2->adaps_getEEPROMData();
     if (NULL == p_eeprominfo) {
@@ -105,12 +106,12 @@ void ADAPS_DTOF::initParams(WrapperDepthInitInputParams  *     initInputParams,W
     initInputParams->height = m_sns_param.raw_height;
     initInputParams->dm_width = m_sns_param.out_frm_width;
     initInputParams->dm_height = m_sns_param.out_frm_height;
-    initInputParams->is_secure = false;
 
     //need to check the below code   attention
     initInputParams->pRawData = p_eeprominfo->pRawData;
     initInputParams->rawDataSize = p_eeprominfo->rawDataSize;
-    
+    initInputParams->configFilePath = m_DepthLibConfigXmlPath;
+    sprintf(m_DepthLibConfigXmlPath, "%s", DEPTH_LIB_CONFIG_PATH);
     initInputParams->setparam = set_param;
 
     initOutputParams->exposure_time = &m_exposure_time;
@@ -126,6 +127,18 @@ int ADAPS_DTOF::initilize()
     int result = 0;
     WrapperDepthInitInputParams     initInputParams                 = {};
     WrapperDepthInitOutputParams    initOutputParams;
+
+#if 1
+    initParams(&initInputParams,&initOutputParams);
+
+    result = DepthMapWrapperCreate(&m_handlerDepthLib, initInputParams, initOutputParams);
+    if (!m_handlerDepthLib || result < 0) {
+        DBG_ERROR("Error creating depth map wrapper, result: %d, m_handlerDepthLib: %p", result, m_handlerDepthLib);
+        return result;
+    }
+
+    m_conversionLibInited = true;
+#else
     const unsigned int bind_flags = RTLD_NOW | RTLD_LOCAL;
     const char *libFullName="/usr/lib/libadaps_swift_decode.so";
 
@@ -171,11 +184,17 @@ int ADAPS_DTOF::initilize()
         DBG_ERROR( "Error loading lib %s \n", libFullName);
         result = 0 - __LINE__;
     }
+#endif
+
     return result;
 }
 
 void ADAPS_DTOF::release()
 {
+#if 1
+    DepthMapWrapperDestroy(m_handlerDepthLib);
+    m_handlerDepthLib = NULL;
+#else
     if (NULL != m_DepthMapWrapper)
     {
         m_destroyDepthMapWrapper(m_DepthMapWrapper);
@@ -197,6 +216,7 @@ void ADAPS_DTOF::release()
         }
         m_hDepthLib = NULL;
     }
+#endif
 }
 
 void ADAPS_DTOF::PrepareFrameParam(WrapperDepthCamConfig *wrapper_depth_map_config)
@@ -215,19 +235,19 @@ void ADAPS_DTOF::PrepareFrameParam(WrapperDepthCamConfig *wrapper_depth_map_conf
         wrapper_depth_map_config->frame_parameters.laser_realtime_tempe = t;
     }
 
-    //DBG_INFO( "PrepareFrameParam adapsChipTemperature: %f\n " ,wrapper_depth_map_config->frame_parameters.laser_realtime_tempe);
+    //DBG_INFO( "adapsChipTemperature: %f\n " ,wrapper_depth_map_config->frame_parameters.laser_realtime_tempe);
 
     wrapper_depth_map_config->frame_parameters.measure_type_in = (AdapsMeasurementType) m_sns_param.measure_type;    
-    //DBG_INFO("PrepareFrameParam AdapsMeasurementType: %d \n" , wrapper_depth_map_config->frame_parameters.measure_type_in);
+    //DBG_INFO("AdapsMeasurementType: %d \n" , wrapper_depth_map_config->frame_parameters.measure_type_in);
             
     wrapper_depth_map_config->frame_parameters.focutPoint[0] = 1;
     wrapper_depth_map_config->frame_parameters.focutPoint[1] = 2; //need to get this value
-    /*DBG_INFO("PrepareFrameParam Adaps FocusPoint:x %d y %d \n", 
+    /*DBG_INFO("Adaps FocusPoint:x %d y %d \n", 
                 wrapper_depth_map_config->frame_parameters.focutPoint[0], 
                 wrapper_depth_map_config->frame_parameters.focutPoint[1]);*/
 
     wrapper_depth_map_config->frame_parameters.env_type_in = (AdapsEnvironmentType) m_sns_param.env_type;
-   // DBG_INFO("PrepareFrameParam AdapsEnvironmentType: %d \n" , wrapper_depth_map_config->frame_parameters.env_type_in);
+   // DBG_INFO("AdapsEnvironmentType: %d \n" , wrapper_depth_map_config->frame_parameters.env_type_in);
 
     wrapper_depth_map_config->frame_parameters.advised_env_type_out     = &m_sns_param.advisedEnvType;
     wrapper_depth_map_config->frame_parameters.advised_measure_type_out = &m_sns_param.advisedMeasureType;
@@ -306,6 +326,7 @@ int ADAPS_DTOF::dtof_decode(unsigned char *frm_rawdata , u16 depth16_buffer[], e
 {
     WrapperDepthCamConfig config;
     int result=0;
+    uint32_t iResult = 0;
 
     Q_UNUSED(swk);
     WrapperDepthOutput outputs[MAX_DEPTH_OUTPUT_FORMATS];
@@ -339,7 +360,6 @@ int ADAPS_DTOF::dtof_decode(unsigned char *frm_rawdata , u16 depth16_buffer[], e
 
     //depthInput.formatParams.planeSize    = pProcessRequestInfo->phInputBuffer[0]->planeSize[0];
 
-    uint32_t iResult = 0;
     //for (uint32_t index = 0; index < pProcessRequestInfo->phInputBuffer[0]->imageCount; index++) 
     {
         PrepareFrameParam(&config);
@@ -349,12 +369,11 @@ int ADAPS_DTOF::dtof_decode(unsigned char *frm_rawdata , u16 depth16_buffer[], e
 
         if (false == disableAlgo) 
         {
-            iResult += m_processFrame(m_DepthMapWrapper,
-                                  depthInput,
-                                  &config,
-                                  1, //2,
-                                  outputs);
-
+            iResult = DepthMapWrapperProcessFrame(m_handlerDepthLib,
+                                        depthInput,
+                                        &config,
+                                        1,
+                                        outputs);
             //DBG_INFO( "depthInput: image , pAddr=%p, iResult: %d \n", depthInput.in_image, iResult);
         }else
         {

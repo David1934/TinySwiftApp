@@ -3,7 +3,6 @@
 
 #include <QObject>
 #include "rk-camera-module.h"
-#include "depthmapwrapper.h"
 #include <QString>
 
 #define VERSION_MAJOR                       1
@@ -14,6 +13,7 @@
 #define ENTITY_NAME_4_DTOF_SENSOR           "m00_b_ads6401 7-005e"
 #define DEFAULT_DTOF_FRAMERATE              AdapsFramerateType30FPS // AdapsFramerateType60FPS
 
+#define DEPTH_LIB_CONFIG_PATH       "/vendor/etc/camera/adapsdepthsettings.xml"
 #define DATA_SAVE_PATH              "/tmp/" // "/sdcard/"
 #define DEFAULT_SAVE_FRAME_CNT      1
 #define RTCTIME_DISPLAY_FMT         "hh:mm:ss"  // "yyyy/MM/dd hh:mm:ss"

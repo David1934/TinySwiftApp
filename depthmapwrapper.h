@@ -1,36 +1,38 @@
 #ifndef __DEPTHMAP_WRAPPER_H__
 #define __DEPTHMAP_WRAPPER_H__
 
-/**=============================================================================
-
-Copyright (c) 2017-2021 Qualcomm Technologies, Inc.
-All Rights Reserved.
-Confidential and Proprietary - Qualcomm Technologies, Inc.
-=============================================================================**/
 
 
-//==============================================================================
-// Included modules
-//==============================================================================
-#include <stdint.h>
-#include <memory>
 
+enum class WorkMode {
+    PARTIAL_HISTOGRAM,
+    PHOTON_COUNTING,
+    FULL_HISTOGRAM,
+    DEBUG_PARTIAL_HISTOGRAM,
+    DEBUG_FULL_HISTOGRAM,
+};
 
-//==============================================================================
-// MACROS
-//==============================================================================
-#ifdef _MSC_VER
-#define CP_DLL_PUBLIC __declspec(dllexport)
-#else
-#define CP_DLL_PUBLIC __attribute__ ((visibility ("default")))
+typedef struct ADAPS_MIRROR_FRAME_SET
+{
+	uint8_t mirror_x;
+	uint8_t mirror_y;
+}AdapsMirrorFrameSet;
+
+#if 0 // they are defined in rk-camera-module.h already.
+typedef enum
+{
+    AdapsMeasurementTypeUninitilized,
+    AdapsMeasurementTypeNormal,
+    AdapsMeasurementTypeShort,
+    AdapsMeasurementTypeFull,
+} AdapsMeasurementType;
+
+typedef enum {
+    AdapsEnvTypeUninitilized,
+    AdapsEnvTypeIndoor,
+    AdapsEnvTypeOutdoor,
+} AdapsEnvironmentType;
 #endif
-
-#define IMG_UNUSED(x) (void)(x)
-
-
-typedef unsigned char      uint8_t;
-typedef unsigned int        uint32_t;
-
 
 //==============================================================================
 // DECLARATIONS
@@ -40,21 +42,15 @@ typedef unsigned int        uint32_t;
 
 struct AdapsSparsePointPositionData
 {
-	uint32_t x_pos[ADAPS_SPARSE_POINT_POSITION_DATA_SIZE];
-	uint32_t y_pos[ADAPS_SPARSE_POINT_POSITION_DATA_SIZE];
-	uint32_t hist[ADAPS_SPARSE_POINT_POSITION_DATA_SIZE];
+    uint32_t x_pos[ADAPS_SPARSE_POINT_POSITION_DATA_SIZE];
+    uint32_t y_pos[ADAPS_SPARSE_POINT_POSITION_DATA_SIZE];
+    uint32_t hist[ADAPS_SPARSE_POINT_POSITION_DATA_SIZE];
 };
-
-typedef struct ADAPS_MIRROR_FRAME_SET
-  {
-      uint8_t mirror_x;
-      uint8_t mirror_y;
-  }AdapsMirrorFrameSet;
 
 struct AdapsAdvisedType
 {
-	uint8_t AdvisedMeasurementType;
-	uint8_t AdvisedEnvironmentType;
+    uint8_t AdvisedMeasurementType;
+    uint8_t AdvisedEnvironmentType;
 };
 
 typedef struct pc_pack {
@@ -69,16 +65,15 @@ typedef enum {
     WRAPPER_CAM_FORMAT_IR,
     WRAPPER_CAM_FORMAT_DEPTH16,
     WRAPPER_CAM_FORMAT_DEPTH_POINT_CLOUD,
+    WRAPPER_CAM_FORMAT_DEPTH_X_Y,
     WRAPPER_CAM_FORMAT_MAX,
 } WrapperDepthFormat;
-
 typedef enum {
     DEPTH_OUT_NORMAL,       ///< No change
     DEPTH_OUT_MIRROR,       ///< Mirror(horizontal)
     DEPTH_OUT_FLIP,         ///< Flip(vertical)
     DEPTH_OUT_MIRROR_FLIP,  ///< Mirror/Flip(h/v)
 } RotateConfig;
-
 typedef struct {
     int32_t  bitsPerPixel;
     uint32_t strideBytes;
@@ -88,12 +83,19 @@ typedef struct {
 
 //begin: add by hzt 2021-12-6 for adaps control
 typedef struct {
+    uint32_t ulRoiIndex;
+    uint8_t* pucSramData;
+    uint32_t ulSramDataSize;
+} WrapperDepthSramSpodposDataInfo;
+
+typedef struct {
     AdapsEnvironmentType env_type_in;
     AdapsMeasurementType measure_type_in;
     float laser_realtime_tempe;
     AdapsEnvironmentType *advised_env_type_out;
     AdapsMeasurementType *advised_measure_type_out;
     int32_t focutPoint[2];// 0 is x,1 is y
+    WrapperDepthSramSpodposDataInfo strSpodPosData;
 } AdapsParamAndOutForProcessEveryFrame;
 //end: add by hzt 2021-12-6 for adaps control
 
@@ -118,13 +120,13 @@ typedef struct {
     int64_t out_depth_map_laser_strength_val;
     WrapperDepthExpModeType in_depth_map_exp_mode;
     WrapperDepthCamFpsRange in_depth_map_fps_range;
-	AdapsParamAndOutForProcessEveryFrame frame_parameters;
+    AdapsParamAndOutForProcessEveryFrame frame_parameters;
 } WrapperDepthCamConfig;
 
 typedef struct {
     WrapperDepthFormat format;
     WrapperDepthFormatParams formatParams;
-	struct AdapsSparsePointPositionData sPPData;
+    struct AdapsSparsePointPositionData sPPData;
     union
     {
         uint8_t*  out_depth_image;
@@ -161,88 +163,54 @@ typedef struct {
     AdapsEnvironmentType env_type;  // value 0-->indoor, value 1 -->outdoor
     AdapsMeasurementType measure_type; //value 0-->normal distance, 1-->short distance
     uint8_t *proximity_hist; //256 bytes for eeprom
+    uint8_t roiIndex;   // Only zoom focus Camx version support the "roiIndex"
     // TODO - after v1.2.0
     uint8_t *OutAlgoVersion;  // OutAlgoVersion[AdapsAlgoVersionLength];
     uint8_t zone_cnt;
+    uint8_t peak_index;
+    uint8_t* spot_cali_data;//add 2023-11-7
 } SetWrapperParam;
 
 typedef struct {
+    const char*     configFilePath;
     int32_t         width;
     int32_t         height;
     int32_t         dm_width;
     int32_t         dm_height;
-    uint8_t         is_secure;
     uint8_t*        pRawData;
     uint32_t        rawDataSize;
     RotateConfig    rotateConfig;
     uint32_t        outputPlaneCount;
     uint32_t        outputPlaneFormat[WRAPPER_CAM_FORMAT_MAX];
-	SetWrapperParam setparam;
+    SetWrapperParam setparam;
 } WrapperDepthInitInputParams;
 
 typedef struct {
     uint64_t* exposure_time;
     int32_t*  sensitivity;
 } WrapperDepthInitOutputParams;
-//end: add by hzt 2021-12-6 for adaps control
-
-//==============================================================================
-// API CLASS
-//==============================================================================
-class CP_DLL_PUBLIC DepthMapWrapper
-{
-public:
-    DepthMapWrapper(
-        int32_t width,
-        int32_t height,
-        int32_t dm_width,
-        int32_t dm_height,
-        uint8_t is_secure,
-        uint8_t* pRawData,
-        uint32_t rawDataSize,
-        SetWrapperParam set_param,
-        uint64_t* exposure_time,
-        int32_t* sensitivity);
-    
-    bool processFrame(
-        WrapperDepthInput in_image,
-        WrapperDepthCamConfig *wrapper_depth_map_config,
-        uint32_t num_outputs,
-        WrapperDepthOutput outputs[]);
-
-    ~DepthMapWrapper() ;
-
-    // For future use
-    static unsigned int getWrapperVersion();
-
-private:
-    struct DepthWrapperData;
-    DepthWrapperData *pDepthData;
-
-    DepthMapWrapper(); // No default constructor
-    DepthMapWrapper( const DepthMapWrapper& ); // No copy constructor
-    DepthMapWrapper& operator=( const DepthMapWrapper& ); // No copy assignment operator
-};
 
 // Class factories
 #ifdef __cplusplus
 extern "C" {
 #endif
-CP_DLL_PUBLIC
-DepthMapWrapper* DepthMapWrapperCreate(
+int  DepthMapWrapperCreate(
+    void** handler,
     WrapperDepthInitInputParams  inputParams,
     WrapperDepthInitOutputParams outputParams);
 
-CP_DLL_PUBLIC
 bool DepthMapWrapperProcessFrame(
-    DepthMapWrapper* pDepthMapWrapper,
+    void* handler,
     WrapperDepthInput in_image,
     WrapperDepthCamConfig *wrapper_depth_map_config,
     uint32_t num_outputs,
     WrapperDepthOutput outputs[]);
 
-CP_DLL_PUBLIC
-void DepthMapWrapperDestroy(DepthMapWrapper* pDepthMapWrapper);
+void DepthMapWrapperDestroy(void * handler);
+
+void DepthMapWrapperGetVersion(char* version);
+
+
 #ifdef __cplusplus
 }
 #endif

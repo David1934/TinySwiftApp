@@ -15,7 +15,9 @@
 #include <errno.h>
 #include <QDebug>
 #include <QDateTime>
+
 #include "v4l2.h"
+#include "depthmapwrapper.h"
 
 const int DEPTH_MASK = 0x1FFF; // For depth16 format, the low 13 bits is distance
 const int COLOR_HIGH = 9000;
@@ -40,6 +42,7 @@ struct BGRColor
     u8 Red;
 };
 
+#if 0
 typedef void* CHILIBRARYHANDLE;
 typedef DepthMapWrapper*(*CREATEDEPTHMAPWRAPPER)(
       WrapperDepthInitInputParams  initInputParams,
@@ -52,6 +55,7 @@ typedef bool(*PROCESSFRAME)(
       WrapperDepthCamConfig* wrapper_depth_map_config,
       uint32_t                 num_outputs,
       WrapperDepthOutput     outputs[]);
+#endif
 
 class ADAPS_DTOF : public QObject
 {
@@ -79,11 +83,17 @@ private:
     u16 m_LimitedMaxDistance;
     u16 m_rangeHigh;
     u16 m_rangeLow;
+#if 1
+    void *m_handlerDepthLib;
+    char m_DepthLibversion[32];
+    char m_DepthLibConfigXmlPath[128];
+#else
     CHILIBRARYHANDLE       m_hDepthLib;
     CREATEDEPTHMAPWRAPPER  m_createDepthMapWrapper;
     DESTROYDEPTHMAPWRAPPER m_destroyDepthMapWrapper;
     PROCESSFRAME           m_processFrame;
     DepthMapWrapper*      m_DepthMapWrapper;
+#endif
     bool m_conversionLibInited;
 
     int GetAdapsTofEepromInfo(uint8_t* pRawData, uint32_t rawDataSize, SetWrapperParam* setparam);

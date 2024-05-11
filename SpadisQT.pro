@@ -13,6 +13,8 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 TARGET = SpadisQT
 TEMPLATE = app
 
+LIBS += -L$$PWD -ladaps_swift_decode
+QMAKE_LFLAGS += -Wl,-rpath,/vendor/lib64/
 
 SOURCES +=\
         globalapplication.cpp \
