@@ -9,6 +9,7 @@ GlobalApplication::GlobalApplication(int argc, char *argv[]):QApplication(argc, 
     QString option1Value;
     QString option2Value;
     int option3Value;
+    int option4Value;
 
     QCoreApplication::setApplicationName(APP_NAME);
     QCoreApplication::setApplicationVersion(APP_VERSION);
@@ -20,6 +21,7 @@ GlobalApplication::GlobalApplication(int argc, char *argv[]):QApplication(argc, 
     QCommandLineOption sensor_wk_mode_opt({"m", "mode"}, "Work mode for the sensor (PCM PHR FHR NV12 YUYV)", "mode");
     QCommandLineOption sensor_type_opt({"t", "type"}, "Type of the sensor (RGB DTOF)", "type");
     QCommandLineOption save_frame_cnt_opt({"s", "save"}, "Number of frames to save (>=0)", "count");
+    QCommandLineOption timer_test_times_opt({"", "times"}, "times to be tested by timer (>=0)", "count");
 #else
     QCommandLineOption sensor_wk_mode_opt({"m", "mode"});
     QCommandLineOption sensor_type_opt({"t", "type"});
@@ -33,13 +35,14 @@ GlobalApplication::GlobalApplication(int argc, char *argv[]):QApplication(argc, 
     parser.addOption(sensor_wk_mode_opt);
     parser.addOption(sensor_type_opt);
     parser.addOption(save_frame_cnt_opt);
+    parser.addOption(timer_test_times_opt);
 
     //parser.process(qApp->arguments());
     parser.process(*this);
 
-    DBG_INFO( "---------------");
+//    DBG_INFO( "---------------");
     if (parser.isSet(sensor_wk_mode_opt)) {
-        DBG_INFO( "---------------");
+//        DBG_INFO( "---------------");
         option1Value = parser.value(sensor_wk_mode_opt);
         selected_wk_mode = string_2_workmode(option1Value);
     }
@@ -67,6 +70,18 @@ GlobalApplication::GlobalApplication(int argc, char *argv[]):QApplication(argc, 
         save_frame_cnt = DEFAULT_SAVE_FRAME_CNT;
     }
 
+    if (parser.isSet(timer_test_times_opt)) {
+        option4Value = parser.value(timer_test_times_opt).toInt(&ok);
+        if(!ok) {
+            DBG_ERROR("Failed to convert timer test count to int. Using default value of 1.");
+            option4Value = DEFAULT_TIMER_TEST_TIMES;
+        }
+        timer_test_times = option4Value;
+    }
+    else {
+        timer_test_times = DEFAULT_TIMER_TEST_TIMES;
+    }
+
     DBG_INFO( "-----selected_wk_mode:%d selected_sensor_type:%d, save_frame_cnt:%d----------", selected_wk_mode, selected_sensor_type,save_frame_cnt);
 }
 
@@ -83,6 +98,11 @@ sensortype GlobalApplication::get_sensor_type()
 int GlobalApplication::get_save_cnt()
 {
     return save_frame_cnt;
+}
+
+int GlobalApplication::get_timer_test_times()
+{
+    return timer_test_times;
 }
 
 sensortype GlobalApplication::string_2_sensortype(QString& str)

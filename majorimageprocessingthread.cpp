@@ -17,7 +17,14 @@ MajorImageProcessingThread::MajorImageProcessingThread()
     {
         sns_param.work_mode = qApp->get_wk_mode();
         sns_param.env_type = AdapsEnvTypeIndoor;
-        sns_param.measure_type = AdapsMeasurementTypeFull; // AdapsMeasurementTypeNormal;
+        if (WK_DTOF_FHR == sns_param.work_mode)
+        {
+            sns_param.measure_type = AdapsMeasurementTypeFull;
+        }
+        else {
+            sns_param.measure_type = AdapsMeasurementTypeNormal;
+        }
+
         v4l2 = new V4L2(sns_param);
         v4l2->Get_frame_size_4_curr_wkmode(&sns_param.raw_width, &sns_param.raw_height, &sns_param.out_frm_width, &sns_param.out_frm_height);
         DBG_INFO( "raw_width: %d raw_height: %d FRAME_INTERVAL: %d ms\n", sns_param.raw_width, sns_param.raw_height, FRAME_INTERVAL);
@@ -43,9 +50,9 @@ void MajorImageProcessingThread::set_skip_frame_process(bool val)
     return;
 }
 
-void MajorImageProcessingThread::mode_switch(QString sensortype)
+void MajorImageProcessingThread::mode_switch(QString mode_type)
 {
-    if(!sensortype.compare("RGB"))
+    if(!mode_type.compare("RGB"))
     {
         sns_param.sensor_type = SENSOR_TYPE_RGB;
         sns_param.work_mode = WKMODE_4_RGB_SENSOR;
@@ -59,22 +66,33 @@ void MajorImageProcessingThread::mode_switch(QString sensortype)
     {
         sns_param.sensor_type = SENSOR_TYPE_DTOF;
         sns_param.env_type = AdapsEnvTypeIndoor;
-        sns_param.measure_type = AdapsMeasurementTypeNormal;
-        if(!sensortype.compare("PHR"))
+        if(!mode_type.compare("PHR"))
         {
             sns_param.work_mode = WK_DTOF_PHR;
         }
-        else if(!sensortype.compare("PCM"))
+        else if(!mode_type.compare("PCM"))
         {
             sns_param.work_mode = WK_DTOF_PCM;
         }
-        else if(!sensortype.compare("FHR"))
+        else if(!mode_type.compare("FHR"))
         {
             sns_param.work_mode = WK_DTOF_FHR;
         }
+
+        if (WK_DTOF_FHR == sns_param.work_mode)
+        {
+            sns_param.measure_type = AdapsMeasurementTypeFull;
+        }
+        else {
+            sns_param.measure_type = AdapsMeasurementTypeNormal;
+        }
+
         v4l2->mode_switch(sns_param);
         v4l2->Get_frame_size_4_curr_wkmode(&sns_param.raw_width, &sns_param.raw_height, &sns_param.out_frm_width, &sns_param.out_frm_height);
-        if (NULL != adaps_dtof) adaps_dtof->mode_switch(sns_param, v4l2);
+        if (NULL != adaps_dtof)
+        {
+            adaps_dtof->mode_switch(sns_param, v4l2);
+        }
     }
 
 }

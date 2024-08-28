@@ -5,40 +5,44 @@
 #include "rk-camera-module.h"
 #include <QString>
 
-#define VERSION_MAJOR                       1
-#define VERSION_MINOR                       0
-#define VERSION_REVISION                    0
-#define LAST_MODIFIED_TIME                  "20240507a"
+#define VERSION_MAJOR                           1
+#define VERSION_MINOR                           0
+#define VERSION_REVISION                        0
+#define LAST_MODIFIED_TIME                      "20240828a"
 
-#define ENTITY_NAME_4_DTOF_SENSOR           "m00_b_ads6401 7-005e"
-#define DEFAULT_DTOF_FRAMERATE              AdapsFramerateType30FPS // AdapsFramerateType60FPS
+#define ENTITY_NAME_4_DTOF_SENSOR               "m00_b_ads6401 7-005e"
+#define DEFAULT_DTOF_FRAMERATE                  AdapsFramerateType30FPS // AdapsFramerateType60FPS
 
-#define DEPTH_LIB_CONFIG_PATH       "/vendor/etc/camera/adapsdepthsettings.xml"
-#define DATA_SAVE_PATH              "/tmp/" // "/sdcard/"
-#define DEFAULT_SAVE_FRAME_CNT      1
-#define RTCTIME_DISPLAY_FMT         "hh:mm:ss"  // "yyyy/MM/dd hh:mm:ss"
-#define FRAME_INTERVAL              1   // unit is ms
+#define DEPTH_LIB_CONFIG_PATH                   "/vendor/etc/camera/adapsdepthsettings.xml"
+#define DATA_SAVE_PATH                          "/tmp/" // "/sdcard/"
+#define DEFAULT_SAVE_FRAME_CNT                  1
+#define RTCTIME_DISPLAY_FMT                     "hh:mm:ss"  // "yyyy/MM/dd hh:mm:ss"
+#define FRAME_INTERVAL                          1   // unit is ms
 
 // query the video node by the command 'v4l2-ctl --list-devices' or 'media-ctl -p -d /dev/media0'
 
-#define MEDIA_DEVNAME_4_DTOF_SENSOR "/dev/media2"
-#define VIDEO_DEV_4_DTOF_SENSOR     "/dev/video22"
-#define PIXELFORMAT_4_DTOF_SENSOR   V4L2_PIX_FMT_SBGGR8
+#define MEDIA_DEVNAME_4_DTOF_SENSOR             "/dev/media2"
+#define VIDEO_DEV_4_DTOF_SENSOR                 "/dev/video22"
+#define PIXELFORMAT_4_DTOF_SENSOR               V4L2_PIX_FMT_SBGGR8
 
-#define MEDIA_DEVNAME_4_RGB_SENSOR  "/dev/media0"
-#define VIDEO_DEV_4_RGB_SENSOR      "/dev/video0"
-#define VIDEO_DEV_4_RGB_RK35XX      "/dev/video55"
+#define MEDIA_DEVNAME_4_RGB_SENSOR              "/dev/media0"
+#define VIDEO_DEV_4_RGB_SENSOR                  "/dev/video0"
+#define VIDEO_DEV_4_RGB_RK35XX                  "/dev/video55"
+
+#define RUN_ON_RK3588
+#define DEFAULT_TIMER_TEST_TIMES                0
+#define TIMER_TEST_INTERVAL                     5   // unit is second
 
 #if defined(RUN_ON_RK3588)
-#define WKMODE_4_RGB_SENSOR         WK_RGB_NV12    // On DELL notebook, it is WK_MODE_YUYV, on Apple notebookm it is WK_MODE_NV12?
+#define WKMODE_4_RGB_SENSOR                     WK_RGB_NV12    // On DELL notebook, it is WK_MODE_YUYV, on Apple notebook it is WK_MODE_NV12?
 
-#define DEFAULT_SENSOR_TYPE         SENSOR_TYPE_DTOF
-#define DEFAULT_WORK_MODE           WK_DTOF_FHR
+#define DEFAULT_SENSOR_TYPE                     SENSOR_TYPE_DTOF
+#define DEFAULT_WORK_MODE                       WK_DTOF_FHR
 #else
-#define WKMODE_4_RGB_SENSOR         WK_RGB_YUYV    // On DELL notebook, it is WK_MODE_YUYV, on Apple notebookm it is WK_MODE_NV12?
+#define WKMODE_4_RGB_SENSOR                     WK_RGB_YUYV    // On DELL notebook, it is WK_MODE_YUYV, on Apple notebook it is WK_MODE_NV12?
 
-#define DEFAULT_SENSOR_TYPE         SENSOR_TYPE_RGB
-#define DEFAULT_WORK_MODE           WKMODE_4_RGB_SENSOR
+#define DEFAULT_SENSOR_TYPE                     SENSOR_TYPE_RGB
+#define DEFAULT_WORK_MODE                       WKMODE_4_RGB_SENSOR
 #endif
 
 #define DEBUG_PRO

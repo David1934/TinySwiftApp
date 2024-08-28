@@ -28,13 +28,17 @@ private slots:
     void on_PHRButton_clicked();
     void on_PCMButton_clicked();
     void on_FHRButton_clicked();
-    void on_skipFrameProcessCheckbox_StateChanged(bool checked);
+    void simulateButtonClick();
+    void on_skipFrameProcessCheckbox_stateChanged(bool checked);
     void onThreadEnd(int stop_request_code);
 
 private:
     Ui::MainWindow *ui;
     int         width;
     int         height;
+    int         tested_times;
+    int         to_test_times;
+    QTimer      *test_timer;
 
     char* qstringToChar(QString srcString);
     MajorImageProcessingThread *imageprocessthread;

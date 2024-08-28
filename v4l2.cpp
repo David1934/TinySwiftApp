@@ -417,6 +417,10 @@ int V4L2::adaps_readEEPROMData(void)
             delete utils;
             p_swift_eeprom_data = (swift_eeprom_data_t *)p_eeprominfo->pRawData;
             saved_crc32 = p_swift_eeprom_data->totalChecksum;
+            if (Utils::is_env_var_true(ENV_VAR_SAVE_EEPROM_ENABLE))
+            {
+                save_eeprom(p_eeprominfo->pRawData, sizeof(swift_eeprom_data_t));
+            }
             if (calc_crc32 == saved_crc32)
             {
                 DBG_INFO("EEPROM crc32 matched!!! sizeof(swift_eeprom_data_t)=%ld, length before totalChecksum:%ld,calc_crc32:0x%x,saved_crc32:0x%x",
@@ -424,10 +428,6 @@ int V4L2::adaps_readEEPROMData(void)
                         AD4001_EEPROM_TOTAL_CHECKSUM_OFFSET - AD4001_EEPROM_VERSION_INFO_OFFSET,
                         calc_crc32,
                         saved_crc32);
-                if (Utils::is_env_var_true(ENV_VAR_SAVE_EEPROM_ENABLE))
-                {
-                    save_eeprom(p_eeprominfo->pRawData, sizeof(swift_eeprom_data_t));
-                }
             }
             else {
                 DBG_ERROR("EEPROM crc32 mismatched!!! eeprominfo->pRawData: %p, sizeof(swift_eeprom_data_t)=%ld, length before totalChecksum:%ld,calc_crc32:0x%x,saved_crc32:0x%x",
@@ -790,7 +790,7 @@ void V4L2::Close(void)
             p_eeprominfo = NULL;
         }
         if (-1 == close(fd_4_dtof)) {
-            DBG_ERROR("Fail to close device, errno: %s (%d)...", 
+            DBG_ERROR("Fail to close device %d (%s), errno: %s (%d)...", fd_4_dtof, sd_devnode_4_dtof,
                 strerror(errno), errno);
             return;
         }

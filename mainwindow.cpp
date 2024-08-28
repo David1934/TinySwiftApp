@@ -1,6 +1,7 @@
 #include <QLCDNumber>
 #include <QTimer>
 #include <QTime>
+#include <globalapplication.h>
 
 #include "common.h"
 #include "mainwindow.h"
@@ -15,6 +16,7 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     int ret = 0;
     char AppNameVersion[64];
+    char auto_test_times_string[32];
 
     ui->setupUi(this);
     sprintf(AppNameVersion, "%s %s", APP_NAME, APP_VERSION);
@@ -35,7 +37,7 @@ MainWindow::MainWindow(QWidget *parent) :
             this, SLOT(new_frame_display(QImage)));
     connect(imageprocessthread, SIGNAL(update_runtime_display(int, unsigned long)),
             this, SLOT(update_streaming_info(int, unsigned long)));
-    connect(ui->skipFrameProcessCheckbox, &QCheckBox::stateChanged, this, &MainWindow::on_skipFrameProcessCheckbox_StateChanged);
+    connect(ui->skipFrameProcessCheckbox, &QCheckBox::stateChanged, this, &MainWindow::on_skipFrameProcessCheckbox_stateChanged);
     connect(imageprocessthread, SIGNAL(threadEnd(int)), this, SLOT(onThreadEnd(int)));
 
     ret = imageprocessthread->init(0);
@@ -44,7 +46,24 @@ MainWindow::MainWindow(QWidget *parent) :
         DBG_ERROR("Fail to imageprocessthread init()...");
         return;
     }
+
+    tested_times = 0;
+    to_test_times = qApp->get_timer_test_times();
+    if (to_test_times > 0)
+    {
+        test_timer = new QTimer(this);
+        connect(test_timer, &QTimer::timeout, this, &MainWindow::simulateButtonClick);
+    }
+
+    sprintf(auto_test_times_string, "%d/%d", tested_times, to_test_times);
+    ui->AutoTestTimes_value->setText(auto_test_times_string);
+
     imageprocessthread->start();
+
+    if (to_test_times > 0)
+    {
+        test_timer->start(1000 * TIMER_TEST_INTERVAL);
+    }
 }
 
 MainWindow::~MainWindow()
@@ -209,7 +228,33 @@ void MainWindow::on_FHRButton_clicked()
     }
 }
 
-void MainWindow::on_skipFrameProcessCheckbox_StateChanged(bool checked)
+void MainWindow::simulateButtonClick()
+{
+    char auto_test_times_string[32];
+
+    if (tested_times >= to_test_times)
+    {
+        DBG_NOTICE("\n------Timer test done------test times: %d/%d---\n",
+            tested_times, to_test_times);
+        test_timer->stop();
+        return;
+    }
+
+    DBG_NOTICE("\n------Timer testing------test times: %d/%d, isRunning: %d---\n", tested_times, to_test_times, imageprocessthread->isRunning());
+    if(imageprocessthread->isRunning())
+    {
+        tested_times++;
+        sprintf(auto_test_times_string, "%d/%d", tested_times, to_test_times);
+        ui->AutoTestTimes_value->setText(auto_test_times_string);
+        
+        on_stopButton_clicked();
+    }
+    else {
+        on_FHRButton_clicked();
+    }
+}
+
+void MainWindow::on_skipFrameProcessCheckbox_stateChanged(bool checked)
 {
 #if 1
     imageprocessthread->set_skip_frame_process(checked);

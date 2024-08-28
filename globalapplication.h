@@ -19,12 +19,14 @@ public:
     sensor_workmode get_wk_mode();
     sensortype get_sensor_type();
     int get_save_cnt();
+    int get_timer_test_times();
 
 private:
 
     sensortype      selected_sensor_type;
     sensor_workmode selected_wk_mode;
     int             save_frame_cnt;
+    int             timer_test_times;
 
     sensortype string_2_sensortype(QString& str);
     sensor_workmode string_2_workmode(QString& str);
