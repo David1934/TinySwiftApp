@@ -15,12 +15,24 @@ MainWindow::MainWindow(QWidget *parent) :
     ui(new Ui::MainWindow)
 {
     int ret = 0;
-    char AppNameVersion[64];
+    char AppNameVersion[128];
     char auto_test_times_string[32];
 
     ui->setupUi(this);
-    sprintf(AppNameVersion, "%s %s", APP_NAME, APP_VERSION);
+    sprintf(AppNameVersion, "%s %s for swift %s module by QT %s @ %s,%s",
+        APP_NAME,
+        APP_VERSION,
+#if defined(CONFIG_ADAPS_SWIFT_FLOOD)
+        "Flood",
+#else
+        "Spot",
+#endif
+        QT_VERSION_STR,
+        __DATE__, __TIME__);
     this->setWindowTitle(AppNameVersion);
+    DBG_NOTICE("AppVersion: %s\n", AppNameVersion);
+    //DBG_NOTICE("QT_VERSION_STR: %s, qVersion(): %s...", QT_VERSION_STR, qVersion());
+    // NOTICE: <mainwindow.cpp-MainWindow() 26> QT_VERSION_STR: 5.15.8, qVersion(): 5.15.2...
 
     // 设置QLCDNumber的显示属性
     ui->lcdNumber->setDigitCount(8); // 显示格式为HH:MM:SS
@@ -30,9 +42,14 @@ MainWindow::MainWindow(QWidget *parent) :
     QTimer *timer = new QTimer(this);
     connect(timer, &QTimer::timeout, this, &MainWindow::updateTime);
     timer->start(1000); // 设置定时器每1000毫秒触发一次
-    imageprocessthread = new MajorImageProcessingThread;
 
     connect(ui->quitButton, SIGNAL(clicked()), this, SLOT(clickQuitButton()));
+
+    if (true == qApp->get_qt_ui_test())
+        return ;
+
+    imageprocessthread = new MajorImageProcessingThread;
+
     connect(imageprocessthread, SIGNAL(newFrameReady4Display(QImage)),
             this, SLOT(new_frame_display(QImage)));
     connect(imageprocessthread, SIGNAL(update_runtime_display(int, unsigned long)),
@@ -44,6 +61,7 @@ MainWindow::MainWindow(QWidget *parent) :
     if (ret < 0)
     {
         DBG_ERROR("Fail to imageprocessthread init()...");
+        ui->mainlabel->setText("Fail to imageprocessthread init()...");
         return;
     }
 
@@ -104,6 +122,9 @@ void MainWindow::onThreadEnd(int stop_request_code)
             break;
 
         case STOP_REQUEST_STOP:
+            //ui->mainlabel->setText("Device is stopped");
+        break;
+
         default:
             ui->mainlabel->setText("Device is ready");
             break;
@@ -120,7 +141,14 @@ void MainWindow::updateTime()
 
 void MainWindow::clickQuitButton(void)
 {
-    imageprocessthread->stop(STOP_REQUEST_QUIT);
+    if (true == qApp->get_qt_ui_test())
+    {
+        //this->close();
+        qApp->exit(0);
+    }
+    else {
+        imageprocessthread->stop(STOP_REQUEST_QUIT);
+    }
 }
 
 /* QString 转 char* */
@@ -157,7 +185,7 @@ bool MainWindow::new_frame_display(QImage image)
     ui->mainlabel->clear();
     if(image.isNull())
     {
-        ui->mainlabel->setText("画面丢失！");
+        ui->mainlabel->setText("NO IMAGE TO BE DISPLAYED!");
     }
     else
     {

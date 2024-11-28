@@ -62,7 +62,7 @@ public:
 
     void nv12_2_rgb(unsigned char *nv12, unsigned char *rgb, int width, int height);
     void yuyv_2_rgb(unsigned char *yuyv, unsigned char *rgb, int width, int height);
-    int Initilize(void);
+    int V4l2_initilize(void);
     int Start_streaming(void);
     int Capture_frame();
     void mode_switch(struct sensor_params params);
@@ -71,6 +71,7 @@ public:
     void Get_frame_size_4_curr_wkmode(int *in_width, int *in_height, int *out_width, int *out_height);
     int adaps_readTemperatureOfDtofSubdev(float *temperature);
     void* adaps_getEEPROMData(void);
+    void* adaps_getExposureParam(void);
 
 private:
     enum frame_data_type frm_type;
@@ -100,7 +101,9 @@ private:
     struct adaps_get_eeprom *p_eeprominfo;
 
     int init();
+    int adaps_readExposureParam(void);
     int adaps_readEEPROMData(void);
+    int adaps_chkEEPROMChecksum(void);
     bool save_eeprom(void *buf, int len);
     int adaps_setParam4DtofSubdev(void);
     bool alloc_buffers(void);
@@ -110,7 +113,7 @@ private:
     int Set_param_4_sensor_sub_device(int raw_w_4_curr_wkmode, int raw_h_4_curr_wkmode);
 
 signals:
-    void new_frame_process(unsigned int frm_sequence, void *frm_buf, int frm_len, struct timeval frm_timestamp, enum frame_data_type ftype);
+    void new_frame_process(unsigned int frm_sequence, void *frm_buf, int frm_len, struct timeval frm_timestamp, enum frame_data_type ftype, int total_bytes_per_line);
     void update_info(int fps, unsigned long streamed_time);
 };
 

@@ -132,7 +132,7 @@ int V4L2::init()
     sensordata[WK_RGB_NV12] = {
         NULL,
         MEDIA_DEVNAME_4_RGB_SENSOR,
-        VIDEO_DEV_4_RGB_RK35XX,
+        VIDEO_DEV_4_RGB_RK3588,
         640,
         480,
         640,
@@ -209,7 +209,7 @@ int V4L2::get_subdev_node_4_sensor()
     {
         DBG_ERROR("Fail to open media device %s, errno: %s (%d)...", 
             media_dev, strerror(errno), errno);
-        return ret;
+        return 0 - __LINE__;
     }
 
     DBG_INFO("searching sensor %s...",sensor_sd_name);
@@ -387,10 +387,189 @@ bool V4L2::save_eeprom(void *buf, int len)
     return true;
 }
 
+void* V4L2::adaps_getExposureParam(void)
+{
+    return &snr_param.exposureParam;
+}
+
+int V4L2::adaps_readExposureParam(void)
+{
+    int ret = 0;
+    struct adaps_get_exposure_param param;
+    memset(&param, 0, sizeof(param));
+
+    if (SENSOR_TYPE_DTOF == snr_param.sensor_type)
+    {
+        if (-1 == ioctl(fd_4_dtof, ADAPS_GET_EXPOSURE_PARAM, &param)) {
+            DBG_ERROR("Fail to get exposure param from dtof sub device, errno: %s (%d)...", 
+                   strerror(errno), errno);
+            ret = -1;
+        }else
+        {     
+            snr_param.exposureParam.laser_exposure_period = param.laser_exposure_period;
+            snr_param.exposureParam.fine_exposure_time = param.fine_exposure_time;
+        }
+    }
+
+    return ret;
+}
+
 void* V4L2::adaps_getEEPROMData(void)
 {
     return p_eeprominfo;
 }
+
+#if (ADS6401_MODDULE_SPOT == SWIFT_MODULE_TYPE)
+int V4L2::adaps_chkEEPROMChecksum(void)
+{
+    int ret = 0;
+
+    uint32_t saved_crc32 = 0;
+    swift_eeprom_data_t *p_swift_eeprom_data;
+    p_swift_eeprom_data = (swift_eeprom_data_t *)p_eeprominfo->pRawData;
+    if (Utils::is_env_var_true(ENV_VAR_SAVE_EEPROM_ENABLE))
+    {
+        save_eeprom(p_eeprominfo->pRawData, sizeof(swift_eeprom_data_t));
+    }
+
+    Utils *utils = new Utils();
+    uint32_t calc_crc32 = utils->crc32(0, (const unsigned char *)p_eeprominfo->pRawData, AD4001_EEPROM_TOTAL_CHECKSUM_OFFSET - AD4001_EEPROM_VERSION_INFO_OFFSET);
+    delete utils;
+    saved_crc32 = p_swift_eeprom_data->totalChecksum;
+    if (calc_crc32 == saved_crc32)
+    {
+        DBG_INFO("EEPROM crc32 matched!!! sizeof(swift_eeprom_data_t)=%ld, length before totalChecksum:%ld,calc_crc32:0x%x,saved_crc32:0x%x",
+                sizeof(swift_eeprom_data_t),
+                AD4001_EEPROM_TOTAL_CHECKSUM_OFFSET - AD4001_EEPROM_VERSION_INFO_OFFSET,
+                calc_crc32,
+                saved_crc32);
+    }
+    else {
+        DBG_ERROR("EEPROM crc32 mismatched!!! eeprominfo->pRawData: %p, sizeof(swift_eeprom_data_t)=%ld, length before totalChecksum:%ld,calc_crc32:0x%x,saved_crc32:0x%x",
+                p_eeprominfo->pRawData,
+                sizeof(swift_eeprom_data_t),
+                AD4001_EEPROM_TOTAL_CHECKSUM_OFFSET - AD4001_EEPROM_VERSION_INFO_OFFSET,
+                calc_crc32,
+                saved_crc32);
+        ret = -1;
+    }
+
+    return ret;
+}
+
+#else
+
+int V4L2::adaps_chkEEPROMChecksum(void)
+{
+    int i = 0,ret=0;
+
+    uint32_t read_crc32 = 0;
+    uint32_t calc_crc32 = 0;
+    swift_eeprom_data_t *p_swift_eeprom_data;
+    p_swift_eeprom_data = (swift_eeprom_data_t *)p_eeprominfo->pRawData;
+    if (Utils::is_env_var_true(ENV_VAR_SAVE_EEPROM_ENABLE))
+    {
+        save_eeprom(p_eeprominfo->pRawData, sizeof(swift_eeprom_data_t));
+    }
+
+    Utils *utils = new Utils();
+
+    //do page 0 crc
+    calc_crc32 = utils->crc32(0, (const unsigned char *) p_eeprominfo->pRawData, AD4001_EEPROM_VERSION_INFO_SIZE + AD4001_EEPROM_SN_INFO_SIZE);
+    if(p_swift_eeprom_data->Crc32Pg0 == calc_crc32)
+    {
+        DBG_INFO("EEPROM Crc32Pg0 matched!!! sizeof(swift_eeprom_data_t)=%ld, calc_crc32:0x%x",
+                sizeof(swift_eeprom_data_t),
+                calc_crc32);
+        //hex_data_dump((const u8 *) sensor->eeprom_data, 64, "eeprom data head");
+    }
+    else {
+        DBG_ERROR("EEPROM Crc32Pg0 mismatched!!! sizeof(swift_eeprom_data_t)=%ld, calc_crc32:0x%x,read Crc32Pg0:0x%x",
+                sizeof(swift_eeprom_data_t),
+                calc_crc32,
+                p_swift_eeprom_data->Crc32Pg0);
+        //hex_data_dump((const u8 *) sensor->eeprom_data, 64, "eeprom data head");
+        ret = -1;
+        goto check_exit;
+    }
+
+    //do page 1 crc
+    calc_crc32 = utils->crc32(0, (const unsigned char *) p_eeprominfo->pRawData + AD4001_EEPROM_MODULE_INFO_OFFSET, AD4001_EEPROM_MODULE_INFO_SIZE);
+
+    if(p_swift_eeprom_data->Crc32Pg1 == calc_crc32)
+    {
+        DBG_INFO("EEPROM Crc32Pg1 matched!!! sizeof(swift_eeprom_data_t)=%ld, calc_crc32:0x%x",
+                sizeof(swift_eeprom_data_t),
+                calc_crc32);
+        //hex_data_dump((const u8 *) sensor->eeprom_data, 64, "eeprom data head");
+    }
+    else {
+        DBG_ERROR("EEPROM Crc32Pg1 mismatched!!! sizeof(swift_eeprom_data_t)=%ld, calc_crc32:0x%x,read Crc32Pg1:0x%x",
+                sizeof(swift_eeprom_data_t),
+                calc_crc32,
+                p_swift_eeprom_data->Crc32Pg1);
+        ret = -1;
+        goto check_exit;
+    }
+
+    //do page 2 crc
+    calc_crc32 = utils->crc32(0, (const unsigned char *) p_eeprominfo->pRawData + AD4001_EEPROM_TDCDELAY_OFFSET, AD4001_EEPROM_TDCDELAY_SIZE+AD4001_EEPROM_INTRINSIC_SIZE+AD4001_EEPROM_INDOOR_CALIBTEMPERATURE_SIZE+AD4001_EEPROM_OUTDOOR_CALIBTEMPERATURE_SIZE+AD4001_EEPROM_INDOOR_CALIBREFDISTANCE_SIZE+AD4001_EEPROM_OUTDOOR_CALIBREFDISTANCE_SIZE);
+    if(p_swift_eeprom_data->Crc32Pg2 == calc_crc32)
+    {
+        DBG_INFO("EEPROM Crc32Pg2 matched!!! sizeof(swift_eeprom_data_t)=%ld, calc_crc32:0x%x",
+                sizeof(swift_eeprom_data_t),
+                calc_crc32);
+        //hex_data_dump((const u8 *) sensor->eeprom_data, 64, "eeprom data head");
+    }
+    else {
+        DBG_ERROR("EEPROM Crc32Pg2 mismatched!!! sizeof(swift_eeprom_data_t)=%ld, calc_crc32:0x%x,read Crc32Pg2:0x%x",
+                sizeof(swift_eeprom_data_t),
+                calc_crc32,
+                p_swift_eeprom_data->Crc32Pg2);
+        ret = -1;
+        goto check_exit;
+    }
+
+    //do sram data crc
+    for ( i = 0; i < TOF_SRAM_ZONE_NUM; ++i)
+    {
+        calc_crc32 = utils->crc32(0, (const unsigned char *) p_eeprominfo->pRawData + i*SRAM_ZONE_OCUPPY_SPACE, SRAM_ZONE_VALID_DATA_LENGTH);
+        read_crc32 = *(uint32_t*)(p_eeprominfo->pRawData + i*SRAM_ZONE_OCUPPY_SPACE + SRAM_ZONE_VALID_DATA_LENGTH);
+        if (calc_crc32 != read_crc32)
+        {
+            DBG_ERROR("SRAM %d CRC checksum mismatched, calc_crc32=0x%x   read_crc32=0x%x\n", i, calc_crc32, read_crc32);
+            ret = -1;
+            goto check_exit;
+        }
+        else
+        {
+            DBG_INFO("SRAM %d CRC checksum matched!!! sizeof(swift_eeprom_data_t)=%ld, calc_crc32:0x%x",
+                i,
+                sizeof(swift_eeprom_data_t),
+                calc_crc32);
+        }
+        //reset the crc in the eeprom to 0,because the algo will use these data
+        *(uint32_t*)(p_eeprominfo->pRawData + i*SRAM_ZONE_OCUPPY_SPACE + SRAM_ZONE_VALID_DATA_LENGTH)=0;
+    }
+
+    //do offset crc 
+    for ( i = 0; i < 8; ++i)
+    {
+        calc_crc32 = utils->crc32(0, (unsigned char*)(p_swift_eeprom_data->spotOffset)+i*OFFSET_VALID_DATA_LENGTH, OFFSET_VALID_DATA_LENGTH);
+        if (calc_crc32 != p_swift_eeprom_data->Crc32Offset[i])
+        {
+            DBG_ERROR("offset CRC checksum failed, calc_crc32=0x%x   sensor->eeprom_data->Crc32Offset[i]=0x%x.  i=%d\n", calc_crc32,p_swift_eeprom_data->Crc32Offset[i],i);
+            ret = -1;
+            goto check_exit;
+        }
+    }
+
+check_exit:
+    delete utils;
+
+    return ret;
+}
+#endif
 
 int V4L2::adaps_readEEPROMData(void)
 {
@@ -400,8 +579,8 @@ int V4L2::adaps_readEEPROMData(void)
     {
         p_eeprominfo = (struct adaps_get_eeprom *)malloc(sizeof(struct adaps_get_eeprom));
         if (-1 == ioctl(fd_4_dtof, ADAPS_GET_EEPROM, p_eeprominfo)) {
-            DBG_ERROR("Fail to read eeprom of dtof sub device, errno: %s (%d)...", 
-                   strerror(errno), errno);
+            DBG_ERROR("Fail to read eeprom of dtof sub device(%d, %s), errno: %s (%d), ADAPS_GET_EEPROM:0x%lx, sizeof(struct adaps_get_eeprom):%ld, sizeof(swift_eeprom_data_t): %ld...", fd_4_dtof, sd_devnode_4_dtof,
+                   strerror(errno), errno, ADAPS_GET_EEPROM, sizeof(struct adaps_get_eeprom), sizeof(swift_eeprom_data_t));
             ret = -1;
             if (NULL != p_eeprominfo)
             {
@@ -410,32 +589,10 @@ int V4L2::adaps_readEEPROMData(void)
             }
         }else
         {
-            uint32_t saved_crc32  = 0;
-            swift_eeprom_data_t *p_swift_eeprom_data;
-            Utils *utils = new Utils();
-            uint32_t calc_crc32 = utils->crc32(0, (const unsigned char *)p_eeprominfo->pRawData, AD4001_EEPROM_TOTAL_CHECKSUM_OFFSET - AD4001_EEPROM_VERSION_INFO_OFFSET);
-            delete utils;
-            p_swift_eeprom_data = (swift_eeprom_data_t *)p_eeprominfo->pRawData;
-            saved_crc32 = p_swift_eeprom_data->totalChecksum;
-            if (Utils::is_env_var_true(ENV_VAR_SAVE_EEPROM_ENABLE))
+            if (false == Utils::is_env_var_true(ENV_VAR_SKIP_EEPROM_CRC_CHK))
             {
-                save_eeprom(p_eeprominfo->pRawData, sizeof(swift_eeprom_data_t));
-            }
-            if (calc_crc32 == saved_crc32)
-            {
-                DBG_INFO("EEPROM crc32 matched!!! sizeof(swift_eeprom_data_t)=%ld, length before totalChecksum:%ld,calc_crc32:0x%x,saved_crc32:0x%x",
-                        sizeof(swift_eeprom_data_t),
-                        AD4001_EEPROM_TOTAL_CHECKSUM_OFFSET - AD4001_EEPROM_VERSION_INFO_OFFSET,
-                        calc_crc32,
-                        saved_crc32);
-            }
-            else {
-                DBG_ERROR("EEPROM crc32 mismatched!!! eeprominfo->pRawData: %p, sizeof(swift_eeprom_data_t)=%ld, length before totalChecksum:%ld,calc_crc32:0x%x,saved_crc32:0x%x",
-                        p_eeprominfo->pRawData,
-                        sizeof(swift_eeprom_data_t),
-                        AD4001_EEPROM_TOTAL_CHECKSUM_OFFSET - AD4001_EEPROM_VERSION_INFO_OFFSET,
-                        calc_crc32,
-                        saved_crc32);
+                ret = adaps_chkEEPROMChecksum();
+                ret = 0; // skip eeprom crc mismatch now, since there are some modules whose crc is mismatched.
             }
         }
     }
@@ -494,7 +651,7 @@ int V4L2::adaps_readTemperatureOfDtofSubdev(float *temperature)
     return ret;
 }
 
-int V4L2::Initilize(void)
+int V4L2::V4l2_initilize(void)
 {
     int ret = 0;
     struct v4l2_capability	cap;
@@ -508,14 +665,14 @@ int V4L2::Initilize(void)
         if (ret < 0)
         {
             DBG_ERROR("Fail to get subdev node for dtof sensor...");
-            return 0 - errno;
+            return 0 - __LINE__;
         }
 
         if ((fd_4_dtof = open(sd_devnode_4_dtof, O_RDWR)) == -1)
         {
             DBG_ERROR("Fail to open device %s , errno: %s (%d)...", 
                 sd_devnode_4_dtof, strerror(errno), errno);
-            return 0 - errno;
+            return 0 - __LINE__;
         }
     }
 
@@ -523,14 +680,14 @@ int V4L2::Initilize(void)
     {
         DBG_ERROR("Fail to open device %s , errno: %s (%d)...", 
             video_dev, strerror(errno), errno);
-        return 0 - errno;
+        return 0 - __LINE__;
     }
 
     if (ioctl(fd, VIDIOC_QUERYCAP, &cap) == -1)
     {
         DBG_ERROR("Fail to query device capabilities, errno: %s (%d)...", 
             strerror(errno), errno);
-        return 0 - errno;
+        return 0 - __LINE__;
     }
     else
     {
@@ -594,6 +751,23 @@ int V4L2::Initilize(void)
     }
 #endif
 
+    // when config swift work mode, need TDC delay min/max need to know which environment, which measurement is used, so I move this the following lines before set sensor fmt;
+    if (SENSOR_TYPE_DTOF == snr_param.sensor_type)
+    {
+        if (0 > adaps_readEEPROMData())
+        {
+#if !defined(IGNORE_REAL_COMMUNICATION)
+            return 0 - __LINE__;
+#endif
+        }
+
+        if (0 > adaps_setParam4DtofSubdev())
+        {
+            return 0 - __LINE__;
+        }
+    }
+
+#if !defined(VIDIOC_S_FMT_INCLUDE_VIDIOC_SUBDEV_S_FMT)
     if (0 != fd_4_dtof)
     {
         ret = Set_param_4_sensor_sub_device(snr_param.raw_width, snr_param.raw_height);
@@ -603,6 +777,7 @@ int V4L2::Initilize(void)
             return ret;
         }
     }
+#endif
 
     DBG_INFO("VIDIOC_S_FMT %d X %d, pixel_format: 0x%x, raw_width:%d, raw_height:%d...\n",
     snr_param.raw_width, snr_param.raw_height, pixel_format, snr_param.raw_width, snr_param.raw_height);
@@ -617,14 +792,14 @@ int V4L2::Initilize(void)
     if (ioctl(fd, VIDIOC_S_FMT, &fmt) == -1) {
         DBG_ERROR("Fail to set format for dev: %s (%d), errno: %s (%d)...", video_dev, fd,
             strerror(errno), errno);
-        return 0 - errno;
+        return 0 - __LINE__;
     }
 
     if (ioctl(fd, VIDIOC_G_FMT, &fmt) == -1) //重新读取 结构体，以确认完成设置
     {
         DBG_ERROR("Fail to get format , errno: %s (%d)...", 
             strerror(errno), errno);
-        return 0 - errno;
+        return 0 - __LINE__;
     }
     else {
         DBG_INFO("fmt.type:\t%d", fmt.type);
@@ -653,25 +828,21 @@ int V4L2::Initilize(void)
     }
 #endif
 
+    if (SENSOR_TYPE_DTOF == snr_param.sensor_type)
+    {
+        if (0 > adaps_readExposureParam())
+        {
+            return 0 - __LINE__;
+        }
+    }
+
     if (false == alloc_buffers())
     {
         return 0 - __LINE__;
     }
 
-    if (SENSOR_TYPE_DTOF == snr_param.sensor_type)
-    {
-        if (0 > adaps_readEEPROMData())
-        {
-            return 0 - __LINE__;
-        }
-
-        if (0 > adaps_setParam4DtofSubdev())
-        {
-            return 0 - __LINE__;
-        }
-    }
-
     DBG_INFO("init dev %s [OK]", video_dev);
+
     return 0;
 }
 
@@ -685,8 +856,9 @@ int V4L2::Start_streaming(void)
     {
         DBG_ERROR("Fail to stream_on, errno: %s (%d)...", 
             strerror(errno), errno);
-        return 0 - errno;
+        return 0 - __LINE__;
     }
+    DBG_INFO("Start to streaming for dev %s", video_dev);
 
     return 0;
 }
@@ -713,7 +885,7 @@ int V4L2::Capture_frame()
     if (0 == fd || ioctl(fd, VIDIOC_DQBUF, &v4l2_buf) == -1) {
         DBG_ERROR("Fail to dequeue buffer, fd: %d errno: %s (%d)...", fd,
             strerror(errno), errno);
-        return 0 - errno;
+        return 0 - __LINE__;
     }
 
     if (v4l2_buf.flags & V4L2_BUF_FLAG_ERROR) {
@@ -732,6 +904,7 @@ int V4L2::Capture_frame()
 
     gettimeofday(&tv,NULL);
     rxFrameCnt++;
+    DBG_INFO("Rx %ld frames for dev %s", rxFrameCnt, video_dev);
     if (0 == firstFrameTimeUsec)
     {
         firstFrameTimeUsec = tv.tv_sec*1000000 + tv.tv_usec;
@@ -748,13 +921,13 @@ int V4L2::Capture_frame()
 
     emit update_info(fps, streamed_timeUs);
 
-    emit new_frame_process(v4l2_buf.sequence, buffers[v4l2_buf.index].start, bytesused, v4l2_buf.timestamp, frm_type);
+    emit new_frame_process(v4l2_buf.sequence, buffers[v4l2_buf.index].start, bytesused, v4l2_buf.timestamp, frm_type, total_bytes_per_line);
 
 error_exit:
     if (0 == fd || -1 == ioctl(fd, VIDIOC_QBUF, &v4l2_buf)) {
         DBG_ERROR("Fail to queue buffer, errno: %s (%d)...", 
             strerror(errno), errno);
-        return 0 - errno;
+        return 0 - __LINE__;
     }
 
     return 0;

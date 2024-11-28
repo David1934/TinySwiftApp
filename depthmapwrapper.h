@@ -3,54 +3,26 @@
 
 
 
+// ***** start to move some definition to here to let SpadisQT build pass ****
+#include "adaps_types.h"
 
-enum class WorkMode {
-    PARTIAL_HISTOGRAM,
-    PHOTON_COUNTING,
-    FULL_HISTOGRAM,
-    DEBUG_PARTIAL_HISTOGRAM,
-    DEBUG_FULL_HISTOGRAM,
-};
-
-typedef struct ADAPS_MIRROR_FRAME_SET
-{
-	uint8_t mirror_x;
-	uint8_t mirror_y;
-}AdapsMirrorFrameSet;
-
-#if 0 // they are defined in rk-camera-module.h already.
-typedef enum
-{
-    AdapsMeasurementTypeUninitilized,
-    AdapsMeasurementTypeNormal,
-    AdapsMeasurementTypeShort,
-    AdapsMeasurementTypeFull,
-} AdapsMeasurementType;
-
-typedef enum {
-    AdapsEnvTypeUninitilized,
-    AdapsEnvTypeIndoor,
-    AdapsEnvTypeOutdoor,
-} AdapsEnvironmentType;
+//==============================================================================
+// MACROS
+//==============================================================================
+#ifdef _MSC_VER
+#define CP_DLL_PUBLIC __declspec(dllexport)
+#else
+#define CP_DLL_PUBLIC __attribute__ ((visibility ("default")))
 #endif
 
-//==============================================================================
-// DECLARATIONS
-//==============================================================================
 #define ADAPS_SPARSE_POINT_POSITION_DATA_SIZE 960
 #define AdapsAlgoLibVersionLength  32
 
 struct AdapsSparsePointPositionData
 {
-    uint32_t x_pos[ADAPS_SPARSE_POINT_POSITION_DATA_SIZE];
-    uint32_t y_pos[ADAPS_SPARSE_POINT_POSITION_DATA_SIZE];
-    uint32_t hist[ADAPS_SPARSE_POINT_POSITION_DATA_SIZE];
-};
-
-struct AdapsAdvisedType
-{
-    uint8_t AdvisedMeasurementType;
-    uint8_t AdvisedEnvironmentType;
+    UINT32 x_pos[ADAPS_SPARSE_POINT_POSITION_DATA_SIZE];
+    UINT32 y_pos[ADAPS_SPARSE_POINT_POSITION_DATA_SIZE];
+    UINT32 hist[ADAPS_SPARSE_POINT_POSITION_DATA_SIZE];
 };
 
 typedef struct pc_pack {
@@ -68,12 +40,14 @@ typedef enum {
     WRAPPER_CAM_FORMAT_DEPTH_X_Y,
     WRAPPER_CAM_FORMAT_MAX,
 } WrapperDepthFormat;
+
 typedef enum {
     DEPTH_OUT_NORMAL,       ///< No change
     DEPTH_OUT_MIRROR,       ///< Mirror(horizontal)
     DEPTH_OUT_FLIP,         ///< Flip(vertical)
     DEPTH_OUT_MIRROR_FLIP,  ///< Mirror/Flip(h/v)
 } RotateConfig;
+
 typedef struct {
     int32_t  bitsPerPixel;
     uint32_t strideBytes;
@@ -83,9 +57,9 @@ typedef struct {
 
 //begin: add by hzt 2021-12-6 for adaps control
 typedef struct {
-    uint32_t ulRoiIndex;
-    uint8_t* pucSramData;
-    uint32_t ulSramDataSize;
+    UINT32 ulRoiIndex;
+    UINT8* pucSramData;
+    UINT32 ulSramDataSize;
 } WrapperDepthSramSpodposDataInfo;
 
 typedef struct {
@@ -189,16 +163,22 @@ typedef struct {
     uint64_t* exposure_time;
     int32_t*  sensitivity;
 } WrapperDepthInitOutputParams;
+// ***** end to move some definition to here to let SpadisQT build pass ****
+
+
+
 
 // Class factories
 #ifdef __cplusplus
 extern "C" {
 #endif
+CP_DLL_PUBLIC
 int  DepthMapWrapperCreate(
     void** handler,
     WrapperDepthInitInputParams  inputParams,
     WrapperDepthInitOutputParams outputParams);
 
+CP_DLL_PUBLIC
 bool DepthMapWrapperProcessFrame(
     void* handler,
     WrapperDepthInput in_image,
@@ -206,8 +186,10 @@ bool DepthMapWrapperProcessFrame(
     uint32_t num_outputs,
     WrapperDepthOutput outputs[]);
 
+CP_DLL_PUBLIC
 void DepthMapWrapperDestroy(void * handler);
 
+CP_DLL_PUBLIC
 void DepthMapWrapperGetVersion(char* version);
 
 

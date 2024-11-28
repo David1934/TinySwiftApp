@@ -6,9 +6,27 @@
 #include <string.h>
 #include <sys/types.h>
 #include <stdint.h>
+#include <QDir>
+#include <QFile>
+#include <QByteArray>
+#include <iostream>
+#include "common.h"
 
 #define POLYNOMIAL 0xEDB88320
+#define REPLAY_DATA_FILE_PATH                   "/root"
+#define REPLAY_DATA_FILE_EXT_NAME               ".raw_depth"
 
+enum test_pattern
+{
+    ETP_00_TO_FF = 1,
+    ETP_FF_TO_00,
+    ETP_FULL_00,
+    ETP_FULL_55,
+    ETP_FULL_AA,
+    ETP_FULL_FF,
+    ETP_CNT
+};
+    
 class Utils
 {
 
@@ -16,6 +34,10 @@ public:
     Utils();
     ~Utils();
     uint32_t crc32(uint32_t initial, const unsigned char *buf, size_t len);
+    QByteArray loadNextFileToBuffer();
+    bool is_replay_data_exist();
+    void test_pattern_generate(unsigned char *write_buf, int len, int ptn_idx);
+    void hexdump(const unsigned char * buf, int buf_len, const char * title);
 
     static bool is_env_var_true(const char *var_name)
     {
@@ -45,8 +67,12 @@ public:
     }
 
 private:
+    QStringList fileList;
+    QString replay_file_path;
+    int currentIndex;
     uint32_t m_crc32_table[256];
     void generate_crc32_table();
+    void loadFiles(const QString &directoryPath, const QString &fileExtension);
 };
 
 #endif // UTILS_H

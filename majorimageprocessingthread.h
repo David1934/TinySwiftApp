@@ -6,6 +6,7 @@
 #include <QDebug>
 #include"v4l2.h"
 #include "adaps_dtof.h"
+#include"utils.h"
 
 class MajorImageProcessingThread : public QThread
 {
@@ -29,15 +30,16 @@ private:
     struct sensor_params sns_param;
 
     ADAPS_DTOF *adaps_dtof;
+    Utils *utils;
     V4L2 *v4l2;
     u16 *depth_buffer;
     unsigned char *rgb_buffer;
     int stop_req_code;
     bool save_frame(unsigned int frm_sequence, void *frm_buf, int buf_size, int frm_w, int frm_h, struct timeval frm_timestamp, enum frame_data_type);
-    void save_depth(void *frm_buf,unsigned int frm_sequence,int frm_len);
+    void save_depth_txt_file(void *frm_buf,unsigned int frm_sequence,int frm_len);
 
 private slots:
-    bool new_frame_handle(unsigned int frm_sequence, void *frm_buf, int buf_len, struct timeval frm_timestamp, enum frame_data_type);
+    bool new_frame_handle(unsigned int frm_sequence, void *frm_buf, int buf_len, struct timeval frm_timestamp, enum frame_data_type, int total_bytes_per_line);
     bool info_update(int fps, unsigned long streamed_time);
     void onThreadLoopExit();
 

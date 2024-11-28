@@ -2,42 +2,60 @@
 #define COMMON_H
 
 #include <QObject>
-#include "rk-camera-module.h"
 #include <QString>
 
-#define VERSION_MAJOR                           1
+#define CONFIG_VIDEO_ADS6401
+#define CONFIG_ADAPS_SWIFT_FLOOD
+#define PAGE_SIZE                               (4*1024)
+#define RUN_ON_ROCKCHIP
+#define RUN_ON_RK3568
+//#define IGNORE_REAL_COMMUNICATION
+
+#include "rk-camera-module.h"
+
+#define VERSION_MAJOR                           2
 #define VERSION_MINOR                           0
 #define VERSION_REVISION                        0
-#define LAST_MODIFIED_TIME                      "20240828a"
+#define LAST_MODIFIED_TIME                      "241220a"
 
-#define ENTITY_NAME_4_DTOF_SENSOR               "m00_b_ads6401 7-005e"
 #define DEFAULT_DTOF_FRAMERATE                  AdapsFramerateType30FPS // AdapsFramerateType60FPS
 
 #define DEPTH_LIB_CONFIG_PATH                   "/vendor/etc/camera/adapsdepthsettings.xml"
 #define DATA_SAVE_PATH                          "/tmp/" // "/sdcard/"
-#define DEFAULT_SAVE_FRAME_CNT                  1
+#define DEFAULT_SAVE_FRAME_CNT                  0
 #define RTCTIME_DISPLAY_FMT                     "hh:mm:ss"  // "yyyy/MM/dd hh:mm:ss"
 #define FRAME_INTERVAL                          1   // unit is ms
 
 // query the video node by the command 'v4l2-ctl --list-devices' or 'media-ctl -p -d /dev/media0'
 
-#define MEDIA_DEVNAME_4_DTOF_SENSOR             "/dev/media2"
-#define VIDEO_DEV_4_DTOF_SENSOR                 "/dev/video22"
+
 #define PIXELFORMAT_4_DTOF_SENSOR               V4L2_PIX_FMT_SBGGR8
 
 #define MEDIA_DEVNAME_4_RGB_SENSOR              "/dev/media0"
 #define VIDEO_DEV_4_RGB_SENSOR                  "/dev/video0"
-#define VIDEO_DEV_4_RGB_RK35XX                  "/dev/video55"
+#define VIDEO_DEV_4_RGB_RK3588                  "/dev/video55"
 
-#define RUN_ON_RK3588
 #define DEFAULT_TIMER_TEST_TIMES                0
 #define TIMER_TEST_INTERVAL                     5   // unit is second
 
-#if defined(RUN_ON_RK3588)
+#if defined(RUN_ON_ROCKCHIP)
 #define WKMODE_4_RGB_SENSOR                     WK_RGB_NV12    // On DELL notebook, it is WK_MODE_YUYV, on Apple notebook it is WK_MODE_NV12?
 
 #define DEFAULT_SENSOR_TYPE                     SENSOR_TYPE_DTOF
 #define DEFAULT_WORK_MODE                       WK_DTOF_FHR
+    #if defined(RUN_ON_RK3568)
+        // for rk3568
+        #define MEDIA_DEVNAME_4_DTOF_SENSOR             "/dev/media0"
+        #define VIDEO_DEV_4_DTOF_SENSOR                 "/dev/video0"
+        #define ENTITY_NAME_4_DTOF_SENSOR               "m00_b_ads6401 4-005e"
+    #else
+        // for rk3588
+        #define MEDIA_DEVNAME_4_DTOF_SENSOR             "/dev/media2"
+        #define VIDEO_DEV_4_DTOF_SENSOR                 "/dev/video22"
+        #define ENTITY_NAME_4_DTOF_SENSOR               "m00_b_ads6401 7-005e"
+        #define VIDIOC_S_FMT_INCLUDE_VIDIOC_SUBDEV_S_FMT    // On rk3568 Linux platform, when call ioctl(fd, VIDIOC_S_FMT, &fmt), it will set format for sensor too.
+    #endif
+
 #else
 #define WKMODE_4_RGB_SENSOR                     WK_RGB_YUYV    // On DELL notebook, it is WK_MODE_YUYV, on Apple notebook it is WK_MODE_NV12?
 
@@ -47,10 +65,13 @@
 
 #define DEBUG_PRO
 #define ENV_VAR_SAVE_EEPROM_ENABLE              "save_eeprom_enable"
-#define ENV_VAR_SAVE_DEPTH_ENABLE               "save_depth_enable"
+#define ENV_VAR_SAVE_DEPTH_TXT_ENABLE           "save_depth_txt_enable"
 #define ENV_VAR_SAVE_FRAME_ENABLE               "save_frame_enable"
 #define ENV_VAR_DBGINFO_ENABLE                  "debug_info_enable"
 #define ENV_VAR_SKIP_FRAME_PROCESS              "skip_frame_process"
+#define ENV_VAR_SKIP_EEPROM_CRC_CHK             "skip_eeprom_crc_check"
+#define ENV_VAR_TEST_PATTERN_TYPE               "test_pattern_index"
+#define ENV_VAR_SHOW_LENS_INTRINSIC             "show_lens_intrinsic"
 
 #define __tostr(x)                          #x
 #define __stringify(x)                      __tostr(x)
@@ -112,6 +133,12 @@ inline char *get_env_var_stringvalue(const char *var_name)
 #endif
 
 #if defined(DEBUG_PRO)
+#define DBG_PRINTK(fmt, args ...)                                                                            \
+    do {                                                                                                    \
+        qCritical("<%s-%s() %d> " fmt "\n",                                                         \
+            get_filename(__FILE__), __func__, __LINE__, ##args);                                   \
+    }while(0)
+
 #define DBG_ERROR(fmt, args ...)                                                                    \
     do {                                                                                            \
         struct timespec ts;                                                                         \
@@ -147,6 +174,7 @@ inline char *get_env_var_stringvalue(const char *var_name)
         qCritical("[%s] INFO: <%s-%s() %d> " fmt "\n", timestamp, get_filename(__FILE__), __func__, __LINE__, ##args);                \
     }
 #else
+#define DBG_PRINTK      printf
 #define DBG_ERROR       printf
 #define DBG_NOTICE      printf
 #define DBG_INFO        printf
@@ -178,10 +206,11 @@ enum sensortype{
 enum frame_data_type{
     FDATA_TYPE_NV12,
     FDATA_TYPE_YUYV,
-    FDATA_TYPE_RGB,
+    FDATA_TYPE_RGB888,
     FDATA_TYPE_DTOF_RAW_GRAYSCALE,
     FDATA_TYPE_DTOF_RAW_DEPTH,
-    FDATA_TYPE_DTOF_DEPTH16,
+    FDATA_TYPE_DTOF_DECODED_GRAYSCALE,
+    FDATA_TYPE_DTOF_DECODED_DEPTH16,
     FDATA_TYPE_COUNT
 };
 
@@ -207,6 +236,7 @@ struct sensor_params
     AdapsMeasurementType measure_type;
     AdapsEnvironmentType advisedEnvType;
     AdapsMeasurementType advisedMeasureType;
+    struct adaps_get_exposure_param exposureParam;
 };
 
 #endif // COMMON_H

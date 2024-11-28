@@ -22,6 +22,7 @@ GlobalApplication::GlobalApplication(int argc, char *argv[]):QApplication(argc, 
     QCommandLineOption sensor_type_opt({"t", "type"}, "Type of the sensor (RGB DTOF)", "type");
     QCommandLineOption save_frame_cnt_opt({"s", "save"}, "Number of frames to save (>=0)", "count");
     QCommandLineOption timer_test_times_opt({"", "times"}, "times to be tested by timer (>=0)", "count");
+    QCommandLineOption qt_ui_test_opt({"", "qttest"}, "a simple UI display test with QT", "");
 #else
     QCommandLineOption sensor_wk_mode_opt({"m", "mode"});
     QCommandLineOption sensor_type_opt({"t", "type"});
@@ -36,6 +37,7 @@ GlobalApplication::GlobalApplication(int argc, char *argv[]):QApplication(argc, 
     parser.addOption(sensor_type_opt);
     parser.addOption(save_frame_cnt_opt);
     parser.addOption(timer_test_times_opt);
+    parser.addOption(qt_ui_test_opt);
 
     //parser.process(qApp->arguments());
     parser.process(*this);
@@ -61,7 +63,7 @@ GlobalApplication::GlobalApplication(int argc, char *argv[]):QApplication(argc, 
     if (parser.isSet(save_frame_cnt_opt)) {
         option3Value = parser.value(save_frame_cnt_opt).toInt(&ok);
         if(!ok) {
-            DBG_ERROR("Failed to convert save frame count to int. Using default value of 1.");
+            DBG_ERROR("Failed to convert save frame count to int. Using default value of 0.");
             option3Value = DEFAULT_SAVE_FRAME_CNT;
         }
         save_frame_cnt = option3Value;
@@ -80,6 +82,13 @@ GlobalApplication::GlobalApplication(int argc, char *argv[]):QApplication(argc, 
     }
     else {
         timer_test_times = DEFAULT_TIMER_TEST_TIMES;
+    }
+
+    if (parser.isSet(qt_ui_test_opt)) {
+        qt_ui_test = true;
+    }
+    else {
+        qt_ui_test = false;
     }
 
     DBG_INFO( "-----selected_wk_mode:%d selected_sensor_type:%d, save_frame_cnt:%d----------", selected_wk_mode, selected_sensor_type,save_frame_cnt);
@@ -103,6 +112,11 @@ int GlobalApplication::get_save_cnt()
 int GlobalApplication::get_timer_test_times()
 {
     return timer_test_times;
+}
+
+bool GlobalApplication::get_qt_ui_test()
+{
+    return qt_ui_test;
 }
 
 sensortype GlobalApplication::string_2_sensortype(QString& str)

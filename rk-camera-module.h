@@ -8,8 +8,8 @@
 #define _UAPI_RKMODULE_CAMERA_H
 
 #include <linux/types.h>
+#include <linux/rk-video-format.h>
 
-//#include "rk_isp20_hw.h"
 typedef unsigned char u8;
 typedef unsigned short u16;
 typedef unsigned int u32;
@@ -17,7 +17,7 @@ typedef unsigned int u32;
 #define RKMODULE_API_VERSION		KERNEL_VERSION(0, 1, 0x2)
 
 /* using for rk3588 dual isp unite */
-#define RKMOUDLE_UNITE_EXTEND_PIXEL	128
+#define RKMOUDLE_UNITE_EXTEND_PIXEL	32
 /* using for rv1109 and rv1126 */
 #define RKMODULE_EXTEND_LINE		24
 
@@ -29,6 +29,8 @@ typedef unsigned int u32;
 #define RKMODULE_PADF_GAINMAP_LEN	1024
 #define RKMODULE_PDAF_DCCMAP_LEN	256
 #define RKMODULE_AF_OTP_MAX_LEN		3
+
+#define RKMODULE_MAX_SENSOR_NUM		8
 
 #define RKMODULE_CAMERA_MODULE_INDEX	"rockchip,camera-module-index"
 #define RKMODULE_CAMERA_MODULE_FACING	"rockchip,camera-module-facing"
@@ -146,10 +148,10 @@ typedef unsigned int u32;
 	_IOW('V', BASE_VIDIOC_PRIVATE + 27, struct rkmodule_reg)
 
 #define RKMODULE_SYNC_I2CDEV       \
-        _IOW('V', BASE_VIDIOC_PRIVATE + 28, __u8)
+	_IOW('V', BASE_VIDIOC_PRIVATE + 28, __u8)
 
 #define RKMODULE_SYNC_I2CDEV_COMPLETE       \
-        _IOW('V', BASE_VIDIOC_PRIVATE + 29, __u8)
+	_IOW('V', BASE_VIDIOC_PRIVATE + 29, __u8)
 
 #define RKMODULE_SET_DEV_INFO       \
 	_IOW('V', BASE_VIDIOC_PRIVATE + 30, struct rkmodule_dev_info)
@@ -163,30 +165,16 @@ typedef unsigned int u32;
 #define RKMODULE_GET_CSI_DSI_INFO       \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 33, __u32)
 
+#define RKMODULE_GET_HDMI_MODE       \
+	_IOR('V', BASE_VIDIOC_PRIVATE + 34, __u32)
 
+#define RKMODULE_SET_SENSOR_INFOS       \
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 35, struct rkmodule_sensor_infos)
 
+#define RKMODULE_GET_READOUT_LINE_CNT_PER_LINE  \
+	_IOR('V', BASE_VIDIOC_PRIVATE + 36, __u32)
 
-
-
-//theses code are change for swift -start
-//for swif sensor
-//because BASE_VIDIOC_PRIVATE is 192  the  192-255 is private
-//, system no use 192+36 =228,   so we use the last 
-
-#define ADAPS_SET_PARAM_IN_CONFIG       \
-	_IOW('V', BASE_VIDIOC_PRIVATE + (255-BASE_VIDIOC_PRIVATE), struct adaps_set_param_in_config)
-
-#define ADAPS_SET_PARAM_IN_RUNTIME       \
-	_IOW('V', BASE_VIDIOC_PRIVATE + (255-BASE_VIDIOC_PRIVATE-1), struct adaps_set_param_in_runtime)
-
-#define ADAPS_GET_PARAM_PERFRAME       \
-	_IOR('V', BASE_VIDIOC_PRIVATE + (255-BASE_VIDIOC_PRIVATE-2), struct adaps_get_param_perframe)
-
-#define ADAPS_GET_EEPROM       \
-	_IOR('V', BASE_VIDIOC_PRIVATE + (255-BASE_VIDIOC_PRIVATE-3), struct adaps_get_eeprom)
-
-//theses code are change for swift -end
-
+#include "adaps_dtof_uapi.h"
 
 struct rkmodule_i2cdev_info {
 	u8 slave_addr;
@@ -209,7 +197,7 @@ enum rkmodule_phy_mode {
 struct rkmodule_mipi_lvds_bus {
 	__u32 bus_type;
 	__u32 lanes;
-	__u32 phy_mode;
+	__u32 phy_mode; /* data type enum rkmodule_phy_mode */
 };
 
 struct rkmodule_bus_config {
@@ -220,11 +208,11 @@ struct rkmodule_bus_config {
 } __attribute__ ((packed));
 
 struct rkmodule_reg {
-    __u64 num_regs;
-    __u64 preg_addr;
-    __u64 preg_value;
-    __u64 preg_addr_bytes;
-    __u64 preg_value_bytes;
+	__u64 num_regs;
+	__u64 preg_addr;
+	__u64 preg_value;
+	__u64 preg_addr_bytes;
+	__u64 preg_value_bytes;
 } __attribute__ ((packed));
 
 /**
@@ -369,6 +357,13 @@ struct rkmodule_inf {
 	struct rkmodule_af_inf af;
 	struct rkmodule_pdaf_inf pdaf;
 	struct rkmodule_otp_module_inf module_inf;
+#if 1 //def __KERNEL__
+#if defined(CONFIG_VIDEO_ADS6311)  // FOR ADAPS_HAWK
+	//add by adaps to support expose the sensor resolution and data type  start
+	struct rkmodule_sensor_module_inf sensor_info;
+	//add by adaps to support expose the sensor resolution and data type  end
+#endif // FOR ADAPS_HAWK
+#endif
 } __attribute__ ((packed));
 
 /**
@@ -626,6 +621,13 @@ enum rkmodule_start_stream_seq {
 };
 
 /*
+ * HDMI to MIPI-CSI MODE IOCTL
+ */
+enum rkmodule_hdmiin_mode_seq {
+	RKMODULE_HDMIIN_DEFAULT = 0,
+	RKMODULE_HDMIIN_MODE,
+};
+/*
  * the causation to do cif reset work
  */
 enum rkmodule_reset_src {
@@ -761,209 +763,14 @@ struct rkmodule_csi_dphy_param {
 	u32 reserved[32];
 };
 
-//theses code are change for swift -start
-//for swift code
-//for swif sensor
-enum adaps_work_mode {
-    ADAPS_PTM_PHR_MODE   = 0, 
-    ADAPS_PCM_MODE = 1,
-    ADAPS_PTM_FHR_MODE   = 2,    
-//    ADAPS_PTM_DEBUG_PHR_MODE = 3,
-//    ADAPS_PTM_DEBUG_FHR_MODE=4,
-    ADAPS_MODE_MAX,
-};
-typedef enum
-{
-    AdapsFramerateTypeUninitilized,
-    AdapsFramerateType15FPS,
-    AdapsFramerateType25FPS,
-    AdapsFramerateType30FPS,
-    AdapsFramerateType60FPS,
-} AdapsFramerateType;
-typedef enum
-{
-    AdapsVcselZoneCountUninitilized,
-    AdapsVcselZoneCount1,
-    AdapsVcselZoneCount4 = 4,
-} AdapsVcselZoneCountType;
-typedef enum
-{
-    AdapsDataTypeUninitilized,
-    AdapsDataTypeDepth,
-    AdapsDataTypeGrayscale,
-} AdapsDataType;// output data format
-
-
-typedef enum
-{
-    AdapsMeasurementTypeUninitilized,
-    AdapsMeasurementTypeNormal,
-    AdapsMeasurementTypeShort,
-    AdapsMeasurementTypeFull
-} AdapsMeasurementType;
-
-typedef enum {
-    AdapsEnvTypeUninitilized,
-    AdapsEnvTypeIndoor,
-    AdapsEnvTypeOutdoor,
-} AdapsEnvironmentType;
-
-typedef enum {
-    AdapsPowerModeUninitilized,
-    AdapsPowerModeNormal,
-    AdapsPowerModeDiv3,
-} AdapsPowerMode;
-
-typedef enum {
-    AdapsSensorNotChange,       // the role of tof sensor will be determined by the register configure of ads6401_sensor.xml
-    AdapsSensorForceAsMaster,
-    AdapsSensorForceAsSlave
-} AdapsSensorForceRole;
-
-typedef enum {
-    AdapsVcselModeUninitilized,
-    AdapsVcselModeOn,
-    AdapsVcselModeOff,
-} AdapsVcselMode;
-
- 
-
-
-// There are two group Calibration SRAM for spod address, every group has 4 calibration registers.
-#define TOF_SRAM_ZONE_NUM                           8
-#define CALIB_SRAM_REG_SIZE                         512 //480     //unit is bytes
-
-#define SWIFT_DEVICE_NAME_LENGTH            64
-#define SWIFT_SPOT_POSITION_SIZE            (CALIB_SRAM_REG_SIZE*TOF_SRAM_ZONE_NUM)  //512 * 4 * 2
-#define SWIFT_SPOT_BOX                      1920  //960 * 2
-#define SWIFT_OFFSET_SIZE                   960
-
-#define OFFSET(structure, member) ((uintptr_t)&((structure*)0)->member)
-#define MEMBER_SIZE(structure, member) sizeof(((structure*)0)->member)
-
-#pragma pack(4)
-typedef struct SwiftEepromData
-{
-    // In Swift EEPROM, one page has 64 bytes.
-    // Page 1
-    char            deviceName[SWIFT_DEVICE_NAME_LENGTH];
-    // Page 2 - 65
-    unsigned char   sramData[SWIFT_SPOT_POSITION_SIZE];
-    // Page 66
-    float           intrinsic[9];     // 36 bytes
-    float           offset;           // 4 bytes
-    __u32        refSpadSelection; // 4 bytes
-    __u32        driverChannelOffset[4];  // 16 bytes
-    __u32        distanceTemperatureCoefficient;
-    // Page 67 - 186
-    float           spotPos[SWIFT_SPOT_BOX]; // 7680 bytes, 120 pages
-    // Page 187 - 246
-    float           spotOffset[SWIFT_OFFSET_SIZE]; // 3840 bytes, 60 pages
-    // Page 247
-    __u32        tdcDelay[16]; // 8 bytes
-    // Page 248
-    float           indoorCalibTemperature; // Calibration temperature.
-    float           indoorCalibRefDistance; // Calibration reference distance.
-    float           outdoorCalibTemperature; // Calibration temperature.
-    float           outdoorCalibRefDistance; // Calibration reference distance.
-    float           calibrationInfo[12]; // reserved
-    // Page 249 - 252 
-    uint8_t         pxyHistogram[248]; // pxy histogram
-    float           pxyDepth;          // pxy depth
-    float           pxyNumberOfPulse;  // pxy number of pulse
-    // Page 253
-    uint16_t        markedPixels[32];  // 16 hot pixels, 16 dead pixels.
-    // Page 254
-    char            moduleInfo[64]; // adaps calibration info.
-    // Page 255
-    char            reservedPage255[SWIFT_DEVICE_NAME_LENGTH];
-    // Page 256
-    __u32            totalChecksum;
-    __u32            sramDataChecksum;
-    __u32            spotPositionChecksum;
-    __u32            spotOffsetChecksum;
-    __u32            proximityChecksum;
-}swift_eeprom_data_t;
-
-
-#define  AD4001_EEPROM_VERSION_INFO_OFFSET          OFFSET(swift_eeprom_data_t, deviceName)               /// 0, 0x00
-#define  AD4001_EEPROM_VERSION_INFO_SIZE            MEMBER_SIZE(swift_eeprom_data_t, deviceName)
-
-// please refer to data struct 'swift_eeprom_data_t' in SpadisPC
-#define  AD4001_EEPROM_SPODPOS_OFFSET               OFFSET(swift_eeprom_data_t, sramData)               /// 64, 0x40
-#define  AD4001_EEPROM_SPODPOS_SIZE                 MEMBER_SIZE(swift_eeprom_data_t, sramData)
-
-#define  AD4001_EEPROM_INTRINSIC_OFFSET             OFFSET(swift_eeprom_data_t, intrinsic)              /// 4160 0x1040
-#define  AD4001_EEPROM_INTRINSIC_SIZE               MEMBER_SIZE(swift_eeprom_data_t, intrinsic)         /// 9xsizeof(float)
-
-#define  AD4001_EEPROM_ACCURATESPODPOS_OFFSET       OFFSET(swift_eeprom_data_t, spotPos)        /// 4224 0x1080
-#define  AD4001_EEPROM_ACCURATESPODPOS_SIZE         MEMBER_SIZE(swift_eeprom_data_t, spotPos)   /// 4x240x2xsizeof(float)=1920x4=7680
-
-#define  AD4001_EEPROM_SPODOFFSET_OFFSET            OFFSET(swift_eeprom_data_t, spotOffset)             /// 11904 0x2e80
-#define  AD4001_EEPROM_SPODOFFSET_SIZE              MEMBER_SIZE(swift_eeprom_data_t, spotOffset)        /// 4x240xsizeof(float)=960x4=3840
-
-#define  AD4001_EEPROM_TDCDELAY_OFFSET              OFFSET(swift_eeprom_data_t, tdcDelay)               /// 15744 0x3d80 
-#define  AD4001_EEPROM_TDCDELAY_SIZE                MEMBER_SIZE(swift_eeprom_data_t, tdcDelay)          /// 2xsizeof(uint32_t)=16x4=64
-
-#define  AD4001_EEPROM_INDOOR_CALIBTEMPERATURE_OFFSET      OFFSET(swift_eeprom_data_t, indoorCalibTemperature)               /// 15808 0x3dc0
-#define  AD4001_EEPROM_INDOOR_CALIBTEMPERATURE_SIZE        MEMBER_SIZE(swift_eeprom_data_t, indoorCalibTemperature)          /// 1xsizeof(float)=1x4=4
-
-#define  AD4001_EEPROM_INDOOR_CALIBREFDISTANCE_OFFSET      OFFSET(swift_eeprom_data_t, indoorCalibRefDistance)               /// 15812 0x3dc4
-#define  AD4001_EEPROM_INDOOR_CALIBREFDISTANCE_SIZE        MEMBER_SIZE(swift_eeprom_data_t, indoorCalibRefDistance)          /// 1xsizeof(float)=1x4=4
-
-#define  AD4001_EEPROM_OUTDOOR_CALIBTEMPERATURE_OFFSET      OFFSET(swift_eeprom_data_t, outdoorCalibTemperature)               /// 15816
-#define  AD4001_EEPROM_OUTDOOR_CALIBTEMPERATURE_SIZE        MEMBER_SIZE(swift_eeprom_data_t, outdoorCalibTemperature)          /// 1xsizeof(float)=1x4=4
-
-#define  AD4001_EEPROM_OUTDOOR_CALIBREFDISTANCE_OFFSET      OFFSET(swift_eeprom_data_t, outdoorCalibRefDistance)               /// 15820
-#define  AD4001_EEPROM_OUTDOOR_CALIBREFDISTANCE_SIZE        MEMBER_SIZE(swift_eeprom_data_t, outdoorCalibRefDistance)          /// 1xsizeof(float)=1x4=4
-
-#define  AD4001_EEPROM_PROX_HISTOGRAM_OFFSET        OFFSET(swift_eeprom_data_t, pxyHistogram)               /// 15824+12x(sizeof(float))=15872
-#define  AD4001_EEPROM_PROX_HISTOGRAM_SIZE          MEMBER_SIZE(swift_eeprom_data_t, pxyHistogram)          /// 256
-
-#define  AD4001_EEPROM_TOTAL_CHECKSUM_OFFSET        OFFSET(swift_eeprom_data_t, totalChecksum)
-#define  AD4001_EEPROM_TOTAL_CHECKSUM_SIZE          MEMBER_SIZE(swift_eeprom_data_t, totalChecksum)
-
-#pragma pack()
-
-
-
-
-struct adaps_set_param_in_config{
-    AdapsEnvironmentType env_type;
-    AdapsMeasurementType measure_type;
-//    AdapsPowerMode  powermode;
-    AdapsFramerateType framerate_type;
-    AdapsVcselZoneCountType vcselzonecount_type;
- };
- 
-struct adaps_set_param_in_runtime{
-   AdapsEnvironmentType env_type;
-   AdapsMeasurementType measure_type;
-   AdapsVcselMode vcsel_mode;
-   bool env_valid;
-   bool measure_valid;
-   bool vcsel_valid;
-   
+struct rkmodule_sensor_fmt {
+	__u32 sensor_index;
+	__u32 sensor_width;
+	__u32 sensor_height;
 };
 
-struct adaps_get_param_perframe{
-    //float internal_temperature;
-    __u32 internal_temperature; //since kernel doesn't use float type, the temperate is a expanded integer value (x100)
-    __u8 laser_exposure_period;
-    __u8 fine_exposure_time; 
+struct rkmodule_sensor_infos {
+	struct rkmodule_sensor_fmt sensor_fmt[RKMODULE_MAX_SENSOR_NUM];
 };
-
-#pragma pack(4)
- struct adaps_get_eeprom{
-    __u8 pRawData[sizeof(swift_eeprom_data_t)];
-    __u32 rawDataSize;//may be not need
- };
-#pragma pack()
-
-
-//for swift code
-//theses code are change for swift -end
-
-
 
 #endif /* _UAPI_RKMODULE_CAMERA_H */

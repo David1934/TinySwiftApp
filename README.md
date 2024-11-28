@@ -1,9 +1,18 @@
-/root/SpadisQT 
+mkdir /vendor
+mkdir /vendor/lib64
+mkdir /vendor/etc
+mkdir /vendor/etc/camera
+
+
+scp Z:\for_docker\david\rk_build\app\SpadisQT\libadaps_swift_decode.so root@[fe80::5047:afff:fe7a:1234]:/vendor/lib64/libadaps_swift_decode.so
+scp Z:\for_docker\david\rk_build\app\SpadisQT\adapsdepthsettings.xml root@[fe80::5047:afff:fe7a:1234]:/vendor/etc/camera/adapsdepthsettings.xml
+scp Z:\for_docker\david\rk_build\app\SpadisQT\SpadisQT root@[fe80::5047:afff:fe7a:1234]:/usr/bin/SpadisQT
+scp Z:\for_docker\david\rk_build\app\AdapsLib\libadaps_swift_decode.so root@[fe80::5047:afff:fe7a:1234]:/vendor/lib64/libadaps_swift_decode.so
 
 adb push Z:\for_docker\david\rk_build\app\AdapsLib\libadaps_swift_decode.so /vendor/lib64/.
 adb push Z:\for_docker\david\rk_build\app\SpadisQT\libadaps_swift_decode.so /vendor/lib64/.
 adb push Z:\for_docker\david\rk_build\app\SpadisQT\adapsdepthsettings.xml /vendor/etc/camera/.
-adb push Z:\for_docker\david\rk_build\app\SpadisQT\SpadisQT /root/.
+adb push Z:\for_docker\david\rk_build\app\SpadisQT\SpadisQT /usr/bin/.
 
 adb push Z:\for_docker\david\rk_build.QT_swift\buildroot/output/rockchip_rk3568/target/usr/lib/libstdc++.so.6.0.29 /usr/lib/.
 

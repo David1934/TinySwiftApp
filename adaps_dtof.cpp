@@ -1,4 +1,5 @@
 #include "adaps_dtof.h"
+#include "utils.h"
 
 ADAPS_DTOF::ADAPS_DTOF(struct sensor_params params, V4L2 *v4l2)
 {
@@ -41,8 +42,9 @@ u8 ADAPS_DTOF::normalizeGreyscale(u16 range) {
     return (u8) normalized;
 }
 
-int ADAPS_DTOF::GetAdapsTofEepromInfo(uint8_t* pRawData, uint32_t rawDataSize, SetWrapperParam* setparam) {
+int ADAPS_DTOF::FillSetWrapperParamFromEepromInfo(uint8_t* pRawData, uint32_t rawDataSize, SetWrapperParam* setparam) {
     int result = 0;
+//    Utils *utils;
 
     if (NULL == pRawData) {
         DBG_ERROR( "pRawData is NULL for EEPROMInfo");
@@ -55,10 +57,36 @@ int ADAPS_DTOF::GetAdapsTofEepromInfo(uint8_t* pRawData, uint32_t rawDataSize, S
         return -1;
     }
 
+#if 0
+    DBG_NOTICE("sizeof(swift_eeprom_data_t)=%ld", sizeof(swift_eeprom_data_t));
+    DBG_NOTICE("AD4001_EEPROM_VERSION_INFO_OFFSET: %d\n", AD4001_EEPROM_VERSION_INFO_OFFSET);
+    DBG_NOTICE("AD4001_EEPROM_MODULE_INFO_OFFSET: %d\n", AD4001_EEPROM_MODULE_INFO_OFFSET);
+    DBG_NOTICE("AD4001_EEPROM_INTRINSIC_OFFSET: %d\n", AD4001_EEPROM_INTRINSIC_OFFSET);
+    DBG_NOTICE("AD4001_EEPROM_INTRINSIC_SIZE: %d\n", AD4001_EEPROM_INTRINSIC_SIZE);
+
+    utils = new Utils();
+    utils->hexdump((unsigned char *) pRawData, 180, "1st 180 bytes of EEPROM");
+    delete utils;
+#endif
+
     setparam->adapsLensIntrinsicData  = reinterpret_cast<float*>(pRawData + AD4001_EEPROM_INTRINSIC_OFFSET);
+    if (Utils::is_env_var_true(ENV_VAR_SHOW_LENS_INTRINSIC))
+    {
+        for (int i = 0; i < 9; i++)
+        {
+            DBG_NOTICE("intrinsic Parameters[%d] = %f", i, setparam->adapsLensIntrinsicData[i]);
+        }
+    }
+
+#if (ADS6401_MODDULE_SPOT == SWIFT_MODULE_TYPE)
     setparam->adapsSpodOffsetData     = reinterpret_cast<float*>(pRawData + AD4001_EEPROM_SPODOFFSET_OFFSET);
     setparam->proximity_hist          = pRawData + AD4001_EEPROM_PROX_HISTOGRAM_OFFSET;
     setparam->accurateSpotPosData     = reinterpret_cast<float*>(pRawData + AD4001_EEPROM_ACCURATESPODPOS_OFFSET);
+#else
+    setparam->adapsSpodOffsetData     = reinterpret_cast<float*>(pRawData + AD4001_EEPROM_SPODOFFSET_OFFSET+ONE_SPOD_OFFSET_BYTE_SIZE);  //pointer to offset0
+    setparam->proximity_hist          = NULL;
+    setparam->accurateSpotPosData     = NULL;
+#endif
     setparam->spot_cali_data          = pRawData + AD4001_EEPROM_SPODPOS_OFFSET;
 
     setparam->cali_ref_tempe[AdapsEnvTypeIndoor - 1]  = *reinterpret_cast<float*>(pRawData + AD4001_EEPROM_INDOOR_CALIBTEMPERATURE_OFFSET);
@@ -72,6 +100,7 @@ int ADAPS_DTOF::GetAdapsTofEepromInfo(uint8_t* pRawData, uint32_t rawDataSize, S
 void ADAPS_DTOF::initParams(WrapperDepthInitInputParams  *     initInputParams,WrapperDepthInitOutputParams      *initOutputParams)
 {
     SetWrapperParam set_param;
+    struct adaps_get_exposure_param *p_exposure_param;
 
     memset(&set_param, 0, sizeof(SetWrapperParam));
     set_param.work_mode = static_cast<int>(m_sns_param.work_mode);
@@ -89,14 +118,21 @@ void ADAPS_DTOF::initParams(WrapperDepthInitInputParams  *     initInputParams,W
 
     p_eeprominfo = (struct adaps_get_eeprom *) m_v4l2->adaps_getEEPROMData();
     if (NULL == p_eeprominfo) {
-        DBG_ERROR( "p_eeprominfo is NULL for EEPROMInfo");
+        DBG_ERROR("p_eeprominfo is NULL for EEPROMInfo");
         return ;
     }
-    GetAdapsTofEepromInfo(p_eeprominfo->pRawData, p_eeprominfo->rawDataSize, &set_param);
+    FillSetWrapperParamFromEepromInfo(p_eeprominfo->pRawData, p_eeprominfo->rawDataSize, &set_param);
 
+    p_exposure_param = (struct adaps_get_exposure_param *) m_v4l2->adaps_getExposureParam();
+    if (NULL == p_exposure_param) {
+        DBG_ERROR("p_exposure_param is NULL");
+        return ;
+    }
+    set_param.exposure_period = p_exposure_param->laser_exposure_period;
+    set_param.ptm_fine_exposure_value = p_exposure_param->fine_exposure_time;
 
-    DBG_INFO("ptm fine exposure value: %d\n", set_param.ptm_fine_exposure_value);
-    DBG_INFO("exposure period value: %d\n", set_param.exposure_period);
+    DBG_INFO("ptm fine exposure value: 0x%x\n", set_param.ptm_fine_exposure_value);
+    DBG_INFO("exposure period value: 0x%x\n", set_param.exposure_period);
     DBG_INFO("indoor calib temeprature: %f, outdoor: %f\n",
            set_param.cali_ref_tempe[0], set_param.cali_ref_tempe[1]);
     DBG_INFO("indoor calib ref depth: %f, outdoor: %f\n",
@@ -117,12 +153,12 @@ void ADAPS_DTOF::initParams(WrapperDepthInitInputParams  *     initInputParams,W
     initOutputParams->exposure_time = &m_exposure_time;
     initOutputParams->sensitivity = &m_sensitivity;
 
-    //DBG_INFO("outputParams set_param.work_mode=%d  set_param.compose_subframe=%d set_param.expand_pixel=%d set_param.env_type=%d  set_param.measure_type=%d\n",
-           //set_param.work_mode,set_param.compose_subframe,set_param.expand_pixel,set_param.env_type,set_param.measure_type);
+    DBG_INFO("outputParams set_param.work_mode=%d  set_param.compose_subframe=%d set_param.expand_pixel=%d set_param.env_type=%d  set_param.measure_type=%d\n",
+           set_param.work_mode,set_param.compose_subframe,set_param.expand_pixel,set_param.env_type,set_param.measure_type);
     DBG_INFO("outputParams set success\n");
 }
 
-int ADAPS_DTOF::initilize()
+int ADAPS_DTOF::adaps_dtof_initilize()
 {
     int result = 0;
     WrapperDepthInitInputParams     initInputParams                 = {};
@@ -136,6 +172,7 @@ int ADAPS_DTOF::initilize()
         DBG_ERROR("Error creating depth map wrapper, result: %d, m_handlerDepthLib: %p", result, m_handlerDepthLib);
         return result;
     }
+    DBG_INFO("Adaps depth lib initialize okay.");
 
     m_conversionLibInited = true;
 #else
@@ -326,7 +363,7 @@ int ADAPS_DTOF::dtof_decode(unsigned char *frm_rawdata , u16 depth16_buffer[], e
 {
     WrapperDepthCamConfig config;
     int result=0;
-    uint32_t iResult = 0;
+    bool done = false;
 
     Q_UNUSED(swk);
     WrapperDepthOutput outputs[MAX_DEPTH_OUTPUT_FORMATS];
@@ -369,26 +406,25 @@ int ADAPS_DTOF::dtof_decode(unsigned char *frm_rawdata , u16 depth16_buffer[], e
 
         if (false == disableAlgo) 
         {
-            iResult = DepthMapWrapperProcessFrame(m_handlerDepthLib,
+            done = DepthMapWrapperProcessFrame(m_handlerDepthLib,
                                         depthInput,
                                         &config,
                                         1,
                                         outputs);
-            //DBG_INFO( "depthInput: image , pAddr=%p, iResult: %d \n", depthInput.in_image, iResult);
         }else
         {
             static  uint32_t count_g=0;
             count_g++;
             if(count_g%4 == 0)
-                iResult = 1;
+                done = 1;
             else
-                iResult = 0;
+                done = 0;
                
-           DBG_INFO( " bypass the algo result=%d \n",iResult);
+           DBG_INFO( " bypass the algo done=%d \n",done);
         }
     }
 
-    result = ((1 == iResult) || (4 == iResult)) ? 0 : -1;
+    result = (true == done) ? 0 : -1;
     return result;
 }
 

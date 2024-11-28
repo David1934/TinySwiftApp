@@ -15,6 +15,8 @@
 #include <sys/prctl.h>
 #include <math.h>
 #include <execinfo.h>
+#include <QScreen>
+#include <QDesktopWidget>
 
 #include "mainwindow.h"
 #include "globalapplication.h"
@@ -212,6 +214,20 @@ void init_signal(SIGNALHANDLE signalHandleCB)
     pthread_sigmask(SIG_UNBLOCK, &mask, NULL);
 }
 
+void getScreenResolution()
+{
+    qreal screenWidth = QGuiApplication::primaryScreen()->geometry().width();
+    qreal screenHeight = QGuiApplication::primaryScreen()->geometry().height();
+
+    qDebug() << "QGuiApplication Screen Resolution:" << screenWidth << "x" << screenHeight;
+
+    QRect screenGeometry = QApplication::desktop()->geometry();
+    int screenWidth2 = screenGeometry.width();
+    int screenHeight2 = screenGeometry.height();
+
+    qDebug() << "QApplication Screen Resolution:" << screenWidth2 << "x" << screenHeight2;
+}
+
 int main(int argc, char *argv[])
 {
     GlobalApplication a(argc, argv);
@@ -220,6 +236,7 @@ int main(int argc, char *argv[])
     //init_signal(signal_handle);
     w.setWindowFlags(w.windowFlags() & ~Qt::WindowMaximizeButtonHint & ~Qt::WindowMinimizeButtonHint);
     w.show();
+    getScreenResolution();
 
     return a.exec();
 }

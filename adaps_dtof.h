@@ -65,7 +65,7 @@ public:
     ADAPS_DTOF(struct sensor_params params, V4L2 *v4l2);
     ~ADAPS_DTOF();
 
-    int initilize();
+    int adaps_dtof_initilize();
     void ConvertDepthToColoredMap(u16 depth16_buffer[], u8 depth_colored_map[], int outImgWidth, int outImgHeight);
     void ConvertGreyscaleToColoredMap(u16 depth16_buffer[], u8 depth_colored_map[], int outImgWidth, int outImgHeight);
     int dtof_decode(unsigned char *frm_rawdata , u16 depth16_buffer[], enum sensor_workmode swk);
@@ -96,7 +96,7 @@ private:
 #endif
     bool m_conversionLibInited;
 
-    int GetAdapsTofEepromInfo(uint8_t* pRawData, uint32_t rawDataSize, SetWrapperParam* setparam);
+    int FillSetWrapperParamFromEepromInfo(uint8_t* pRawData, uint32_t rawDataSize, SetWrapperParam* setparam);
     void initParams(WrapperDepthInitInputParams  *     initInputParams,WrapperDepthInitOutputParams      *initOutputParams);
     void PrepareFrameParam(WrapperDepthCamConfig *wrapper_depth_map_config);
     u8 normalizeGreyscale(u16 range);

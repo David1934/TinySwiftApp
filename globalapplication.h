@@ -20,6 +20,7 @@ public:
     sensortype get_sensor_type();
     int get_save_cnt();
     int get_timer_test_times();
+    bool get_qt_ui_test();
 
 private:
 
@@ -27,6 +28,7 @@ private:
     sensor_workmode selected_wk_mode;
     int             save_frame_cnt;
     int             timer_test_times;
+    bool            qt_ui_test;
 
     sensortype string_2_sensortype(QString& str);
     sensor_workmode string_2_workmode(QString& str);

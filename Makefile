@@ -605,12 +605,13 @@ moc_mainwindow.cpp: mainwindow.h \
 		common.h \
 		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QObject \
 		rk-camera-module.h \
+		adaps_dtof_uapi.h \
 		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QString \
 		adaps_dtof.h \
 		depthmapwrapper.h \
 		moc_predefs.h \
 		../../buildroot/output/rockchip_rk3568/host/bin/moc
-	/home/david/rk_build/buildroot/output/rockchip_rk3568/host/bin/moc $(DEFINES) --include /home/david/rk_build/app/SpadisQT/moc_predefs.h -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/mkspecs/devices/linux-buildroot-g++ -I/home/david/rk_build/app/SpadisQT -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5 -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore -I/mnt/users/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0 -I/mnt/users/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0/aarch64-buildroot-linux-gnu -I/mnt/users/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0/backward -I/mnt/users/david/rk_build/buildroot/output/rockchip_rk3568/host/lib/gcc/aarch64-buildroot-linux-gnu/11.3.0/include -I/mnt/users/david/rk_build/buildroot/output/rockchip_rk3568/host/lib/gcc/aarch64-buildroot-linux-gnu/11.3.0/include-fixed -I/mnt/users/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/include -I/mnt/users/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include mainwindow.h -o moc_mainwindow.cpp
+	/home/david/rk_build/buildroot/output/rockchip_rk3568/host/bin/moc $(DEFINES) --include /home/david/rk_build/app/SpadisQT/moc_predefs.h -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/mkspecs/devices/linux-buildroot-g++ -I/home/david/rk_build/app/SpadisQT -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5 -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0 -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0/aarch64-buildroot-linux-gnu -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0/backward -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/lib/gcc/aarch64-buildroot-linux-gnu/11.3.0/include -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/lib/gcc/aarch64-buildroot-linux-gnu/11.3.0/include-fixed -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/include -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include mainwindow.h -o moc_mainwindow.cpp
 
 moc_adaps_dtof.cpp: adaps_dtof.h \
 		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QDebug \
@@ -684,11 +685,12 @@ moc_adaps_dtof.cpp: adaps_dtof.h \
 		common.h \
 		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QObject \
 		rk-camera-module.h \
+		adaps_dtof_uapi.h \
 		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QString \
 		depthmapwrapper.h \
 		moc_predefs.h \
 		../../buildroot/output/rockchip_rk3568/host/bin/moc
-	/home/david/rk_build/buildroot/output/rockchip_rk3568/host/bin/moc $(DEFINES) --include /home/david/rk_build/app/SpadisQT/moc_predefs.h -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/mkspecs/devices/linux-buildroot-g++ -I/home/david/rk_build/app/SpadisQT -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5 -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore -I/mnt/users/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0 -I/mnt/users/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0/aarch64-buildroot-linux-gnu -I/mnt/users/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0/backward -I/mnt/users/david/rk_build/buildroot/output/rockchip_rk3568/host/lib/gcc/aarch64-buildroot-linux-gnu/11.3.0/include -I/mnt/users/david/rk_build/buildroot/output/rockchip_rk3568/host/lib/gcc/aarch64-buildroot-linux-gnu/11.3.0/include-fixed -I/mnt/users/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/include -I/mnt/users/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include adaps_dtof.h -o moc_adaps_dtof.cpp
+	/home/david/rk_build/buildroot/output/rockchip_rk3568/host/bin/moc $(DEFINES) --include /home/david/rk_build/app/SpadisQT/moc_predefs.h -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/mkspecs/devices/linux-buildroot-g++ -I/home/david/rk_build/app/SpadisQT -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5 -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0 -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0/aarch64-buildroot-linux-gnu -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0/backward -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/lib/gcc/aarch64-buildroot-linux-gnu/11.3.0/include -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/lib/gcc/aarch64-buildroot-linux-gnu/11.3.0/include-fixed -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/include -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include adaps_dtof.h -o moc_adaps_dtof.cpp
 
 moc_globalapplication.cpp: globalapplication.h \
 		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QObject \
@@ -804,10 +806,11 @@ moc_globalapplication.cpp: globalapplication.h \
 		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QCoreApplication \
 		common.h \
 		rk-camera-module.h \
+		adaps_dtof_uapi.h \
 		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QString \
 		moc_predefs.h \
 		../../buildroot/output/rockchip_rk3568/host/bin/moc
-	/home/david/rk_build/buildroot/output/rockchip_rk3568/host/bin/moc $(DEFINES) --include /home/david/rk_build/app/SpadisQT/moc_predefs.h -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/mkspecs/devices/linux-buildroot-g++ -I/home/david/rk_build/app/SpadisQT -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5 -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore -I/mnt/users/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0 -I/mnt/users/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0/aarch64-buildroot-linux-gnu -I/mnt/users/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0/backward -I/mnt/users/david/rk_build/buildroot/output/rockchip_rk3568/host/lib/gcc/aarch64-buildroot-linux-gnu/11.3.0/include -I/mnt/users/david/rk_build/buildroot/output/rockchip_rk3568/host/lib/gcc/aarch64-buildroot-linux-gnu/11.3.0/include-fixed -I/mnt/users/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/include -I/mnt/users/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include globalapplication.h -o moc_globalapplication.cpp
+	/home/david/rk_build/buildroot/output/rockchip_rk3568/host/bin/moc $(DEFINES) --include /home/david/rk_build/app/SpadisQT/moc_predefs.h -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/mkspecs/devices/linux-buildroot-g++ -I/home/david/rk_build/app/SpadisQT -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5 -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0 -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0/aarch64-buildroot-linux-gnu -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0/backward -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/lib/gcc/aarch64-buildroot-linux-gnu/11.3.0/include -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/lib/gcc/aarch64-buildroot-linux-gnu/11.3.0/include-fixed -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/include -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include globalapplication.h -o moc_globalapplication.cpp
 
 moc_majorimageprocessingthread.cpp: majorimageprocessingthread.h \
 		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QThread \
@@ -905,12 +908,13 @@ moc_majorimageprocessingthread.cpp: majorimageprocessingthread.h \
 		common.h \
 		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QObject \
 		rk-camera-module.h \
+		adaps_dtof_uapi.h \
 		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QString \
 		adaps_dtof.h \
 		depthmapwrapper.h \
 		moc_predefs.h \
 		../../buildroot/output/rockchip_rk3568/host/bin/moc
-	/home/david/rk_build/buildroot/output/rockchip_rk3568/host/bin/moc $(DEFINES) --include /home/david/rk_build/app/SpadisQT/moc_predefs.h -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/mkspecs/devices/linux-buildroot-g++ -I/home/david/rk_build/app/SpadisQT -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5 -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore -I/mnt/users/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0 -I/mnt/users/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0/aarch64-buildroot-linux-gnu -I/mnt/users/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0/backward -I/mnt/users/david/rk_build/buildroot/output/rockchip_rk3568/host/lib/gcc/aarch64-buildroot-linux-gnu/11.3.0/include -I/mnt/users/david/rk_build/buildroot/output/rockchip_rk3568/host/lib/gcc/aarch64-buildroot-linux-gnu/11.3.0/include-fixed -I/mnt/users/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/include -I/mnt/users/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include majorimageprocessingthread.h -o moc_majorimageprocessingthread.cpp
+	/home/david/rk_build/buildroot/output/rockchip_rk3568/host/bin/moc $(DEFINES) --include /home/david/rk_build/app/SpadisQT/moc_predefs.h -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/mkspecs/devices/linux-buildroot-g++ -I/home/david/rk_build/app/SpadisQT -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5 -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0 -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0/aarch64-buildroot-linux-gnu -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0/backward -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/lib/gcc/aarch64-buildroot-linux-gnu/11.3.0/include -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/lib/gcc/aarch64-buildroot-linux-gnu/11.3.0/include-fixed -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/include -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include majorimageprocessingthread.h -o moc_majorimageprocessingthread.cpp
 
 moc_v4l2.cpp: v4l2.h \
 		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QDebug \
@@ -983,10 +987,11 @@ moc_v4l2.cpp: v4l2.h \
 		common.h \
 		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QObject \
 		rk-camera-module.h \
+		adaps_dtof_uapi.h \
 		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QString \
 		moc_predefs.h \
 		../../buildroot/output/rockchip_rk3568/host/bin/moc
-	/home/david/rk_build/buildroot/output/rockchip_rk3568/host/bin/moc $(DEFINES) --include /home/david/rk_build/app/SpadisQT/moc_predefs.h -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/mkspecs/devices/linux-buildroot-g++ -I/home/david/rk_build/app/SpadisQT -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5 -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore -I/mnt/users/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0 -I/mnt/users/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0/aarch64-buildroot-linux-gnu -I/mnt/users/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0/backward -I/mnt/users/david/rk_build/buildroot/output/rockchip_rk3568/host/lib/gcc/aarch64-buildroot-linux-gnu/11.3.0/include -I/mnt/users/david/rk_build/buildroot/output/rockchip_rk3568/host/lib/gcc/aarch64-buildroot-linux-gnu/11.3.0/include-fixed -I/mnt/users/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/include -I/mnt/users/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include v4l2.h -o moc_v4l2.cpp
+	/home/david/rk_build/buildroot/output/rockchip_rk3568/host/bin/moc $(DEFINES) --include /home/david/rk_build/app/SpadisQT/moc_predefs.h -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/mkspecs/devices/linux-buildroot-g++ -I/home/david/rk_build/app/SpadisQT -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5 -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0 -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0/aarch64-buildroot-linux-gnu -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0/backward -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/lib/gcc/aarch64-buildroot-linux-gnu/11.3.0/include -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/lib/gcc/aarch64-buildroot-linux-gnu/11.3.0/include-fixed -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/include -I/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include v4l2.h -o moc_v4l2.cpp
 
 compiler_moc_objc_header_make_all:
 compiler_moc_objc_header_clean:
@@ -1123,6 +1128,7 @@ globalapplication.o: globalapplication.cpp globalapplication.h \
 		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QCoreApplication \
 		common.h \
 		rk-camera-module.h \
+		adaps_dtof_uapi.h \
 		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QString \
 		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QDebug \
 		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QCommandLineParser \
@@ -1250,6 +1256,7 @@ main.o: main.cpp mainwindow.h \
 		common.h \
 		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QObject \
 		rk-camera-module.h \
+		adaps_dtof_uapi.h \
 		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QString \
 		adaps_dtof.h \
 		depthmapwrapper.h \
@@ -1374,9 +1381,19 @@ mainwindow.o: mainwindow.cpp ../../buildroot/output/rockchip_rk3568/host/aarch64
 		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qbasictimer.h \
 		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QTime \
 		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qdatetime.h \
-		common.h \
+		globalapplication.h \
 		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QObject \
+		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets/QApplication \
+		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets/qapplication.h \
+		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qcoreapplication.h \
+		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qeventloop.h \
+		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets/qdesktopwidget.h \
+		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qguiapplication.h \
+		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qinputmethod.h \
+		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QCoreApplication \
+		common.h \
 		rk-camera-module.h \
+		adaps_dtof_uapi.h \
 		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QString \
 		mainwindow.h \
 		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets/QMainWindow \
@@ -1469,6 +1486,7 @@ adaps_dtof.o: adaps_dtof.cpp adaps_dtof.h \
 		common.h \
 		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QObject \
 		rk-camera-module.h \
+		adaps_dtof_uapi.h \
 		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QString \
 		depthmapwrapper.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o adaps_dtof.o adaps_dtof.cpp
@@ -1593,6 +1611,7 @@ majorimageprocessingthread.o: majorimageprocessingthread.cpp mainwindow.h \
 		common.h \
 		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QObject \
 		rk-camera-module.h \
+		adaps_dtof_uapi.h \
 		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QString \
 		adaps_dtof.h \
 		depthmapwrapper.h \
@@ -1682,6 +1701,7 @@ v4l2.o: v4l2.cpp v4l2.h \
 		common.h \
 		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QObject \
 		rk-camera-module.h \
+		adaps_dtof_uapi.h \
 		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QString \
 		utils.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o v4l2.o v4l2.cpp
