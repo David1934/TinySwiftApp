@@ -3,20 +3,22 @@
 
 #include <QObject>
 #include <QString>
+#include <QMetaType>
 
-#define CONFIG_VIDEO_ADS6401
-#define CONFIG_ADAPS_SWIFT_FLOOD
-#define PAGE_SIZE                               (4*1024)
-#define RUN_ON_ROCKCHIP
-#define RUN_ON_RK3568
+#if defined(RUN_ON_ROCKCHIP)
 //#define IGNORE_REAL_COMMUNICATION
-
 #include "rk-camera-module.h"
+
+#else
+
+#include "adaps_types.h"
+#include "adaps_dtof_uapi.h"
+#endif
 
 #define VERSION_MAJOR                           2
 #define VERSION_MINOR                           0
-#define VERSION_REVISION                        0
-#define LAST_MODIFIED_TIME                      "241220a"
+#define VERSION_REVISION                        1
+#define LAST_MODIFIED_TIME                      "20250108A"
 
 #define DEFAULT_DTOF_FRAMERATE                  AdapsFramerateType30FPS // AdapsFramerateType60FPS
 
@@ -35,6 +37,19 @@
 #define VIDEO_DEV_4_RGB_SENSOR                  "/dev/video0"
 #define VIDEO_DEV_4_RGB_RK3588                  "/dev/video55"
 
+#if defined(RUN_ON_RK3568)
+    // for rk3568
+    #define MEDIA_DEVNAME_4_DTOF_SENSOR             "/dev/media0"
+    #define VIDEO_DEV_4_DTOF_SENSOR                 "/dev/video0"
+    #define ENTITY_NAME_4_DTOF_SENSOR               "m00_b_ads6401 4-005e"
+#else
+    // for rk3588
+    #define MEDIA_DEVNAME_4_DTOF_SENSOR             "/dev/media2"
+    #define VIDEO_DEV_4_DTOF_SENSOR                 "/dev/video22"
+    #define ENTITY_NAME_4_DTOF_SENSOR               "m00_b_ads6401 7-005e"
+    #define VIDIOC_S_FMT_INCLUDE_VIDIOC_SUBDEV_S_FMT    // On rk3568 Linux platform, when call ioctl(fd, VIDIOC_S_FMT, &fmt), it will set format for sensor too.
+#endif
+
 #define DEFAULT_TIMER_TEST_TIMES                0
 #define TIMER_TEST_INTERVAL                     5   // unit is second
 
@@ -43,18 +58,6 @@
 
 #define DEFAULT_SENSOR_TYPE                     SENSOR_TYPE_DTOF
 #define DEFAULT_WORK_MODE                       WK_DTOF_FHR
-    #if defined(RUN_ON_RK3568)
-        // for rk3568
-        #define MEDIA_DEVNAME_4_DTOF_SENSOR             "/dev/media0"
-        #define VIDEO_DEV_4_DTOF_SENSOR                 "/dev/video0"
-        #define ENTITY_NAME_4_DTOF_SENSOR               "m00_b_ads6401 4-005e"
-    #else
-        // for rk3588
-        #define MEDIA_DEVNAME_4_DTOF_SENSOR             "/dev/media2"
-        #define VIDEO_DEV_4_DTOF_SENSOR                 "/dev/video22"
-        #define ENTITY_NAME_4_DTOF_SENSOR               "m00_b_ads6401 7-005e"
-        #define VIDIOC_S_FMT_INCLUDE_VIDIOC_SUBDEV_S_FMT    // On rk3568 Linux platform, when call ioctl(fd, VIDIOC_S_FMT, &fmt), it will set format for sensor too.
-    #endif
 
 #else
 #define WKMODE_4_RGB_SENSOR                     WK_RGB_YUYV    // On DELL notebook, it is WK_MODE_YUYV, on Apple notebook it is WK_MODE_NV12?
@@ -71,7 +74,10 @@
 #define ENV_VAR_SKIP_FRAME_PROCESS              "skip_frame_process"
 #define ENV_VAR_SKIP_EEPROM_CRC_CHK             "skip_eeprom_crc_check"
 #define ENV_VAR_TEST_PATTERN_TYPE               "test_pattern_index"
-#define ENV_VAR_SHOW_LENS_INTRINSIC             "show_lens_intrinsic"
+#define ENV_VAR_DUMP_LENS_INTRINSIC             "dump_lens_intrinsic"
+#define ENV_VAR_DISABLE_EXPAND_PIXEL            "disable_expand_pixel"      // processed in adaps decode algo lib
+#define ENV_VAR_DISABLE_COMPOSE_SUBFRAME        "disable_compose_subframe"  // processed in adaps decode algo lib
+#define ENV_VAR_DUMP_ROI_SRAM_SIZE              "dump_roi_sram_size"
 
 #define __tostr(x)                          #x
 #define __stringify(x)                      __tostr(x)
@@ -232,12 +238,43 @@ struct sensor_params
     int         raw_height;
     int         out_frm_width;
     int         out_frm_height;
-    AdapsEnvironmentType env_type;  
+    AdapsEnvironmentType env_type;
     AdapsMeasurementType measure_type;
     AdapsEnvironmentType advisedEnvType;
     AdapsMeasurementType advisedMeasureType;
+#if defined(RUN_ON_ROCKCHIP)
     struct adaps_get_exposure_param exposureParam;
+#endif
 };
+
+struct status_params1
+{
+    int fps;
+    unsigned long streamed_time_us;
+#if defined(RUN_ON_ROCKCHIP)
+    unsigned int curr_temperature;
+    unsigned int curr_exp_vop_abs;
+    unsigned int curr_exp_pvdd;
+#endif
+};
+
+struct status_params2
+{
+    int fps;
+    unsigned long streamed_time_us;
+    unsigned int sensor_type;
+    unsigned int work_mode;
+#if defined(RUN_ON_ROCKCHIP)
+    unsigned int curr_temperature;
+    unsigned int curr_exp_vop_abs;
+    unsigned int curr_exp_pvdd;
+    unsigned int env_type;
+    unsigned int measure_type;
+#endif
+};
+
+Q_DECLARE_METATYPE(struct status_params1);
+Q_DECLARE_METATYPE(struct status_params2);
 
 #endif // COMMON_H
 

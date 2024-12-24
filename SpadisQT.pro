@@ -4,7 +4,7 @@
 #
 #-------------------------------------------------
 
-QT       += core gui
+QT += core gui
 # CONFIG+= console
 # CONFIG += debug
 # QMAKE_CXXFLAGS += -g
@@ -13,25 +13,34 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 TARGET = SpadisQT
 TEMPLATE = app
 
-LIBS += -L$$PWD -ladaps_swift_decode
-QMAKE_LFLAGS += -Wl,-rpath,/vendor/lib64/
+DEFINES += RUN_ON_ROCKCHIP
 
 SOURCES +=\
         globalapplication.cpp \
         main.cpp \
         mainwindow.cpp \
-        adaps_dtof.cpp \
-        majorimageprocessingthread.cpp \
+        FrameProcessThread.cpp \
         utils.cpp \
         v4l2.cpp
 
 HEADERS  += mainwindow.h \
-        adaps_dtof.h \
         common.h \
         depthmapwrapper.h \
         globalapplication.h \
-        majorimageprocessingthread.h \
+        FrameProcessThread.h \
         rk-camera-module.h \
+        utils.h \
         v4l2.h
+
+contains(DEFINES, RUN_ON_ROCKCHIP) {
+    DEFINES += RUN_ON_RK3568
+    DEFINES += CONFIG_VIDEO_ADS6401
+    DEFINES += CONFIG_ADAPS_SWIFT_FLOOD
+
+    QMAKE_LFLAGS += -Wl,-rpath,/vendor/lib64/
+    SOURCES += adaps_dtof.cpp
+    HEADERS  += adaps_dtof.h
+    LIBS += -L$$PWD -ladaps_swift_decode
+}
 
 FORMS    += mainwindow.ui

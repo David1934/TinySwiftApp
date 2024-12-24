@@ -12,10 +12,12 @@ V4L2::V4L2(struct sensor_params params)
     buffers = NULL;
     sensordata = NULL;
     fd_4_dtof = 0;
+    fd = 0;
     firstFrameTimeUsec = 0;
     rxFrameCnt = 0;
     fps = 0;
     streamed_timeUs = 0;
+    last_temperature = 0;
     init();
     memcpy(&snr_param, &params, sizeof(struct sensor_params));
 
@@ -387,6 +389,7 @@ bool V4L2::save_eeprom(void *buf, int len)
     return true;
 }
 
+#if defined(RUN_ON_ROCKCHIP)
 void* V4L2::adaps_getExposureParam(void)
 {
     return &snr_param.exposureParam;
@@ -413,12 +416,14 @@ int V4L2::adaps_readExposureParam(void)
 
     return ret;
 }
+#endif
 
 void* V4L2::adaps_getEEPROMData(void)
 {
     return p_eeprominfo;
 }
 
+#if defined(RUN_ON_ROCKCHIP)
 #if (ADS6401_MODDULE_SPOT == SWIFT_MODULE_TYPE)
 int V4L2::adaps_chkEEPROMChecksum(void)
 {
@@ -462,7 +467,6 @@ int V4L2::adaps_chkEEPROMChecksum(void)
 int V4L2::adaps_chkEEPROMChecksum(void)
 {
     int i = 0,ret=0;
-
     uint32_t read_crc32 = 0;
     uint32_t calc_crc32 = 0;
     swift_eeprom_data_t *p_swift_eeprom_data;
@@ -484,13 +488,13 @@ int V4L2::adaps_chkEEPROMChecksum(void)
         //hex_data_dump((const u8 *) sensor->eeprom_data, 64, "eeprom data head");
     }
     else {
-        DBG_ERROR("EEPROM Crc32Pg0 mismatched!!! sizeof(swift_eeprom_data_t)=%ld, calc_crc32:0x%x,read Crc32Pg0:0x%x",
-                sizeof(swift_eeprom_data_t),
+        DBG_ERROR("EEPROM Crc32Pg0 MISMATCHED!!! AD4001_EEPROM_ROISRAM_DATA_OFFSET=%ld, calc_crc32:0x%x,read Crc32Pg0:0x%x",
+                AD4001_EEPROM_ROISRAM_DATA_OFFSET,
                 calc_crc32,
                 p_swift_eeprom_data->Crc32Pg0);
         //hex_data_dump((const u8 *) sensor->eeprom_data, 64, "eeprom data head");
         ret = -1;
-        goto check_exit;
+        //goto check_exit;
     }
 
     //do page 1 crc
@@ -498,48 +502,44 @@ int V4L2::adaps_chkEEPROMChecksum(void)
 
     if(p_swift_eeprom_data->Crc32Pg1 == calc_crc32)
     {
-        DBG_INFO("EEPROM Crc32Pg1 matched!!! sizeof(swift_eeprom_data_t)=%ld, calc_crc32:0x%x",
-                sizeof(swift_eeprom_data_t),
+        DBG_INFO("EEPROM Crc32Pg1 matched!!! calc_crc32:0x%x",
                 calc_crc32);
         //hex_data_dump((const u8 *) sensor->eeprom_data, 64, "eeprom data head");
     }
     else {
-        DBG_ERROR("EEPROM Crc32Pg1 mismatched!!! sizeof(swift_eeprom_data_t)=%ld, calc_crc32:0x%x,read Crc32Pg1:0x%x",
-                sizeof(swift_eeprom_data_t),
+        DBG_ERROR("EEPROM Crc32Pg1 MISMATCHED!!! calc_crc32:0x%x,read Crc32Pg1:0x%x",
                 calc_crc32,
                 p_swift_eeprom_data->Crc32Pg1);
         ret = -1;
-        goto check_exit;
+        //goto check_exit;
     }
 
     //do page 2 crc
     calc_crc32 = utils->crc32(0, (const unsigned char *) p_eeprominfo->pRawData + AD4001_EEPROM_TDCDELAY_OFFSET, AD4001_EEPROM_TDCDELAY_SIZE+AD4001_EEPROM_INTRINSIC_SIZE+AD4001_EEPROM_INDOOR_CALIBTEMPERATURE_SIZE+AD4001_EEPROM_OUTDOOR_CALIBTEMPERATURE_SIZE+AD4001_EEPROM_INDOOR_CALIBREFDISTANCE_SIZE+AD4001_EEPROM_OUTDOOR_CALIBREFDISTANCE_SIZE);
     if(p_swift_eeprom_data->Crc32Pg2 == calc_crc32)
     {
-        DBG_INFO("EEPROM Crc32Pg2 matched!!! sizeof(swift_eeprom_data_t)=%ld, calc_crc32:0x%x",
-                sizeof(swift_eeprom_data_t),
+        DBG_INFO("EEPROM Crc32Pg2 matched!!! calc_crc32:0x%x",
                 calc_crc32);
         //hex_data_dump((const u8 *) sensor->eeprom_data, 64, "eeprom data head");
     }
     else {
-        DBG_ERROR("EEPROM Crc32Pg2 mismatched!!! sizeof(swift_eeprom_data_t)=%ld, calc_crc32:0x%x,read Crc32Pg2:0x%x",
-                sizeof(swift_eeprom_data_t),
+        DBG_ERROR("EEPROM Crc32Pg2 MISMATCHED!!! calc_crc32:0x%x,read Crc32Pg2:0x%x",
                 calc_crc32,
                 p_swift_eeprom_data->Crc32Pg2);
         ret = -1;
-        goto check_exit;
+        //goto check_exit;
     }
 
-    //do sram data crc
-    for ( i = 0; i < TOF_SRAM_ZONE_NUM; ++i)
+    //do sram data crc for every zone
+    for ( i = 0; i < ZONE_COUNT_PER_SRAM_GROUP * CALIB_SRAM_GROUP_COUNT; ++i)
     {
-        calc_crc32 = utils->crc32(0, (const unsigned char *) p_eeprominfo->pRawData + i*SRAM_ZONE_OCUPPY_SPACE, SRAM_ZONE_VALID_DATA_LENGTH);
-        read_crc32 = *(uint32_t*)(p_eeprominfo->pRawData + i*SRAM_ZONE_OCUPPY_SPACE + SRAM_ZONE_VALID_DATA_LENGTH);
+        calc_crc32 = utils->crc32(0, (const unsigned char *) p_eeprominfo->pRawData + AD4001_EEPROM_ROISRAM_DATA_OFFSET + i*SRAM_ZONE_OCUPPY_SPACE, SRAM_ZONE_VALID_DATA_LENGTH);
+        read_crc32 = *(uint32_t*)(p_eeprominfo->pRawData + AD4001_EEPROM_ROISRAM_DATA_OFFSET + i*SRAM_ZONE_OCUPPY_SPACE + SRAM_ZONE_VALID_DATA_LENGTH);
         if (calc_crc32 != read_crc32)
         {
-            DBG_ERROR("SRAM %d CRC checksum mismatched, calc_crc32=0x%x   read_crc32=0x%x\n", i, calc_crc32, read_crc32);
+            DBG_ERROR("SRAM %d CRC checksum MISMATCHED, calc_crc32=0x%x   read_crc32=0x%x\n", i, calc_crc32, read_crc32);
             ret = -1;
-            goto check_exit;
+            //goto check_exit;
         }
         else
         {
@@ -548,8 +548,9 @@ int V4L2::adaps_chkEEPROMChecksum(void)
                 sizeof(swift_eeprom_data_t),
                 calc_crc32);
         }
+
         //reset the crc in the eeprom to 0,because the algo will use these data
-        *(uint32_t*)(p_eeprominfo->pRawData + i*SRAM_ZONE_OCUPPY_SPACE + SRAM_ZONE_VALID_DATA_LENGTH)=0;
+        //*(uint32_t*)(p_eeprominfo->pRawData + i*SRAM_ZONE_OCUPPY_SPACE + SRAM_ZONE_VALID_DATA_LENGTH)=0;
     }
 
     //do offset crc 
@@ -558,9 +559,13 @@ int V4L2::adaps_chkEEPROMChecksum(void)
         calc_crc32 = utils->crc32(0, (unsigned char*)(p_swift_eeprom_data->spotOffset)+i*OFFSET_VALID_DATA_LENGTH, OFFSET_VALID_DATA_LENGTH);
         if (calc_crc32 != p_swift_eeprom_data->Crc32Offset[i])
         {
-            DBG_ERROR("offset CRC checksum failed, calc_crc32=0x%x   sensor->eeprom_data->Crc32Offset[i]=0x%x.  i=%d\n", calc_crc32,p_swift_eeprom_data->Crc32Offset[i],i);
+            DBG_ERROR("offset %d CRC checksum MISMATCHED, read_crc=0x%x, calc_crc32:0x%x\n", i, p_swift_eeprom_data->Crc32Offset[i], calc_crc32);
             ret = -1;
-            goto check_exit;
+            //goto check_exit;
+        }
+        else
+        {
+            DBG_INFO("offset %d CRC checksum matched!!! calc_crc32:0x%x", i, calc_crc32);
         }
     }
 
@@ -641,15 +646,18 @@ int V4L2::adaps_readTemperatureOfDtofSubdev(float *temperature)
             ret = -1;
         }else
         {     
-            float temp1 = perframe.internal_temperature%100;
-            float temp2 = perframe.internal_temperature/100;
-            
-            *temperature = temp2+temp1/100;
+            last_temperature = perframe.internal_temperature;
+            last_expected_vop_abs_x100 = perframe.expected_vop_abs_x100;
+            last_expected_pvdd_x100 = perframe.expected_pvdd_x100;
+
+            *temperature = (float) ((double)perframe.internal_temperature /(double)100.0f);
+            DBG_INFO("internal_temperature: %d, temperature: %f\n", perframe.internal_temperature, *temperature);
         }
     }
 
     return ret;
 }
+#endif
 
 int V4L2::V4l2_initilize(void)
 {
@@ -680,6 +688,7 @@ int V4L2::V4l2_initilize(void)
     {
         DBG_ERROR("Fail to open device %s , errno: %s (%d)...", 
             video_dev, strerror(errno), errno);
+        fd = 0;
         return 0 - __LINE__;
     }
 
@@ -752,6 +761,7 @@ int V4L2::V4l2_initilize(void)
 #endif
 
     // when config swift work mode, need TDC delay min/max need to know which environment, which measurement is used, so I move this the following lines before set sensor fmt;
+#if defined(RUN_ON_ROCKCHIP)
     if (SENSOR_TYPE_DTOF == snr_param.sensor_type)
     {
         if (0 > adaps_readEEPROMData())
@@ -777,6 +787,7 @@ int V4L2::V4l2_initilize(void)
             return ret;
         }
     }
+#endif
 #endif
 
     DBG_INFO("VIDIOC_S_FMT %d X %d, pixel_format: 0x%x, raw_width:%d, raw_height:%d...\n",
@@ -828,6 +839,7 @@ int V4L2::V4l2_initilize(void)
     }
 #endif
 
+#if defined(RUN_ON_ROCKCHIP)
     if (SENSOR_TYPE_DTOF == snr_param.sensor_type)
     {
         if (0 > adaps_readExposureParam())
@@ -835,6 +847,7 @@ int V4L2::V4l2_initilize(void)
             return 0 - __LINE__;
         }
     }
+#endif
 
     if (false == alloc_buffers())
     {
@@ -870,6 +883,7 @@ int V4L2::Capture_frame()
     int bytesused;
     struct timeval tv;
     long currTimeUsec;
+    status_params1 param1;
 
     CLEAR(v4l2_buf);
 
@@ -909,9 +923,26 @@ int V4L2::Capture_frame()
     {
         firstFrameTimeUsec = tv.tv_sec*1000000 + tv.tv_usec;
 
-        bits_per_pixel = 8; // TODO: get from v4l2 api
+        switch (pixel_format) {
+            case V4L2_PIX_FMT_YUYV:
+                bits_per_pixel = 12;
+                break;
+
+            case V4L2_PIX_FMT_NV12:
+                bits_per_pixel = 12;
+            break;
+
+            case V4L2_PIX_FMT_SBGGR8:
+            default:
+                bits_per_pixel = 8;
+                break;
+        }
         total_bytes_per_line = bytesused/snr_param.raw_height;
-        padding_bytes_per_line = total_bytes_per_line - (snr_param.raw_width * bits_per_pixel)/8;
+        payload_bytes_per_line = (snr_param.raw_width * bits_per_pixel)/8;
+        padding_bytes_per_line = total_bytes_per_line - payload_bytes_per_line;
+        DBG_NOTICE("\n------frame raw size: %d X %d, bits_per_pixel: %d, payload_bytes_per_line: %d, total_bytes_per_line: %d, padding_bytes_per_line: %d---\n",
+            snr_param.raw_width, snr_param.raw_height,
+            bits_per_pixel, payload_bytes_per_line, total_bytes_per_line, padding_bytes_per_line);
     }
     else {
         currTimeUsec = tv.tv_sec*1000000 + tv.tv_usec;
@@ -919,7 +950,14 @@ int V4L2::Capture_frame()
         fps = (rxFrameCnt * 1000000) / streamed_timeUs;
     }
 
-    emit update_info(fps, streamed_timeUs);
+    param1.fps = fps;
+    param1.streamed_time_us = streamed_timeUs;
+#if defined(RUN_ON_ROCKCHIP)
+    param1.curr_temperature = last_temperature;
+    param1.curr_exp_vop_abs = last_expected_vop_abs_x100;
+    param1.curr_exp_pvdd = last_expected_pvdd_x100;
+#endif
+    emit update_info(param1);
 
     emit new_frame_process(v4l2_buf.sequence, buffers[v4l2_buf.index].start, bytesused, v4l2_buf.timestamp, frm_type, total_bytes_per_line);
 
@@ -940,11 +978,10 @@ void V4L2::Stop_streaming(void)
     if (rxFrameCnt <= 0) // not started yet.
         return;
 
-    DBG_NOTICE("\n------Test Statistics------streamed: %02d:%02d:%02d, rxFrameCnt: %ld, fps: %d, raw size: %d X %d, bits_per_pixel: %d, padding_bytes_per_line: %d, total_bytes_per_line: %d---\n",
+    DBG_NOTICE("\n------Test Statistics------streamed: %02d:%02d:%02d, rxFrameCnt: %ld, fps: %d, frame raw size: %d X %d---\n",
         streamed_second/3600,streamed_second/60,streamed_second%60,
         rxFrameCnt, fps, 
-        snr_param.raw_width, snr_param.raw_height,
-        bits_per_pixel, padding_bytes_per_line, total_bytes_per_line);
+        snr_param.raw_width, snr_param.raw_height);
 
     if (-1 == ioctl(fd, VIDIOC_STREAMOFF, &buf_type)) {
         DBG_ERROR("Fail to stream off, errno: %s (%d)...", 
@@ -970,12 +1007,15 @@ void V4L2::Close(void)
     }
 
     free_buffers();
-    if (-1 == close(fd)) {
-        DBG_ERROR("Fail to close device, errno: %s (%d)...", 
-            strerror(errno), errno);
-        return;
+    if (0 != fd)
+    {
+        if (-1 == close(fd)) {
+            DBG_ERROR("Fail to close device, errno: %s (%d)...", 
+                strerror(errno), errno);
+            return;
+        }
+        fd = 0;
     }
-    fd = 0;
 
     return;
 }

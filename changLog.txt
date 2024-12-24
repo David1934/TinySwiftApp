@@ -1,0 +1,19 @@
+X. @2025/01/08 -- version update to 2.0.1_LM20250108A
+    redmine #1863: swift ROI动态修改速度验证1(由于swift算法库尚未修改，ROI sram测试尚不完整)
+    http://gerrit.adaps.corp/c/SpadisQT/+/4314
+
+patch set 1: add inside_temperature display on the GUI of SpadisQT;
+patch set 2: MACRO rename: AD4001_EEPROM_SPODOFFSET_OFFSET -> AD4001_EEPROM_SPOTOFFSET_OFFSET, 
+             AD4001_EEPROM_SPODPOS_OFFSET -> AD4001_EEPROM_ROISRAM_DATA_OFFSET;
+patch set 3: add environment variable to control compose_subframe and expand_pixel;
+patch set 5: display pure RED or BLUE color for PTM and GRAY-SCALE mode when the environment varible 'skip_frame_process' is set to true;
+patch set 6: move build switch 'RUN_ON_ROCKCHIP' to SpadisQT.pro (Makefile) file to quick switch between Linux PC and embedded Linux;
+patch set 7: correct a minor mistake in adaps_chkEEPROMChecksum();
+patch set 8: add NULL check for some pointers, enable run on PC Linux (deepin 23);
+patch set 12: rename some macros for eeprom structure definition to get better readability;
+patch set 13: adjust the UI layout to show inside temperature fullly;
+patch set 14: add expected Vop, PVDD display on UI;
+patch set 15: Use custom struct types status_param1 and status_param2 as parameters for QT signals and slot functions to facilitate the addition or removal of more variables if need;
+patch set 17: improve Linux signal handle for abnormal and user signal 1-2;
+patch set 19: rename majorimageprocessingthread to FrameProcessThread;
+patch set 20: add Ctrl-Z to capture the current window(debug useful feature)

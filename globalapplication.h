@@ -6,6 +6,7 @@
 #include <common.h>
 
 class GlobalApplication;
+
 #if defined(qApp)
 #undef qApp
 #endif

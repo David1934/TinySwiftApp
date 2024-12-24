@@ -5,7 +5,9 @@
 #ifndef _ADAPS_DTOF_UAPI_H
 #define _ADAPS_DTOF_UAPI_H
 
+#if defined(RUN_ON_ROCKCHIP)
 #include <linux/types.h>
+#endif
 
 #define ADAPS_DTOF_PRIVATE              0x1000
 
@@ -286,19 +288,24 @@ struct hawk_norflash_op_param
 
 #include "adaps_types.h"
 
+// There are two group Calibration SRAM for spod address, every group has 4 calibration registers.
 #define CALIB_SRAM_REG_BASE0                0xFB
 #define CALIB_SRAM_REG_BASE1                0xF7
 #define CSRU_SRAM_OFFSET_REG                0xC7
-#define ZONE_NUM_PER_ROISRAM                4
-#define PER_ROISRAM_SIZE                    (CALIB_SRAM_REG_SIZE*ZONE_NUM_PER_ROISRAM)
 
-// There are two group Calibration SRAM for spod address, every group has 4 calibration registers.
-#define TOF_SRAM_ZONE_NUM                   8
-#define CALIB_SRAM_REG_SIZE                 512 //480     //unit is bytes
+#define PER_ZONE_MAX_SPOT_COUNT             240
+
+#define PER_CALIB_SRAM_ZONE_SIZE            512     //unit is bytes, actual use size is 480 bytes, the remaining 32 bytes is 0
+#define ZONE_COUNT_PER_SRAM_GROUP           4
+#define CALIB_SRAM_GROUP_COUNT              2
+
+#define PER_ROISRAM_GROUP_SIZE              (PER_CALIB_SRAM_ZONE_SIZE * ZONE_COUNT_PER_SRAM_GROUP) //unit is bytes
+
+#define ALL_ROISRAM_GROUP_SIZE              (PER_CALIB_SRAM_ZONE_SIZE * ZONE_COUNT_PER_SRAM_GROUP * CALIB_SRAM_GROUP_COUNT)
+
+#define SWIFT_MAX_SPOT_COUNT                (PER_ZONE_MAX_SPOT_COUNT * ZONE_COUNT_PER_SRAM_GROUP * CALIB_SRAM_GROUP_COUNT)
 
 #define SWIFT_DEVICE_NAME_LENGTH            64
-#define SWIFT_SPOT_POSITION_SIZE            (CALIB_SRAM_REG_SIZE*TOF_SRAM_ZONE_NUM)  //512 * 4 * 2
-#define SWIFT_SPOT_BOX                      1920  //960 * 2
 
 #define OFFSET(structure, member)           ((uintptr_t)&((structure*)0)->member)
 #define MEMBER_SIZE(structure, member)      sizeof(((structure*)0)->member)
@@ -312,19 +319,19 @@ typedef struct SwiftEepromData
     // Page 1
     char            deviceName[SWIFT_DEVICE_NAME_LENGTH];
     // Page 2 - 65
-    unsigned char   sramData[SWIFT_SPOT_POSITION_SIZE];
+    unsigned char   sramData[ALL_ROISRAM_GROUP_SIZE];
     // Page 66
     float           intrinsic[9];     // 36 bytes
     float           offset;           // 4 bytes
-    __u32        refSpadSelection; // 4 bytes
-    __u32        driverChannelOffset[4];  // 16 bytes
-    __u32        distanceTemperatureCoefficient;
+    __u32           refSpadSelection; // 4 bytes
+    __u32           driverChannelOffset[4];  // 16 bytes
+    __u32           distanceTemperatureCoefficient;
     // Page 67 - 186
-    float           spotPos[SWIFT_SPOT_BOX]; // 7680 bytes, 120 pages
+    float           spotPos[SWIFT_MAX_SPOT_COUNT]; // 7680 bytes, 120 pages
     // Page 187 - 246
     float           spotOffset[SWIFT_OFFSET_SIZE]; // 3840 bytes, 60 pages
     // Page 247
-    __u32        tdcDelay[16]; // 8 bytes
+    __u32           tdcDelay[16]; // 8 bytes
     // Page 248
     float           indoorCalibTemperature; // Calibration temperature.
     float           indoorCalibRefDistance; // Calibration reference distance.
@@ -343,11 +350,11 @@ typedef struct SwiftEepromData
     // Page 255
     char            reservedPage255[SWIFT_DEVICE_NAME_LENGTH];
     // Page 256
-    __u32            totalChecksum;
-    __u32            sramDataChecksum;
-    __u32            spotPositionChecksum;
-    __u32            spotOffsetChecksum;
-    __u32            proximityChecksum;
+    __u32           totalChecksum;
+    __u32           sramDataChecksum;
+    __u32           spotPositionChecksum;
+    __u32           spotOffsetChecksum;
+    __u32           proximityChecksum;
 #else // to be synced with SpadisPC
     //Page  255-256
     char            reserved1[MODULE_INFO_RESERVED_SIZE];
@@ -360,34 +367,34 @@ typedef struct SwiftEepromData
     //Page  796-1023
     char            noise[SWIFT_NOISE_SIZE];
     //Page  1024
-    uint8_t            checksum[SWIFT_CHECKSUM_SIZE];
+    uint8_t         checksum[SWIFT_CHECKSUM_SIZE];
 #endif
 }swift_eeprom_data_t;
 
-#define  AD4001_EEPROM_VERSION_INFO_OFFSET          OFFSET(swift_eeprom_data_t, deviceName)               /// 0, 0x00
-#define  AD4001_EEPROM_VERSION_INFO_SIZE            MEMBER_SIZE(swift_eeprom_data_t, deviceName)
+#define  AD4001_EEPROM_VERSION_INFO_OFFSET                  OFFSET(swift_eeprom_data_t, deviceName)               /// 0, 0x00
+#define  AD4001_EEPROM_VERSION_INFO_SIZE                    MEMBER_SIZE(swift_eeprom_data_t, deviceName)
 
 // please refer to data struct 'swift_eeprom_data_t' in SpadisPC
-#define  AD4001_EEPROM_SPODPOS_OFFSET               OFFSET(swift_eeprom_data_t, sramData)               /// 64, 0x40
-#define  AD4001_EEPROM_SPODPOS_SIZE                 MEMBER_SIZE(swift_eeprom_data_t, sramData)
+#define  AD4001_EEPROM_ROISRAM_DATA_OFFSET                  OFFSET(swift_eeprom_data_t, sramData)               /// 64, 0x40
+#define  AD4001_EEPROM_ROISRAM_DATA_SIZE                    MEMBER_SIZE(swift_eeprom_data_t, sramData)
 
-#define  AD4001_EEPROM_INTRINSIC_OFFSET             OFFSET(swift_eeprom_data_t, intrinsic)              /// 4160 0x1040
-#define  AD4001_EEPROM_INTRINSIC_SIZE               MEMBER_SIZE(swift_eeprom_data_t, intrinsic)         /// 9xsizeof(float)
+#define  AD4001_EEPROM_INTRINSIC_OFFSET                     OFFSET(swift_eeprom_data_t, intrinsic)              /// 4160 0x1040
+#define  AD4001_EEPROM_INTRINSIC_SIZE                       MEMBER_SIZE(swift_eeprom_data_t, intrinsic)         /// 9xsizeof(float)
 
-#define  AD4001_EEPROM_ACCURATESPODPOS_OFFSET       OFFSET(swift_eeprom_data_t, spotPos)        /// 4224 0x1080
-#define  AD4001_EEPROM_ACCURATESPODPOS_SIZE         MEMBER_SIZE(swift_eeprom_data_t, spotPos)   /// 4x240x2xsizeof(float)=1920x4=7680
+#define  AD4001_EEPROM_ACCURATESPODPOS_OFFSET               OFFSET(swift_eeprom_data_t, spotPos)        /// 4224 0x1080
+#define  AD4001_EEPROM_ACCURATESPODPOS_SIZE                 MEMBER_SIZE(swift_eeprom_data_t, spotPos)   /// 4x240x2xsizeof(float)=1920x4=7680
 
-#define  AD4001_EEPROM_SPODOFFSET_OFFSET            OFFSET(swift_eeprom_data_t, spotOffset)             /// 11904 0x2e80
-#define  AD4001_EEPROM_SPODOFFSET_SIZE              MEMBER_SIZE(swift_eeprom_data_t, spotOffset)        /// 4x240xsizeof(float)=960x4=3840
+#define  AD4001_EEPROM_SPOTOFFSET_OFFSET                    OFFSET(swift_eeprom_data_t, spotOffset)             /// 11904 0x2e80
+#define  AD4001_EEPROM_SPOTOFFSET_SIZE                      MEMBER_SIZE(swift_eeprom_data_t, spotOffset)        /// 4x240xsizeof(float)=960x4=3840
 
-#define  AD4001_EEPROM_TDCDELAY_OFFSET              OFFSET(swift_eeprom_data_t, tdcDelay)               /// 15744 0x3d80 
-#define  AD4001_EEPROM_TDCDELAY_SIZE                MEMBER_SIZE(swift_eeprom_data_t, tdcDelay)          /// 2xsizeof(uint32_t)=16x4=64
+#define  AD4001_EEPROM_TDCDELAY_OFFSET                      OFFSET(swift_eeprom_data_t, tdcDelay)               /// 15744 0x3d80 
+#define  AD4001_EEPROM_TDCDELAY_SIZE                        MEMBER_SIZE(swift_eeprom_data_t, tdcDelay)          /// 2xsizeof(uint32_t)=16x4=64
 
-#define  AD4001_EEPROM_INDOOR_CALIBTEMPERATURE_OFFSET      OFFSET(swift_eeprom_data_t, indoorCalibTemperature)               /// 15808 0x3dc0
-#define  AD4001_EEPROM_INDOOR_CALIBTEMPERATURE_SIZE        MEMBER_SIZE(swift_eeprom_data_t, indoorCalibTemperature)          /// 1xsizeof(float)=1x4=4
+#define  AD4001_EEPROM_INDOOR_CALIBTEMPERATURE_OFFSET       OFFSET(swift_eeprom_data_t, indoorCalibTemperature)               /// 15808 0x3dc0
+#define  AD4001_EEPROM_INDOOR_CALIBTEMPERATURE_SIZE         MEMBER_SIZE(swift_eeprom_data_t, indoorCalibTemperature)          /// 1xsizeof(float)=1x4=4
 
-#define  AD4001_EEPROM_INDOOR_CALIBREFDISTANCE_OFFSET      OFFSET(swift_eeprom_data_t, indoorCalibRefDistance)               /// 15812 0x3dc4
-#define  AD4001_EEPROM_INDOOR_CALIBREFDISTANCE_SIZE        MEMBER_SIZE(swift_eeprom_data_t, indoorCalibRefDistance)          /// 1xsizeof(float)=1x4=4
+#define  AD4001_EEPROM_INDOOR_CALIBREFDISTANCE_OFFSET       OFFSET(swift_eeprom_data_t, indoorCalibRefDistance)               /// 15812 0x3dc4
+#define  AD4001_EEPROM_INDOOR_CALIBREFDISTANCE_SIZE         MEMBER_SIZE(swift_eeprom_data_t, indoorCalibRefDistance)          /// 1xsizeof(float)=1x4=4
 
 #define  AD4001_EEPROM_OUTDOOR_CALIBTEMPERATURE_OFFSET      OFFSET(swift_eeprom_data_t, outdoorCalibTemperature)               /// 15816
 #define  AD4001_EEPROM_OUTDOOR_CALIBTEMPERATURE_SIZE        MEMBER_SIZE(swift_eeprom_data_t, outdoorCalibTemperature)          /// 1xsizeof(float)=1x4=4
@@ -395,38 +402,38 @@ typedef struct SwiftEepromData
 #define  AD4001_EEPROM_OUTDOOR_CALIBREFDISTANCE_OFFSET      OFFSET(swift_eeprom_data_t, outdoorCalibRefDistance)               /// 15820
 #define  AD4001_EEPROM_OUTDOOR_CALIBREFDISTANCE_SIZE        MEMBER_SIZE(swift_eeprom_data_t, outdoorCalibRefDistance)          /// 1xsizeof(float)=1x4=4
 
-#define  AD4001_EEPROM_PROX_HISTOGRAM_OFFSET        OFFSET(swift_eeprom_data_t, pxyHistogram)               /// 15824+12x(sizeof(float))=15872
-#define  AD4001_EEPROM_PROX_HISTOGRAM_SIZE          MEMBER_SIZE(swift_eeprom_data_t, pxyHistogram)          /// 256
+#define  AD4001_EEPROM_PROX_HISTOGRAM_OFFSET                OFFSET(swift_eeprom_data_t, pxyHistogram)               /// 15824+12x(sizeof(float))=15872
+#define  AD4001_EEPROM_PROX_HISTOGRAM_SIZE                  MEMBER_SIZE(swift_eeprom_data_t, pxyHistogram)          /// 256
 
-#define  AD4001_EEPROM_TOTAL_CHECKSUM_OFFSET        OFFSET(swift_eeprom_data_t, totalChecksum)
-#define  AD4001_EEPROM_TOTAL_CHECKSUM_SIZE          MEMBER_SIZE(swift_eeprom_data_t, totalChecksum)
+#define  AD4001_EEPROM_TOTAL_CHECKSUM_OFFSET                OFFSET(swift_eeprom_data_t, totalChecksum)
+#define  AD4001_EEPROM_TOTAL_CHECKSUM_SIZE                  MEMBER_SIZE(swift_eeprom_data_t, totalChecksum)
 
 #pragma pack()
 
 #else  // swift FLOOD module
 
-#define SWIFT_OFFSET_SIZE                           1920  //960 * 2
+#define SWIFT_OFFSET_SIZE                                   1920  //960 * 2
 
-#define EEPROM_PAGE_SIZE                            64
-#define CRC32_SPACE                                 4
-#define OFFSET_NUM                                  8
+#define EEPROM_PAGE_SIZE                                    64
+#define CRC32_SPACE                                         4
+#define OFFSET_NUM                                          8
 
 //page0
-#define SWIFT_DEVICE_VERSION_LENGTH                 6
-#define SWIFT_DEVICE_SN_LENGTH                      16
-#define PAGE0_RESERVED_SIZE                         (EEPROM_PAGE_SIZE - SWIFT_DEVICE_VERSION_LENGTH - SWIFT_DEVICE_SN_LENGTH - CRC32_SPACE)
+#define SWIFT_DEVICE_VERSION_LENGTH                         6
+#define SWIFT_DEVICE_SN_LENGTH                              16
+#define PAGE0_RESERVED_SIZE                                 (EEPROM_PAGE_SIZE - SWIFT_DEVICE_VERSION_LENGTH - SWIFT_DEVICE_SN_LENGTH - CRC32_SPACE)
 
 //page1
-#define SWIFT_DEVICE_MODULEINFO_LENGTH              60
+#define SWIFT_DEVICE_MODULEINFO_LENGTH                      60
 
 //page2
 
 //sram data
-#define SRAM_ZONE_OCUPPY_SPACE                      512
-#define SRAM_ZONE_VALID_DATA_LENGTH                 480
+#define SRAM_ZONE_OCUPPY_SPACE                              512
+#define SRAM_ZONE_VALID_DATA_LENGTH                         480
 
 //offset
-#define OFFSET_VALID_DATA_LENGTH                    960
+#define OFFSET_VALID_DATA_LENGTH                            960
 
 
 #pragma pack(1)
@@ -454,7 +461,7 @@ typedef struct SwiftEepromData
     unsigned char   Pg2Reserved[64-2-36-16-4]; //64-2-36-16-4=6
 
     //page 3---66
-    unsigned char   sramData[SWIFT_SPOT_POSITION_SIZE];// 512*8 ,BUT 480(datat)+4(crc) is valid for every 512 bytes
+    unsigned char   sramData[ALL_ROISRAM_GROUP_SIZE];// 512*8 ,BUT 480(datat)+4(crc) is valid for every 512 bytes
 
     //page 67-186
     float           spotOffset[SWIFT_OFFSET_SIZE]; // 64*60=3840 bytes = 960*4, 60 pages  for one offset.  here we have 2 offset???
@@ -464,37 +471,37 @@ typedef struct SwiftEepromData
     unsigned char   Pg187Reserved[64-32]; //64-32=32
 }swift_eeprom_data_t;
 
-#define  AD4001_EEPROM_VERSION_INFO_OFFSET          OFFSET(swift_eeprom_data_t, Version)
-#define  AD4001_EEPROM_VERSION_INFO_SIZE            MEMBER_SIZE(swift_eeprom_data_t, Version)
+#define  AD4001_EEPROM_VERSION_INFO_OFFSET                  OFFSET(swift_eeprom_data_t, Version)
+#define  AD4001_EEPROM_VERSION_INFO_SIZE                    MEMBER_SIZE(swift_eeprom_data_t, Version)
 
-#define  AD4001_EEPROM_SN_INFO_OFFSET          OFFSET(swift_eeprom_data_t, SerialNumber)
-#define  AD4001_EEPROM_SN_INFO_SIZE            MEMBER_SIZE(swift_eeprom_data_t, SerialNumber)
+#define  AD4001_EEPROM_SN_INFO_OFFSET                       OFFSET(swift_eeprom_data_t, SerialNumber)
+#define  AD4001_EEPROM_SN_INFO_SIZE                         MEMBER_SIZE(swift_eeprom_data_t, SerialNumber)
 
-#define  AD4001_EEPROM_MODULE_INFO_OFFSET          OFFSET(swift_eeprom_data_t, ModuleInfo)
-#define  AD4001_EEPROM_MODULE_INFO_SIZE            MEMBER_SIZE(swift_eeprom_data_t, ModuleInfo)
+#define  AD4001_EEPROM_MODULE_INFO_OFFSET                   OFFSET(swift_eeprom_data_t, ModuleInfo)
+#define  AD4001_EEPROM_MODULE_INFO_SIZE                     MEMBER_SIZE(swift_eeprom_data_t, ModuleInfo)
 
 
 // please refer to data struct 'swift_eeprom_data_t' in SpadisPC
-#define  AD4001_EEPROM_SPODPOS_OFFSET               OFFSET(swift_eeprom_data_t, sramData)
-#define  AD4001_EEPROM_SPODPOS_SIZE                 MEMBER_SIZE(swift_eeprom_data_t, sramData)
+#define  AD4001_EEPROM_ROISRAM_DATA_OFFSET                  OFFSET(swift_eeprom_data_t, sramData)
+#define  AD4001_EEPROM_ROISRAM_DATA_SIZE                    MEMBER_SIZE(swift_eeprom_data_t, sramData)
 
-#define  AD4001_EEPROM_INTRINSIC_OFFSET             OFFSET(swift_eeprom_data_t, intrinsic)              /// 4160 0x1040
-#define  AD4001_EEPROM_INTRINSIC_SIZE               MEMBER_SIZE(swift_eeprom_data_t, intrinsic)         /// 9xsizeof(float)
+#define  AD4001_EEPROM_INTRINSIC_OFFSET                     OFFSET(swift_eeprom_data_t, intrinsic)              /// 4160 0x1040
+#define  AD4001_EEPROM_INTRINSIC_SIZE                       MEMBER_SIZE(swift_eeprom_data_t, intrinsic)         /// 9xsizeof(float)
 
 //#define  AD4001_EEPROM_ACCURATESPODPOS_OFFSET       OFFSET(swift_eeprom_data_t, spotPos)
 //#define  AD4001_EEPROM_ACCURATESPODPOS_SIZE         MEMBER_SIZE(swift_eeprom_data_t, spotPos)
 
-#define  AD4001_EEPROM_SPODOFFSET_OFFSET            OFFSET(swift_eeprom_data_t, spotOffset)
-#define  AD4001_EEPROM_SPODOFFSET_SIZE              MEMBER_SIZE(swift_eeprom_data_t, spotOffset)
+#define  AD4001_EEPROM_SPOTOFFSET_OFFSET                    OFFSET(swift_eeprom_data_t, spotOffset)
+#define  AD4001_EEPROM_SPOTOFFSET_SIZE                      MEMBER_SIZE(swift_eeprom_data_t, spotOffset)
 
-#define  AD4001_EEPROM_TDCDELAY_OFFSET              OFFSET(swift_eeprom_data_t, tdcDelay)
-#define  AD4001_EEPROM_TDCDELAY_SIZE                MEMBER_SIZE(swift_eeprom_data_t, tdcDelay)
+#define  AD4001_EEPROM_TDCDELAY_OFFSET                      OFFSET(swift_eeprom_data_t, tdcDelay)
+#define  AD4001_EEPROM_TDCDELAY_SIZE                        MEMBER_SIZE(swift_eeprom_data_t, tdcDelay)
 
-#define  AD4001_EEPROM_INDOOR_CALIBTEMPERATURE_OFFSET      OFFSET(swift_eeprom_data_t, indoorCalibTemperature)
-#define  AD4001_EEPROM_INDOOR_CALIBTEMPERATURE_SIZE        MEMBER_SIZE(swift_eeprom_data_t, indoorCalibTemperature)
+#define  AD4001_EEPROM_INDOOR_CALIBTEMPERATURE_OFFSET       OFFSET(swift_eeprom_data_t, indoorCalibTemperature)
+#define  AD4001_EEPROM_INDOOR_CALIBTEMPERATURE_SIZE         MEMBER_SIZE(swift_eeprom_data_t, indoorCalibTemperature)
 
-#define  AD4001_EEPROM_INDOOR_CALIBREFDISTANCE_OFFSET      OFFSET(swift_eeprom_data_t, indoorCalibRefDistance)
-#define  AD4001_EEPROM_INDOOR_CALIBREFDISTANCE_SIZE        MEMBER_SIZE(swift_eeprom_data_t, indoorCalibRefDistance)
+#define  AD4001_EEPROM_INDOOR_CALIBREFDISTANCE_OFFSET       OFFSET(swift_eeprom_data_t, indoorCalibRefDistance)
+#define  AD4001_EEPROM_INDOOR_CALIBREFDISTANCE_SIZE         MEMBER_SIZE(swift_eeprom_data_t, indoorCalibRefDistance)
 
 #define  AD4001_EEPROM_OUTDOOR_CALIBTEMPERATURE_OFFSET      OFFSET(swift_eeprom_data_t, outdoorCalibTemperature)
 #define  AD4001_EEPROM_OUTDOOR_CALIBTEMPERATURE_SIZE        MEMBER_SIZE(swift_eeprom_data_t, outdoorCalibTemperature)
@@ -502,7 +509,7 @@ typedef struct SwiftEepromData
 #define  AD4001_EEPROM_OUTDOOR_CALIBREFDISTANCE_OFFSET      OFFSET(swift_eeprom_data_t, outdoorCalibRefDistance)
 #define  AD4001_EEPROM_OUTDOOR_CALIBREFDISTANCE_SIZE        MEMBER_SIZE(swift_eeprom_data_t, outdoorCalibRefDistance)
 
-#define ONE_SPOD_OFFSET_BYTE_SIZE                   3840//240*4*4
+#define ONE_SPOD_OFFSET_BYTE_SIZE                           3840//240*4*4
 
 #pragma pack()
 #endif
@@ -534,6 +541,8 @@ struct adaps_get_exposure_param{
 struct adaps_get_param_perframe{
     //float internal_temperature;
     __u32 internal_temperature; //since kernel doesn't use float type, the temperate is a expanded integer value (x100)
+    __u32 expected_vop_abs_x100;
+    __u32 expected_pvdd_x100;
 };
 
 #pragma pack(4)
@@ -555,11 +564,8 @@ struct adaps_get_param_perframe{
 #define ADAPS_GET_EEPROM       \
 	_IOR('T', ADAPS_DTOF_PRIVATE + 5, struct adaps_get_eeprom)
 
-#define ADAPS_SWITCH_FRAME_MODE       \
-	_IOR('T', ADAPS_DTOF_PRIVATE + 6, __u32)
-
 #define ADAPS_GET_EXPOSURE_PARAM       \
-	_IOR('T', ADAPS_DTOF_PRIVATE + 7, struct adaps_get_exposure_param)
+	_IOR('T', ADAPS_DTOF_PRIVATE + 6, struct adaps_get_exposure_param)
 
 
 #endif // FOR ADAPS_SWIFT

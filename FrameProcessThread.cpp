@@ -1,17 +1,20 @@
 #include <mainwindow.h>
 #include <globalapplication.h>
 
-#include "majorimageprocessingthread.h"
+#include "FrameProcessThread.h"
 #include "utils.h"
 
-MajorImageProcessingThread::MajorImageProcessingThread()
+FrameProcessThread::FrameProcessThread()
 {
     stopped = true;
     majorindex = -1;
     rgb_buffer = NULL;
     depth_buffer = NULL;
+    v4l2 = NULL;
+    utils = NULL;
     sns_param.sensor_type = qApp->get_sensor_type();
     sns_param.save_frame_cnt = qApp->get_save_cnt();
+    skip_frame_process = Utils::is_env_var_true(ENV_VAR_SKIP_FRAME_PROCESS);
 
     if (SENSOR_TYPE_DTOF == sns_param.sensor_type)
     {
@@ -29,29 +32,59 @@ MajorImageProcessingThread::MajorImageProcessingThread()
         v4l2 = new V4L2(sns_param);
         v4l2->Get_frame_size_4_curr_wkmode(&sns_param.raw_width, &sns_param.raw_height, &sns_param.out_frm_width, &sns_param.out_frm_height);
         DBG_INFO( "raw_width: %d raw_height: %d FRAME_INTERVAL: %d ms\n", sns_param.raw_width, sns_param.raw_height, FRAME_INTERVAL);
+#if defined(RUN_ON_ROCKCHIP)
         adaps_dtof = new ADAPS_DTOF(sns_param, v4l2);
+#endif
     }
     else {
         sns_param.work_mode = qApp->get_wk_mode();
         v4l2 = new V4L2(sns_param);
         v4l2->Get_frame_size_4_curr_wkmode(&sns_param.raw_width, &sns_param.raw_height, &sns_param.out_frm_width, &sns_param.out_frm_height);
+#if defined(RUN_ON_ROCKCHIP)
         adaps_dtof = NULL;
+#endif
     }
     connect(v4l2, SIGNAL(new_frame_process(unsigned int, void *, int, struct timeval, enum frame_data_type, int)),
             this, SLOT(new_frame_handle(unsigned int, void *, int, struct timeval, enum frame_data_type, int)), Qt::DirectConnection);
 
-    connect(v4l2, SIGNAL(update_info(int, unsigned long)),  this, SLOT(info_update(int, unsigned long)));
+    qRegisterMetaType<status_params1>("status_params1");
+    connect(v4l2, SIGNAL(update_info(status_params1)),  this, SLOT(info_update(status_params1)));
     connect(this, SIGNAL(threadLoopExit()), this, SLOT(onThreadLoopExit()));
 }
 
-void MajorImageProcessingThread::set_skip_frame_process(bool val)
+FrameProcessThread::~FrameProcessThread()
 {
-    skip_frame_process = val;
+    if (NULL != utils)
+    {
+        delete utils;
+    }
 
-    return;
+#if defined(RUN_ON_ROCKCHIP)
+    if (NULL != depth_buffer)
+    {
+        free(depth_buffer);
+        depth_buffer = NULL;
+    }
+
+    if (NULL != adaps_dtof)
+    {
+        delete adaps_dtof;
+    }
+#endif
+
+    if (NULL != rgb_buffer)
+    {
+        free(rgb_buffer);
+        rgb_buffer = NULL;
+    }
+
+    if (NULL != v4l2)
+    {
+        delete v4l2;
+    }
 }
 
-void MajorImageProcessingThread::mode_switch(QString mode_type)
+void FrameProcessThread::mode_switch(QString mode_type)
 {
     if(!mode_type.compare("RGB"))
     {
@@ -61,7 +94,9 @@ void MajorImageProcessingThread::mode_switch(QString mode_type)
         sns_param.measure_type = AdapsMeasurementTypeUninitilized;
         v4l2->mode_switch(sns_param);
         v4l2->Get_frame_size_4_curr_wkmode(&sns_param.raw_width, &sns_param.raw_height, &sns_param.out_frm_width, &sns_param.out_frm_height);
+#if defined(RUN_ON_ROCKCHIP)
         if (NULL != adaps_dtof) adaps_dtof->release();
+#endif
     }
     else
     {
@@ -90,15 +125,17 @@ void MajorImageProcessingThread::mode_switch(QString mode_type)
 
         v4l2->mode_switch(sns_param);
         v4l2->Get_frame_size_4_curr_wkmode(&sns_param.raw_width, &sns_param.raw_height, &sns_param.out_frm_width, &sns_param.out_frm_height);
+#if defined(RUN_ON_ROCKCHIP)
         if (NULL != adaps_dtof)
         {
             adaps_dtof->mode_switch(sns_param, v4l2);
         }
+#endif
     }
 
 }
 
-void MajorImageProcessingThread::save_depth_txt_file(void *frm_buf,unsigned int frm_sequence,int frm_len)
+void FrameProcessThread::save_depth_txt_file(void *frm_buf,unsigned int frm_sequence,int frm_len)
 {
     Q_UNUSED(frm_sequence);
     QDateTime       localTime = QDateTime::currentDateTime();
@@ -131,7 +168,7 @@ void MajorImageProcessingThread::save_depth_txt_file(void *frm_buf,unsigned int 
 
 }
 
-bool MajorImageProcessingThread::save_frame(unsigned int frm_sequence, void *frm_buf, int buf_size, int frm_w, int frm_h, struct timeval frm_timestamp, enum frame_data_type ftype)
+bool FrameProcessThread::save_frame(unsigned int frm_sequence, void *frm_buf, int buf_size, int frm_w, int frm_h, struct timeval frm_timestamp, enum frame_data_type ftype)
 {
     const char extName[FDATA_TYPE_COUNT][24]   = {
                                     ".nv12",
@@ -166,14 +203,28 @@ bool MajorImageProcessingThread::save_frame(unsigned int frm_sequence, void *frm
     return true;
 }
 
-bool MajorImageProcessingThread::info_update(int fps, unsigned long streamed_time)
+bool FrameProcessThread::info_update(status_params1 param1)
 {
-    emit update_runtime_display(fps, streamed_time);
+    status_params2 param2;
+
+    param2.sensor_type = sns_param.sensor_type;
+    param2.fps = param1.fps;
+    param2.streamed_time_us = param1.streamed_time_us;
+    param2.work_mode = sns_param.work_mode;
+#if defined(RUN_ON_ROCKCHIP)
+    param2.curr_temperature = param1.curr_temperature;
+    param2.curr_exp_vop_abs = param1.curr_exp_vop_abs;
+    param2.curr_exp_pvdd = param1.curr_exp_pvdd;
+    param2.env_type = sns_param.env_type;
+    param2.measure_type = sns_param.measure_type;
+#endif
+
+    emit update_runtime_display(param2);
 
     return true;
 }
 
-bool MajorImageProcessingThread::new_frame_handle(unsigned int frm_sequence, void *frm_rawdata, int buf_len, struct timeval frm_timestamp, enum frame_data_type ftype, int total_bytes_per_line)
+bool FrameProcessThread::new_frame_handle(unsigned int frm_sequence, void *frm_rawdata, int buf_len, struct timeval frm_timestamp, enum frame_data_type ftype, int total_bytes_per_line)
 {
     int decodeRet = 0;
     int test_pattern_index = 0;
@@ -188,6 +239,7 @@ bool MajorImageProcessingThread::new_frame_handle(unsigned int frm_sequence, voi
 #endif
 
     switch (ftype) {
+#if defined(RUN_ON_ROCKCHIP)
         case FDATA_TYPE_DTOF_RAW_GRAYSCALE:
             if (adaps_dtof)
             {
@@ -220,36 +272,43 @@ bool MajorImageProcessingThread::new_frame_handle(unsigned int frm_sequence, voi
 
                 if (skip_frame_process)
                 {
-                    decodeRet = -EINVAL;
+                    int i;
+                    decodeRet = 0;
+
+                    for (i = 0; i < sns_param.out_frm_width*sns_param.out_frm_height; i++)
+                    {
+                        rgb_buffer[i*3] = 0x0;     // R component, fill with min value 0x0
+                        rgb_buffer[i*3 + 1] = 0x0;  // G component, fill with min value 0x00
+                        rgb_buffer[i*3 + 2] = 0xFF;  // B component, fill with max value 0xFF
+                    }
                 }
                 else {
                     decodeRet = adaps_dtof->dtof_decode((unsigned char *)frm_rawdata,depth_buffer,sns_param.work_mode);
-                }
-
-                if (0 == decodeRet)
-                {
-                    if (sns_param.save_frame_cnt > 0)
+                    if (0 == decodeRet)
                     {
-                        if (true == Utils::is_env_var_true(ENV_VAR_SAVE_FRAME_ENABLE))
+                        if (sns_param.save_frame_cnt > 0)
                         {
-                            save_frame(frm_sequence,depth_buffer,sns_param.out_frm_width*sns_param.out_frm_height*sizeof(u16),
-                                sns_param.out_frm_width, sns_param.out_frm_height,
-                                frm_timestamp, FDATA_TYPE_DTOF_DECODED_GRAYSCALE);
+                            if (true == Utils::is_env_var_true(ENV_VAR_SAVE_FRAME_ENABLE))
+                            {
+                                save_frame(frm_sequence,depth_buffer,sns_param.out_frm_width*sns_param.out_frm_height*sizeof(u16),
+                                    sns_param.out_frm_width, sns_param.out_frm_height,
+                                    frm_timestamp, FDATA_TYPE_DTOF_DECODED_GRAYSCALE);
+                            }
+                        }
+                        adaps_dtof->ConvertGreyscaleToColoredMap(depth_buffer,rgb_buffer,sns_param.out_frm_width,sns_param.out_frm_height);
+                        if (sns_param.save_frame_cnt > 0)
+                        {
+                            if (true == Utils::is_env_var_true(ENV_VAR_SAVE_FRAME_ENABLE))
+                            {
+                                save_frame(frm_sequence,rgb_buffer,sns_param.out_frm_width*sns_param.out_frm_height*RGB_IMAGE_CHANEL,
+                                    sns_param.out_frm_width, sns_param.out_frm_height,
+                                    frm_timestamp, FDATA_TYPE_RGB888);
+                            }
                         }
                     }
-                    adaps_dtof->ConvertGreyscaleToColoredMap(depth_buffer,rgb_buffer,sns_param.out_frm_width,sns_param.out_frm_height);
-                    if (sns_param.save_frame_cnt > 0)
-                    {
-                        if (true == Utils::is_env_var_true(ENV_VAR_SAVE_FRAME_ENABLE))
-                        {
-                            save_frame(frm_sequence,rgb_buffer,sns_param.out_frm_width*sns_param.out_frm_height*RGB_IMAGE_CHANEL,
-                                sns_param.out_frm_width, sns_param.out_frm_height,
-                                frm_timestamp, FDATA_TYPE_RGB888);
-                        }
+                    else {
+                        DBG_ERROR("dtof_decode() return %d , errno: %s (%d), save_frame_cnt: %d...", decodeRet, strerror(errno), errno, sns_param.save_frame_cnt);
                     }
-                }
-                else {
-                    DBG_ERROR("dtof_decode() return %d , errno: %s (%d), save_frame_cnt: %d...", decodeRet, strerror(errno), errno, sns_param.save_frame_cnt);
                 }
             }
             break;
@@ -291,44 +350,52 @@ bool MajorImageProcessingThread::new_frame_handle(unsigned int frm_sequence, voi
 
                 if (skip_frame_process)
                 {
-                    decodeRet = -EINVAL;
+                    int i;
+                    decodeRet = 0;
+
+                    for (i = 0; i < sns_param.out_frm_width*sns_param.out_frm_height; i++)
+                    {
+                        rgb_buffer[i*3] = 0xFF;     // R component, fill with max value 0xFF
+                        rgb_buffer[i*3 + 1] = 0x0;  // G component, fill with min value 0x00
+                        rgb_buffer[i*3 + 2] = 0x0;  // B component, fill with min value 0x00
+                    }
                 }
                 else {
                     decodeRet = adaps_dtof->dtof_decode((unsigned char *)frm_rawdata,depth_buffer,sns_param.work_mode);
-                }
-
-                if (0 == decodeRet)
-                {
-                    if (sns_param.save_frame_cnt > 0)
+                    if (0 == decodeRet)
                     {
-                        if (true == Utils::is_env_var_true(ENV_VAR_SAVE_FRAME_ENABLE))
+                        if (sns_param.save_frame_cnt > 0)
                         {
-                            save_frame(frm_sequence,depth_buffer,sns_param.out_frm_width*sns_param.out_frm_height*sizeof(u16),
-                                sns_param.out_frm_width, sns_param.out_frm_height,
-                                frm_timestamp, FDATA_TYPE_DTOF_DECODED_DEPTH16);
-                        }
+                            if (true == Utils::is_env_var_true(ENV_VAR_SAVE_FRAME_ENABLE))
+                            {
+                                save_frame(frm_sequence,depth_buffer,sns_param.out_frm_width*sns_param.out_frm_height*sizeof(u16),
+                                    sns_param.out_frm_width, sns_param.out_frm_height,
+                                    frm_timestamp, FDATA_TYPE_DTOF_DECODED_DEPTH16);
+                            }
 
-                        if (Utils::is_env_var_true(ENV_VAR_SAVE_DEPTH_TXT_ENABLE))
+                            if (Utils::is_env_var_true(ENV_VAR_SAVE_DEPTH_TXT_ENABLE))
+                            {
+                                save_depth_txt_file(depth_buffer, frm_sequence, sns_param.out_frm_width*sns_param.out_frm_height*sizeof(u16));
+                            }
+                        }
+                        adaps_dtof->ConvertDepthToColoredMap(depth_buffer,rgb_buffer,sns_param.out_frm_width,sns_param.out_frm_height);
+                        if (sns_param.save_frame_cnt > 0)
                         {
-                            save_depth_txt_file(depth_buffer, frm_sequence, sns_param.out_frm_width*sns_param.out_frm_height*sizeof(u16));
+                            if (true == Utils::is_env_var_true(ENV_VAR_SAVE_FRAME_ENABLE))
+                            {
+                                save_frame(frm_sequence,rgb_buffer,sns_param.out_frm_width*sns_param.out_frm_height*RGB_IMAGE_CHANEL,
+                                    sns_param.out_frm_width, sns_param.out_frm_height,
+                                    frm_timestamp, FDATA_TYPE_RGB888);
+                            }
                         }
                     }
-                    adaps_dtof->ConvertDepthToColoredMap(depth_buffer,rgb_buffer,sns_param.out_frm_width,sns_param.out_frm_height);
-                    if (sns_param.save_frame_cnt > 0)
-                    {
-                        if (true == Utils::is_env_var_true(ENV_VAR_SAVE_FRAME_ENABLE))
-                        {
-                            save_frame(frm_sequence,rgb_buffer,sns_param.out_frm_width*sns_param.out_frm_height*RGB_IMAGE_CHANEL,
-                                sns_param.out_frm_width, sns_param.out_frm_height,
-                                frm_timestamp, FDATA_TYPE_RGB888);
-                        }
+                    else {
+                        //DBG_ERROR("dtof_decode() return %d , errno: %s (%d), save_frame_cnt: %d...", decodeRet, strerror(errno), errno, sns_param.save_frame_cnt);
                     }
-                }
-                else {
-                    //DBG_ERROR("dtof_decode() return %d , errno: %s (%d), save_frame_cnt: %d...", decodeRet, strerror(errno), errno, sns_param.save_frame_cnt);
                 }
             }
             break;
+#endif
 
         case FDATA_TYPE_YUYV:
             if (v4l2)
@@ -362,7 +429,7 @@ bool MajorImageProcessingThread::new_frame_handle(unsigned int frm_sequence, voi
     return true;
 }
 
-void MajorImageProcessingThread::onThreadLoopExit()
+void FrameProcessThread::onThreadLoopExit()
 {
     if (v4l2)
     {
@@ -392,7 +459,7 @@ void MajorImageProcessingThread::onThreadLoopExit()
     emit threadEnd(stop_req_code);
 }
 
-void MajorImageProcessingThread::stop(int stop_request_code)
+void FrameProcessThread::stop(int stop_request_code)
 {
     stop_req_code = stop_request_code;
     if(!stopped)
@@ -404,7 +471,7 @@ void MajorImageProcessingThread::stop(int stop_request_code)
     }
 }
 
-int MajorImageProcessingThread::init(int index)
+int FrameProcessThread::init(int index)
 {
     int ret = 0;
     ret = v4l2->V4l2_initilize();
@@ -419,6 +486,7 @@ int MajorImageProcessingThread::init(int index)
     else {
         if (SENSOR_TYPE_DTOF == sns_param.sensor_type)
         {
+#if defined(RUN_ON_ROCKCHIP)
             if (NULL == adaps_dtof)
             {
                 DBG_ERROR("adaps_dtof is NULL" );
@@ -439,6 +507,7 @@ int MajorImageProcessingThread::init(int index)
                 //ui->mainlabel->setText("Camera is ready for use.");
                 depth_buffer = (u16 *)malloc(sizeof(u16)*sns_param.out_frm_width*sns_param.out_frm_height);
             }
+#endif
         }
         rgb_buffer = (unsigned char *)malloc(sizeof(unsigned char)*sns_param.out_frm_width*sns_param.out_frm_height*RGB_IMAGE_CHANEL);
         ret = v4l2->Start_streaming();
@@ -452,7 +521,7 @@ int MajorImageProcessingThread::init(int index)
     return ret;
 }
 
-void MajorImageProcessingThread::run()
+void FrameProcessThread::run()
 {
     int ret = 0;
     if(majorindex != -1)

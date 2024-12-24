@@ -88,6 +88,7 @@ private:
     int bits_per_pixel;
     int padding_bytes_per_line;
     int total_bytes_per_line;
+    int payload_bytes_per_line;
 
     char        sensor_sd_name[DEV_NODE_LEN];
     char        media_dev[DEV_NODE_LEN];
@@ -99,6 +100,9 @@ private:
     char        sd_devnode_4_dtof[DEV_NODE_LEN];
     int         fd_4_dtof;
     struct adaps_get_eeprom *p_eeprominfo;
+    unsigned int    last_temperature;
+    unsigned int    last_expected_vop_abs_x100;
+    unsigned int    last_expected_pvdd_x100;
 
     int init();
     int adaps_readExposureParam(void);
@@ -114,7 +118,7 @@ private:
 
 signals:
     void new_frame_process(unsigned int frm_sequence, void *frm_buf, int frm_len, struct timeval frm_timestamp, enum frame_data_type ftype, int total_bytes_per_line);
-    void update_info(int fps, unsigned long streamed_time);
+    void update_info(status_params1 param1);
 };
 
 #endif // V4L2_H

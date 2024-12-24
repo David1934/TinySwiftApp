@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>735</width>
-    <height>600</height>
+    <width>900</width>
+    <height>640</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -41,125 +41,13 @@
      </item>
     </layout>
    </widget>
-   <widget class="QWidget" name="layoutWidget">
+   <widget class="QLabel" name="framerate_label">
     <property name="geometry">
      <rect>
       <x>20</x>
-      <y>510</y>
-      <width>691</width>
-      <height>41</height>
-     </rect>
-    </property>
-    <layout class="QHBoxLayout" name="horizontalLayout">
-     <item>
-      <widget class="QPushButton" name="RGBButton">
-       <property name="font">
-        <font>
-         <weight>75</weight>
-         <bold>true</bold>
-        </font>
-       </property>
-       <property name="text">
-        <string>RGB Camera</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="PCMButton">
-       <property name="font">
-        <font>
-         <weight>75</weight>
-         <bold>true</bold>
-        </font>
-       </property>
-       <property name="text">
-        <string>PCM mode</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="PHRButton">
-       <property name="font">
-        <font>
-         <weight>75</weight>
-         <bold>true</bold>
-        </font>
-       </property>
-       <property name="text">
-        <string>PHR mode</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="FHRButton">
-       <property name="font">
-        <font>
-         <weight>75</weight>
-         <bold>true</bold>
-        </font>
-       </property>
-       <property name="text">
-        <string>FHR mode</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="stopButton">
-       <property name="font">
-        <font>
-         <weight>75</weight>
-         <bold>true</bold>
-        </font>
-       </property>
-       <property name="text">
-        <string>Stop</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="quitButton">
-       <property name="font">
-        <font>
-         <weight>75</weight>
-         <bold>true</bold>
-        </font>
-       </property>
-       <property name="text">
-        <string>Quit</string>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </widget>
-   <widget class="QPushButton" name="fmSwitchButton">
-    <property name="enabled">
-     <bool>false</bool>
-    </property>
-    <property name="geometry">
-     <rect>
-      <x>20</x>
-      <y>440</y>
-      <width>131</width>
-      <height>31</height>
-     </rect>
-    </property>
-    <property name="font">
-     <font>
-      <weight>75</weight>
-      <bold>true</bold>
-     </font>
-    </property>
-    <property name="text">
-     <string>FrameModeSwitch</string>
-    </property>
-   </widget>
-   <widget class="QLabel" name="frLabel">
-    <property name="geometry">
-     <rect>
-      <x>180</x>
-      <y>465</y>
-      <width>111</width>
-      <height>16</height>
+      <y>470</y>
+      <width>190</width>
+      <height>20</height>
      </rect>
     </property>
     <property name="font">
@@ -170,16 +58,16 @@
      </font>
     </property>
     <property name="text">
-     <string>Frame Rate:</string>
+     <string>Mipi frame rate:</string>
     </property>
    </widget>
-   <widget class="QLabel" name="fpsLabel">
+   <widget class="QLabel" name="framerate_value">
     <property name="geometry">
      <rect>
-      <x>360</x>
-      <y>460</y>
-      <width>71</width>
-      <height>21</height>
+      <x>210</x>
+      <y>470</y>
+      <width>100</width>
+      <height>20</height>
      </rect>
     </property>
     <property name="font">
@@ -194,10 +82,10 @@
    <widget class="QLabel" name="strmTimeLabel">
     <property name="geometry">
      <rect>
-      <x>180</x>
-      <y>440</y>
-      <width>151</width>
-      <height>16</height>
+      <x>20</x>
+      <y>445</y>
+      <width>190</width>
+      <height>20</height>
      </rect>
     </property>
     <property name="font">
@@ -211,12 +99,12 @@
      <string>Streaming time:</string>
     </property>
    </widget>
-   <widget class="QLabel" name="strmTimeValueLabel">
+   <widget class="QLabel" name="strmTime_value">
     <property name="geometry">
      <rect>
-      <x>360</x>
-      <y>440</y>
-      <width>111</width>
+      <x>210</x>
+      <y>445</y>
+      <width>100</width>
       <height>20</height>
      </rect>
     </property>
@@ -232,44 +120,25 @@
    <widget class="QLCDNumber" name="lcdNumber">
     <property name="geometry">
      <rect>
-      <x>530</x>
-      <y>440</y>
-      <width>181</width>
-      <height>51</height>
+      <x>750</x>
+      <y>30</y>
+      <width>131</width>
+      <height>41</height>
      </rect>
     </property>
     <property name="font">
      <font>
-      <pointsize>11</pointsize>
+      <pointsize>10</pointsize>
      </font>
-    </property>
-   </widget>
-   <widget class="QCheckBox" name="skipFrameProcessCheckbox">
-    <property name="geometry">
-     <rect>
-      <x>20</x>
-      <y>480</y>
-      <width>141</width>
-      <height>21</height>
-     </rect>
-    </property>
-    <property name="font">
-     <font>
-      <weight>75</weight>
-      <bold>true</bold>
-     </font>
-    </property>
-    <property name="text">
-     <string>Skip frame process</string>
     </property>
    </widget>
    <widget class="QLabel" name="AutoTestTimes_value">
     <property name="geometry">
      <rect>
-      <x>360</x>
-      <y>488</y>
-      <width>71</width>
-      <height>21</height>
+      <x>810</x>
+      <y>495</y>
+      <width>80</width>
+      <height>20</height>
      </rect>
     </property>
     <property name="font">
@@ -284,10 +153,10 @@
    <widget class="QLabel" name="AutoTestTimes_label">
     <property name="geometry">
      <rect>
-      <x>180</x>
-      <y>490</y>
-      <width>171</width>
-      <height>16</height>
+      <x>610</x>
+      <y>495</y>
+      <width>200</width>
+      <height>20</height>
      </rect>
     </property>
     <property name="font">
@@ -301,14 +170,394 @@
      <string>Auto test times:</string>
     </property>
    </widget>
+   <widget class="QLabel" name="cur_temperature_value">
+    <property name="geometry">
+     <rect>
+      <x>520</x>
+      <y>495</y>
+      <width>80</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>13</pointsize>
+     </font>
+    </property>
+    <property name="text">
+     <string>32</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="cur_temperature_label">
+    <property name="geometry">
+     <rect>
+      <x>320</x>
+      <y>495</y>
+      <width>200</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>13</pointsize>
+      <weight>75</weight>
+      <bold>true</bold>
+     </font>
+    </property>
+    <property name="text">
+     <string>Inside temperature:</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="RGBButton">
+    <property name="geometry">
+     <rect>
+      <x>760</x>
+      <y>270</y>
+      <width>110</width>
+      <height>25</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <weight>75</weight>
+      <bold>true</bold>
+     </font>
+    </property>
+    <property name="text">
+     <string>RGB Camera</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="FHRButton">
+    <property name="geometry">
+     <rect>
+      <x>760</x>
+      <y>90</y>
+      <width>110</width>
+      <height>25</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <weight>75</weight>
+      <bold>true</bold>
+     </font>
+    </property>
+    <property name="text">
+     <string>FHR mode</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="PCMButton">
+    <property name="geometry">
+     <rect>
+      <x>760</x>
+      <y>150</y>
+      <width>110</width>
+      <height>25</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <weight>75</weight>
+      <bold>true</bold>
+     </font>
+    </property>
+    <property name="text">
+     <string>PCM mode</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="PHRButton">
+    <property name="geometry">
+     <rect>
+      <x>760</x>
+      <y>210</y>
+      <width>110</width>
+      <height>25</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <weight>75</weight>
+      <bold>true</bold>
+     </font>
+    </property>
+    <property name="text">
+     <string>PHR mode</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="stopButton">
+    <property name="geometry">
+     <rect>
+      <x>760</x>
+      <y>330</y>
+      <width>110</width>
+      <height>25</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <weight>75</weight>
+      <bold>true</bold>
+     </font>
+    </property>
+    <property name="text">
+     <string>Stop</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="quitButton">
+    <property name="geometry">
+     <rect>
+      <x>760</x>
+      <y>390</y>
+      <width>110</width>
+      <height>25</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <weight>75</weight>
+      <bold>true</bold>
+     </font>
+    </property>
+    <property name="text">
+     <string>Quit</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="cur_exp_pvdd_value">
+    <property name="geometry">
+     <rect>
+      <x>520</x>
+      <y>445</y>
+      <width>80</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>13</pointsize>
+     </font>
+    </property>
+    <property name="text">
+     <string>0 V</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="cur_work_mode_value">
+    <property name="geometry">
+     <rect>
+      <x>210</x>
+      <y>495</y>
+      <width>100</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>13</pointsize>
+     </font>
+    </property>
+    <property name="text">
+     <string>PCM</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="cur_expected_vop_label">
+    <property name="geometry">
+     <rect>
+      <x>320</x>
+      <y>470</y>
+      <width>200</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>13</pointsize>
+      <weight>75</weight>
+      <bold>true</bold>
+     </font>
+    </property>
+    <property name="text">
+     <string>Cur expected Vop:</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="pvddLabel">
+    <property name="geometry">
+     <rect>
+      <x>320</x>
+      <y>445</y>
+      <width>200</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>13</pointsize>
+      <weight>75</weight>
+      <bold>true</bold>
+     </font>
+    </property>
+    <property name="text">
+     <string>Cur expected PVDD:</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="cur_work_mode_label">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>495</y>
+      <width>190</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>13</pointsize>
+      <weight>75</weight>
+      <bold>true</bold>
+     </font>
+    </property>
+    <property name="text">
+     <string>Cur work mode:</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="cur_environment_value">
+    <property name="geometry">
+     <rect>
+      <x>810</x>
+      <y>445</y>
+      <width>80</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>13</pointsize>
+     </font>
+    </property>
+    <property name="text">
+     <string>Indoor</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="cur_exp_vop_value">
+    <property name="geometry">
+     <rect>
+      <x>520</x>
+      <y>470</y>
+      <width>80</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>13</pointsize>
+     </font>
+    </property>
+    <property name="text">
+     <string>-25 V</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="cur_environment_label">
+    <property name="geometry">
+     <rect>
+      <x>610</x>
+      <y>445</y>
+      <width>200</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>13</pointsize>
+      <weight>75</weight>
+      <bold>true</bold>
+     </font>
+    </property>
+    <property name="text">
+     <string>Cur environment:</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="cur_measurement_value">
+    <property name="geometry">
+     <rect>
+      <x>810</x>
+      <y>470</y>
+      <width>80</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>13</pointsize>
+     </font>
+    </property>
+    <property name="text">
+     <string>Full</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="cur_measurement_label">
+    <property name="geometry">
+     <rect>
+      <x>610</x>
+      <y>470</y>
+      <width>200</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>13</pointsize>
+      <weight>75</weight>
+      <bold>true</bold>
+     </font>
+    </property>
+    <property name="text">
+     <string>Cur measurement:</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="cur_module_type_value">
+    <property name="geometry">
+     <rect>
+      <x>210</x>
+      <y>520</y>
+      <width>100</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>13</pointsize>
+     </font>
+    </property>
+    <property name="text">
+     <string>Spot</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="cur_module_type_label">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>520</y>
+      <width>190</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>13</pointsize>
+      <weight>75</weight>
+      <bold>true</bold>
+     </font>
+    </property>
+    <property name="text">
+     <string>Cur module type:</string>
+    </property>
+   </widget>
   </widget>
   <widget class="QMenuBar" name="menuBar">
    <property name="geometry">
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>735</width>
-     <height>23</height>
+     <width>900</width>
+     <height>22</height>
     </rect>
    </property>
   </widget>

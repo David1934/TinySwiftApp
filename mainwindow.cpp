@@ -1,14 +1,22 @@
+#include <execinfo.h>
+#include <signal.h>
 #include <QLCDNumber>
 #include <QTimer>
 #include <QTime>
 #include <globalapplication.h>
+#include <QShortcut>
+//#include <QMessageBox>
+#include <QCloseEvent>
+#include <QScreen>
 
 #include "common.h"
 #include "mainwindow.h"
-#include "majorimageprocessingthread.h"
+#include "FrameProcessThread.h"
 #include "ui_mainwindow.h"
 
 #define UNUSED(X) (void)X
+#define QStringToCharPtr(qstr) (qstr.toUtf8().constData())
+
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -17,22 +25,25 @@ MainWindow::MainWindow(QWidget *parent) :
     int ret = 0;
     char AppNameVersion[128];
     char auto_test_times_string[32];
+    int w;
+    int h;
 
+    frame_process_thread = NULL;
     ui->setupUi(this);
-    sprintf(AppNameVersion, "%s %s for swift %s module by QT %s @ %s,%s",
+    sprintf(AppNameVersion, "%s %s built at %s,%s by QT %s",
         APP_NAME,
         APP_VERSION,
-#if defined(CONFIG_ADAPS_SWIFT_FLOOD)
-        "Flood",
-#else
-        "Spot",
-#endif
-        QT_VERSION_STR,
-        __DATE__, __TIME__);
+        __DATE__, __TIME__,
+        QT_VERSION_STR
+        );
     this->setWindowTitle(AppNameVersion);
     DBG_NOTICE("AppVersion: %s\n", AppNameVersion);
     //DBG_NOTICE("QT_VERSION_STR: %s, qVersion(): %s...", QT_VERSION_STR, qVersion());
     // NOTICE: <mainwindow.cpp-MainWindow() 26> QT_VERSION_STR: 5.15.8, qVersion(): 5.15.2...
+
+    w = this->width();
+    h = this->height();
+    DBG_INFO("MainWindow resolution: %d X %d\n", w, h);
 
     // 设置QLCDNumber的显示属性
     ui->lcdNumber->setDigitCount(8); // 显示格式为HH:MM:SS
@@ -48,20 +59,28 @@ MainWindow::MainWindow(QWidget *parent) :
     if (true == qApp->get_qt_ui_test())
         return ;
 
-    imageprocessthread = new MajorImageProcessingThread;
+    frame_process_thread = new FrameProcessThread;
 
-    connect(imageprocessthread, SIGNAL(newFrameReady4Display(QImage)),
+    connect(frame_process_thread, SIGNAL(newFrameReady4Display(QImage)),
             this, SLOT(new_frame_display(QImage)));
-    connect(imageprocessthread, SIGNAL(update_runtime_display(int, unsigned long)),
-            this, SLOT(update_streaming_info(int, unsigned long)));
-    connect(ui->skipFrameProcessCheckbox, &QCheckBox::stateChanged, this, &MainWindow::on_skipFrameProcessCheckbox_stateChanged);
-    connect(imageprocessthread, SIGNAL(threadEnd(int)), this, SLOT(onThreadEnd(int)));
+    qRegisterMetaType<status_params2>("status_params2");
+    connect(frame_process_thread, SIGNAL(update_runtime_display(status_params2)),
+            this, SLOT(update_status_info(status_params2)));
+    connect(frame_process_thread, SIGNAL(threadEnd(int)), this, SLOT(onThreadEnd(int)));
 
-    ret = imageprocessthread->init(0);
+    // 创建一个QShortcut对象，将Ctrl + C组合键与槽函数onCtrlCPressed关联起来
+    QShortcut *shortcut_ctrlX = new QShortcut(QKeySequence(Qt::CTRL + Qt::Key_X), this);
+    connect(shortcut_ctrlX, &QShortcut::activated, this, &MainWindow::onCtrl_X_Pressed);
+
+    QShortcut *shortcut_ctrlS = new QShortcut(QKeySequence(Qt::CTRL + Qt::Key_S), this);
+    connect(shortcut_ctrlS, &QShortcut::activated, this, &MainWindow::onCtrl_S_Pressed);
+
+    ret = frame_process_thread->init(0);
     if (ret < 0)
     {
-        DBG_ERROR("Fail to imageprocessthread init()...");
-        ui->mainlabel->setText("Fail to imageprocessthread init()...");
+        DBG_ERROR("Fail to frame_process_thread init()...");
+        ui->mainlabel->setText("Fail to frame_process_thread init(),\nPlease check camera is ready or not?");
+        //QMessageBox::information(nullptr, "Warning Prompt", "No camera is detected, please double check!");
         return;
     }
 
@@ -76,7 +95,7 @@ MainWindow::MainWindow(QWidget *parent) :
     sprintf(auto_test_times_string, "%d/%d", tested_times, to_test_times);
     ui->AutoTestTimes_value->setText(auto_test_times_string);
 
-    imageprocessthread->start();
+    frame_process_thread->start();
 
     if (to_test_times > 0)
     {
@@ -86,7 +105,15 @@ MainWindow::MainWindow(QWidget *parent) :
 
 MainWindow::~MainWindow()
 {
-    delete imageprocessthread;
+    if (NULL != frame_process_thread)
+    {
+        if (frame_process_thread->isRunning())
+        {
+            frame_process_thread->exit(0);
+            frame_process_thread->wait(5000); // unit is milliseconds
+        }
+        delete frame_process_thread;
+    }
     delete ui;
 }
 
@@ -94,27 +121,27 @@ void MainWindow::onThreadEnd(int stop_request_code)
 {
     switch (stop_request_code) {
         case STOP_REQUEST_RGB:
-            imageprocessthread->mode_switch("RGB");
-            imageprocessthread->init(0);
-            imageprocessthread->start();
+            frame_process_thread->mode_switch("RGB");
+            frame_process_thread->init(0);
+            frame_process_thread->start();
             break;
 
         case STOP_REQUEST_PHR:
-            imageprocessthread->mode_switch("PHR");
-            imageprocessthread->init(0);
-            imageprocessthread->start();
+            frame_process_thread->mode_switch("PHR");
+            frame_process_thread->init(0);
+            frame_process_thread->start();
             break;
 
         case STOP_REQUEST_PCM:
-            imageprocessthread->mode_switch("PCM");
-            imageprocessthread->init(0);
-            imageprocessthread->start();
+            frame_process_thread->mode_switch("PCM");
+            frame_process_thread->init(0);
+            frame_process_thread->start();
             break;
 
         case STOP_REQUEST_FHR:
-            imageprocessthread->mode_switch("FHR");
-            imageprocessthread->init(0);
-            imageprocessthread->start();
+            frame_process_thread->mode_switch("FHR");
+            frame_process_thread->init(0);
+            frame_process_thread->start();
             break;
 
         case STOP_REQUEST_QUIT:
@@ -147,36 +174,197 @@ void MainWindow::clickQuitButton(void)
         qApp->exit(0);
     }
     else {
-        imageprocessthread->stop(STOP_REQUEST_QUIT);
+        if (NULL != frame_process_thread)
+        {
+            frame_process_thread->stop(STOP_REQUEST_QUIT);
+        }
+        else {
+            //this->close();
+            qApp->exit(0);
+        }
     }
 }
 
-/* QString 转 char* */
-char * MainWindow::qstringToChar(QString srcString)
+void MainWindow::onCtrl_X_Pressed(void)
 {
-    if (srcString.isEmpty()) {
-        return NULL;
-    }
-
-    QByteArray      ba  = srcString.toLatin1();
-    char *          destCharArray;
-
-    destCharArray           = ba.data();
-    return destCharArray;
+    DBG_INFO("Ctrl + X was pressed.");
+    clickQuitButton();
 }
 
-bool MainWindow::update_streaming_info(int fps, unsigned long streamed_time_us)
+void MainWindow::dump_stack()
 {
-    char fps_string[32];
-    char time_string[32];
-    unsigned int streamed_time_seconds = streamed_time_us / 1000000;
+    const int len = 1024;
+    void *func[len];
+    int size;
+    int i;
+    char **funs;
 
-    sprintf(fps_string, "%d fps", fps);
-    ui->fpsLabel->setText(fps_string);
+    size = backtrace(func, len);
+    funs = (char**)backtrace_symbols(func, size);
+    if (funs == NULL) {
+        DBG_ERROR("backtrace_symbols() fail.\n");
+        return;
+    }
 
-    sprintf(time_string, "%02d:%02d:%02d", streamed_time_seconds/3600, streamed_time_seconds/60, streamed_time_seconds%60);
-    ui->strmTimeValueLabel->setText(time_string);
+    DBG_NOTICE("=========> stack trace: %d <=========", size);
+    for(i = 0; i < size; ++i)
+        DBG_NOTICE("%d %s", i, funs[i]);
 
+    free(funs);
+}
+
+void MainWindow::unixSignalHandler(int signal)
+{
+    switch (signal) {
+        case SIGTSTP:
+            DBG_NOTICE("CTRL-Z recieved, screen shot will be excuted!");
+            captureAndSaveScreenshot();
+            break;
+
+        case SIGUSR1:
+            DBG_ERROR("User Signal 1 recieved,\nPlease check kernel log for detailed error information!");
+            ui->mainlabel->setText("User Signal 1 recieved, Please check kernel log for detailed error information!");
+            if (NULL != frame_process_thread)
+            {
+                frame_process_thread->stop(STOP_REQUEST_STOP);
+            }
+            break;
+
+        case SIGUSR2:
+            DBG_ERROR("User Signal 2 recieved,\nPlease check kernel log for detailed error information!");
+            ui->mainlabel->setText("User Signal 2 recieved, Please check kernel log for detailed error information!");
+            if (NULL != frame_process_thread)
+            {
+                frame_process_thread->stop(STOP_REQUEST_STOP);
+            }
+            break;
+
+        case SIGINT:
+            DBG_ERROR("CTRL-C recieved, graceful close() is executed!");
+            clickQuitButton();
+            break;
+
+        case SIGSEGV:
+        case SIGABRT:
+        case SIGBUS:
+        case SIGTERM:
+            DBG_ERROR("Signal %d recieved, Call stack is printed, then graceful close() is executed!", signal);
+            dump_stack();
+
+            clickQuitButton();
+            break;
+
+        default:
+            break;
+    }
+
+    return;
+}
+
+void MainWindow::closeEvent(QCloseEvent *event)
+{
+    DBG_NOTICE("Last chance to do something before exit...");
+
+    // 在这里执行退出前的处理逻辑
+    // 例如保存数据、释放资源等
+
+    // 接受关闭事件
+    event->accept();
+}
+
+bool MainWindow::update_status_info(status_params2 param2)
+{
+    char temp_string[32];
+    const char *work_mode_name[]={
+        "PTM-PHR",
+        "PCM-Gray",
+        "PTM-FHR",
+        "RGB-NV12",
+        "RGB-YUYV",
+    };
+
+    const char *environment_type_name[]={
+        "Unknown",
+        "Indoor",
+        "Outdoor",
+    };
+
+    const char *measurement_range_name[]={
+        "Unknown",
+        "Normal",
+        "Short",
+        "Full",
+    };
+
+    const char *power_mode_names[] =
+    {
+        "Unknown",
+        "Div1",
+        "Div3",
+    };
+
+    unsigned int streamed_time_seconds = param2.streamed_time_us / 1000000;
+
+    sprintf(temp_string, "%d fps", param2.fps);
+    ui->framerate_value->setText(temp_string);
+
+    sprintf(temp_string, "%02d:%02d:%02d", streamed_time_seconds/3600, streamed_time_seconds/60, streamed_time_seconds%60);
+    ui->strmTime_value->setText(temp_string);
+
+    if (param2.work_mode >= WK_DTOF_PHR && param2.work_mode < WK_COUNT)
+    {
+        ui->cur_work_mode_value->setText(work_mode_name[param2.work_mode]);
+    }
+    else {
+        ui->cur_work_mode_value->setText("Unknown");
+    }
+
+#if defined(RUN_ON_ROCKCHIP)
+    if (SENSOR_TYPE_RGB == param2.sensor_type)
+    {
+        ui->cur_module_type_value->setText("RGB");
+    }
+    else {
+#if defined(CONFIG_ADAPS_SWIFT_FLOOD)
+        ui->cur_module_type_value->setText("Flood");
+#else
+        ui->cur_module_type_value->setText("Spot");
+#endif
+    }
+
+    sprintf(temp_string, "%d.%02d ℃", param2.curr_temperature/100, param2.curr_temperature%100);
+    ui->cur_temperature_value->setText(temp_string);
+
+    sprintf(temp_string, "-%d.%02d V", param2.curr_exp_vop_abs/100, param2.curr_exp_vop_abs%100);
+    ui->cur_exp_vop_value->setText(temp_string);
+
+    sprintf(temp_string, "%d.%02d V", param2.curr_exp_pvdd/100, param2.curr_exp_pvdd%100);
+    ui->cur_exp_pvdd_value->setText(temp_string);
+
+    if (param2.env_type >= AdapsEnvTypeIndoor && param2.env_type <= AdapsEnvTypeOutdoor)
+    {
+        ui->cur_environment_value->setText(environment_type_name[param2.env_type]);
+    }
+    else {
+        ui->cur_environment_value->setText("Unknown");
+    }
+
+    if (param2.measure_type >= AdapsMeasurementTypeNormal && param2.measure_type <= AdapsMeasurementTypeFull)
+    {
+        ui->cur_measurement_value->setText(measurement_range_name[param2.measure_type]);
+    }
+    else {
+        ui->cur_measurement_value->setText("Unknown");
+    }
+#else
+    ui->cur_module_type_value->setText("RGB camera");
+    sprintf(temp_string, "%s", "NA");
+    ui->cur_temperature_value->setText(temp_string);
+    ui->cur_exp_vop_value->setText(temp_string);
+    ui->cur_exp_pvdd_value->setText(temp_string);
+    ui->cur_environment_value->setText(temp_string);
+    ui->cur_measurement_value->setText(temp_string);
+#endif
     return true;
 }
 
@@ -200,59 +388,74 @@ bool MainWindow::new_frame_display(QImage image)
 
 void MainWindow::on_stopButton_clicked()
 {
-    imageprocessthread->stop(STOP_REQUEST_STOP);
+    if (NULL != frame_process_thread)
+    {
+        frame_process_thread->stop(STOP_REQUEST_STOP);
+    }
 }
 
 void MainWindow::on_RGBButton_clicked()
 {
-    if(imageprocessthread->isRunning())
+    if (NULL != frame_process_thread)
     {
-        imageprocessthread->stop(STOP_REQUEST_RGB);
-    }
-    else {
-        imageprocessthread->mode_switch("RGB");
-        imageprocessthread->init(0);
-        imageprocessthread->start();
+        if(frame_process_thread->isRunning())
+        {
+            frame_process_thread->stop(STOP_REQUEST_RGB);
+        }
+        else {
+            frame_process_thread->mode_switch("RGB");
+            frame_process_thread->init(0);
+            frame_process_thread->start();
+        }
     }
 }
 
 void MainWindow::on_PHRButton_clicked()
 {
-    if(imageprocessthread->isRunning())
+    if (NULL != frame_process_thread)
     {
-        imageprocessthread->stop(STOP_REQUEST_PHR);
-    }
-    else {
-        imageprocessthread->mode_switch("PHR");
-        imageprocessthread->init(0);
-        imageprocessthread->start();
+        if(frame_process_thread->isRunning())
+        {
+            frame_process_thread->stop(STOP_REQUEST_PHR);
+        }
+        else {
+            frame_process_thread->mode_switch("PHR");
+            frame_process_thread->init(0);
+            frame_process_thread->start();
+        }
     }
 }
 
 
 void MainWindow::on_PCMButton_clicked()
 {
-    if(imageprocessthread->isRunning())
+    if (NULL != frame_process_thread)
     {
-        imageprocessthread->stop(STOP_REQUEST_PCM);
-    }
-    else {
-        imageprocessthread->mode_switch("PCM");
-        imageprocessthread->init(0);
-        imageprocessthread->start();
+        if(frame_process_thread->isRunning())
+        {
+            frame_process_thread->stop(STOP_REQUEST_PCM);
+        }
+        else {
+            frame_process_thread->mode_switch("PCM");
+            frame_process_thread->init(0);
+            frame_process_thread->start();
+        }
     }
 }
 
 void MainWindow::on_FHRButton_clicked()
 {
-    if(imageprocessthread->isRunning())
+    if (NULL != frame_process_thread)
     {
-        imageprocessthread->stop(STOP_REQUEST_FHR);
-    }
-    else {
-        imageprocessthread->mode_switch("FHR");
-        imageprocessthread->init(0);
-        imageprocessthread->start();
+        if(frame_process_thread->isRunning())
+        {
+            frame_process_thread->stop(STOP_REQUEST_FHR);
+        }
+        else {
+            frame_process_thread->mode_switch("FHR");
+            frame_process_thread->init(0);
+            frame_process_thread->start();
+        }
     }
 }
 
@@ -268,39 +471,64 @@ void MainWindow::simulateButtonClick()
         return;
     }
 
-    DBG_NOTICE("\n------Timer testing------test times: %d/%d, isRunning: %d---\n", tested_times, to_test_times, imageprocessthread->isRunning());
-    if(imageprocessthread->isRunning())
+    DBG_NOTICE("\n------Timer testing------test times: %d/%d, isRunning: %d---\n", tested_times, to_test_times, frame_process_thread->isRunning());
+    if (NULL != frame_process_thread)
     {
-        tested_times++;
-        sprintf(auto_test_times_string, "%d/%d", tested_times, to_test_times);
-        ui->AutoTestTimes_value->setText(auto_test_times_string);
-        
-        on_stopButton_clicked();
-    }
-    else {
-        on_FHRButton_clicked();
+        if(frame_process_thread->isRunning())
+        {
+            tested_times++;
+            sprintf(auto_test_times_string, "%d/%d", tested_times, to_test_times);
+            ui->AutoTestTimes_value->setText(auto_test_times_string);
+            
+            on_stopButton_clicked();
+        }
+        else {
+            on_FHRButton_clicked();
+        }
     }
 }
 
-void MainWindow::on_skipFrameProcessCheckbox_stateChanged(bool checked)
+void MainWindow::captureAndSaveScreenshot()
 {
-#if 1
-    imageprocessthread->set_skip_frame_process(checked);
-#else
-    int ret = 0;
-    if (checked) {
-        ret = setenv(ENV_VAR_SKIP_FRAME_PROCESS, "true", 0);
-        if (0 != ret) {
-            DBG_ERROR("Fail to set environment variable %s, ret:%d errno: %s (%d)...", ENV_VAR_SKIP_FRAME_PROCESS, ret,
-                strerror(errno), errno);
-        }
-    } else {
-        ret = unsetenv(ENV_VAR_SKIP_FRAME_PROCESS);
-        if (0 != ret) {
-            DBG_ERROR("Fail to unset environment variable %s, ret:%d errno: %s (%d)...", ENV_VAR_SKIP_FRAME_PROCESS, ret,
-                strerror(errno), errno);
-        }
+    //QList<QByteArray> formats = QImageWriter::supportedImageFormats();
+    //qCritical() << "Supported image formats:" << formats;
+
+    // 获取当前窗口的屏幕
+    QScreen *screen = QGuiApplication::primaryScreen();
+    if (!screen) {
+        DBG_ERROR("Failed to get screen object.");
+        return;
     }
-#endif
+
+    // 截取当前窗口的截图
+    QPixmap screenshot = screen->grabWindow(winId());
+
+    // 获取当前进程ID
+    qint64 processId = QCoreApplication::applicationPid();
+
+    // 获取当前日期和时间
+    QDateTime currentDateTime = QDateTime::currentDateTime();
+    QString dateStr = currentDateTime.toString("yyyyMMdd");
+    QString timeStr = currentDateTime.toString("HHmmss");
+
+    // 构建保存路径
+    QString savePath = QString(DATA_SAVE_PATH "Screenshot_4_process%1_%2_%3.png")
+                           .arg(processId)
+                           .arg(dateStr)
+                           .arg(timeStr);
+
+    // 保存截图到文件
+    if (screenshot.save(savePath, "PNG")) {
+        DBG_NOTICE("Save screenshot to %s successfully.", QStringToCharPtr(savePath));
+    } else {
+        DBG_ERROR("Failed to save screenshot to %s.", QStringToCharPtr(savePath));
+    }
 }
+
+void MainWindow::onCtrl_S_Pressed(void)
+{
+    DBG_INFO("Ctrl + S was pressed.");
+    captureAndSaveScreenshot();
+}
+
 

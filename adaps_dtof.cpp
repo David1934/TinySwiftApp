@@ -44,7 +44,8 @@ u8 ADAPS_DTOF::normalizeGreyscale(u16 range) {
 
 int ADAPS_DTOF::FillSetWrapperParamFromEepromInfo(uint8_t* pRawData, uint32_t rawDataSize, SetWrapperParam* setparam) {
     int result = 0;
-//    Utils *utils;
+    Utils *utils;
+    int dump_roi_sram_size = 0;
 
     if (NULL == pRawData) {
         DBG_ERROR( "pRawData is NULL for EEPROMInfo");
@@ -70,7 +71,7 @@ int ADAPS_DTOF::FillSetWrapperParamFromEepromInfo(uint8_t* pRawData, uint32_t ra
 #endif
 
     setparam->adapsLensIntrinsicData  = reinterpret_cast<float*>(pRawData + AD4001_EEPROM_INTRINSIC_OFFSET);
-    if (Utils::is_env_var_true(ENV_VAR_SHOW_LENS_INTRINSIC))
+    if (Utils::is_env_var_true(ENV_VAR_DUMP_LENS_INTRINSIC))
     {
         for (int i = 0; i < 9; i++)
         {
@@ -79,15 +80,23 @@ int ADAPS_DTOF::FillSetWrapperParamFromEepromInfo(uint8_t* pRawData, uint32_t ra
     }
 
 #if (ADS6401_MODDULE_SPOT == SWIFT_MODULE_TYPE)
-    setparam->adapsSpodOffsetData     = reinterpret_cast<float*>(pRawData + AD4001_EEPROM_SPODOFFSET_OFFSET);
+    setparam->adapsSpodOffsetData     = reinterpret_cast<float*>(pRawData + AD4001_EEPROM_SPOTOFFSET_OFFSET);
     setparam->proximity_hist          = pRawData + AD4001_EEPROM_PROX_HISTOGRAM_OFFSET;
     setparam->accurateSpotPosData     = reinterpret_cast<float*>(pRawData + AD4001_EEPROM_ACCURATESPODPOS_OFFSET);
 #else
-    setparam->adapsSpodOffsetData     = reinterpret_cast<float*>(pRawData + AD4001_EEPROM_SPODOFFSET_OFFSET+ONE_SPOD_OFFSET_BYTE_SIZE);  //pointer to offset0
+    setparam->adapsSpodOffsetData     = reinterpret_cast<float*>(pRawData + AD4001_EEPROM_SPOTOFFSET_OFFSET+ONE_SPOD_OFFSET_BYTE_SIZE);  //pointer to offset0
     setparam->proximity_hist          = NULL;
     setparam->accurateSpotPosData     = NULL;
 #endif
-    setparam->spot_cali_data          = pRawData + AD4001_EEPROM_SPODPOS_OFFSET;
+    setparam->spot_cali_data          = pRawData + AD4001_EEPROM_ROISRAM_DATA_OFFSET;
+
+    dump_roi_sram_size = Utils::get_env_var_intvalue(ENV_VAR_DUMP_ROI_SRAM_SIZE);
+    if (dump_roi_sram_size)
+    {
+        utils = new Utils();
+        utils->hexdump((unsigned char *) setparam->spot_cali_data, dump_roi_sram_size, "ROI SRAM data dump to Algo lib");
+        delete utils;
+    }
 
     setparam->cali_ref_tempe[AdapsEnvTypeIndoor - 1]  = *reinterpret_cast<float*>(pRawData + AD4001_EEPROM_INDOOR_CALIBTEMPERATURE_OFFSET);
     setparam->cali_ref_tempe[AdapsEnvTypeOutdoor - 1] = *reinterpret_cast<float*>(pRawData + AD4001_EEPROM_OUTDOOR_CALIBTEMPERATURE_OFFSET);
@@ -104,11 +113,26 @@ void ADAPS_DTOF::initParams(WrapperDepthInitInputParams  *     initInputParams,W
 
     memset(&set_param, 0, sizeof(SetWrapperParam));
     set_param.work_mode = static_cast<int>(m_sns_param.work_mode);
-    set_param.compose_subframe = true;
-    set_param.expand_pixel = true;
+
+    if (true == Utils::is_env_var_true(ENV_VAR_DISABLE_COMPOSE_SUBFRAME))
+    {
+        set_param.compose_subframe = false;
+    }
+    else {
+        set_param.compose_subframe = true;
+    }
+
+    if (true == Utils::is_env_var_true(ENV_VAR_DISABLE_EXPAND_PIXEL))
+    {
+        set_param.expand_pixel = false;
+    }
+    else {
+        set_param.expand_pixel = true;
+    }
+
     set_param.mirror_frame.mirror_x = false;
     set_param.mirror_frame.mirror_y = false;
-    set_param.walkerror=1;  
+    set_param.walkerror = true;  
     set_param.env_type = m_sns_param.env_type;
     set_param.measure_type = m_sns_param.measure_type;
 

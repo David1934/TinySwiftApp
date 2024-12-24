@@ -2,10 +2,10 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include "majorimageprocessingthread.h"
+#include "FrameProcessThread.h"
 
 namespace Ui {
-class MainWindow;
+    class MainWindow;
 }
 
 class MainWindow : public QMainWindow
@@ -16,10 +16,13 @@ public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
 
+protected:
+    virtual void closeEvent(QCloseEvent *event);
+
 private slots:
 
     bool new_frame_display(QImage image);
-    bool update_streaming_info(int fps, unsigned long streamed_time_us);
+    bool update_status_info(status_params2 param2);
 
     void updateTime(void);
     void clickQuitButton(void);
@@ -29,19 +32,20 @@ private slots:
     void on_PCMButton_clicked();
     void on_FHRButton_clicked();
     void simulateButtonClick();
-    void on_skipFrameProcessCheckbox_stateChanged(bool checked);
     void onThreadEnd(int stop_request_code);
+    void onCtrl_X_Pressed(void);
+    void onCtrl_S_Pressed(void);
+    void unixSignalHandler(int signal);
 
 private:
     Ui::MainWindow *ui;
-    int         width;
-    int         height;
     int         tested_times;
     int         to_test_times;
     QTimer      *test_timer;
+    FrameProcessThread *frame_process_thread;
 
-    char* qstringToChar(QString srcString);
-    MajorImageProcessingThread *imageprocessthread;
+    void dump_stack();
+    void captureAndSaveScreenshot();
 };
 
 #endif // MAINWINDOW_H

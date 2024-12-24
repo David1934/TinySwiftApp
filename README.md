@@ -27,6 +27,3 @@ root@ok3588:/usr/lib# ln -s libstdc++.so.6.0.29 libstdc++.so.6
 root@ok3588:/usr/lib# rm libstdc++.so
 root@ok3588:/usr/lib# ln -s libstdc++.so.6.0.29 libstdc++.so
 
-# QSTCamera
-基于v4l2的简易照相机，不显示实时摄像头，拍照以yuv格式存储
-路径自己在v4l2.h中设置
