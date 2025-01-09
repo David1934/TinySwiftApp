@@ -38,6 +38,8 @@ public:
     bool is_replay_data_exist();
     void test_pattern_generate(unsigned char *write_buf, int len, int ptn_idx);
     void hexdump(const unsigned char * buf, int buf_len, const char * title);
+    void nv12_2_rgb(unsigned char *nv12, unsigned char *rgb, int width, int height);
+    void yuyv_2_rgb(unsigned char *yuyv, unsigned char *rgb, int width, int height);
 
     static bool is_env_var_true(const char *var_name)
     {

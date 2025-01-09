@@ -1,3 +1,11 @@
+X. @2025/01/14 -- version update to 2.1.0_LM20250114A
+    redmine #2058: 散点swift模组在rk3568 Linux开发板上的适配
+    http://gerrit.adaps.corp/c/SpadisQT/+/4380
+
+    patch set 1: improve Linux signal handle for user signal 1,2, CTRL-C;
+    patch set 3: rename the ioctl commands's names and the related structs' names to improve the code readability;
+    patch set 5: rename some functions to improve the code readability;
+
 X. @2025/01/08 -- version update to 2.0.1_LM20250108A
     redmine #1863: swift ROI动态修改速度验证1(由于swift算法库尚未修改，ROI sram测试尚不完整)
     http://gerrit.adaps.corp/c/SpadisQT/+/4314

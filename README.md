@@ -14,6 +14,8 @@ adb push Z:\for_docker\david\rk_build\app\SpadisQT\libadaps_swift_decode.so /ven
 adb push Z:\for_docker\david\rk_build\app\SpadisQT\adapsdepthsettings.xml /vendor/etc/camera/.
 adb push Z:\for_docker\david\rk_build\app\SpadisQT\SpadisQT /usr/bin/.
 
+chmod +x /usr/bin/SpadisQT
+
 adb push Z:\for_docker\david\rk_build.QT_swift\buildroot/output/rockchip_rk3568/target/usr/lib/libstdc++.so.6.0.29 /usr/lib/.
 
 root@ok3588:/usr/lib# ls -l libstdc++.so*

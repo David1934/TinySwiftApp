@@ -515,7 +515,7 @@ typedef struct SwiftEepromData
 #endif
 
 
-struct adaps_set_param_in_config{
+struct adaps_dtof_intial_param {
     AdapsEnvironmentType env_type;
     AdapsMeasurementType measure_type;
 //    AdapsPowerMode  powermode;
@@ -523,7 +523,7 @@ struct adaps_set_param_in_config{
     AdapsVcselZoneCountType vcselzonecount_type;
 };
 
-struct adaps_set_param_in_runtime{
+struct adaps_dtof_runtime_param{
    AdapsEnvironmentType env_type;
    AdapsMeasurementType measure_type;
    AdapsVcselMode vcsel_mode;
@@ -533,39 +533,38 @@ struct adaps_set_param_in_runtime{
    
 };
 
-struct adaps_get_exposure_param{
+struct adaps_dtof_exposure_param{
     __u8 laser_exposure_period;
     __u8 fine_exposure_time;
 };
 
-struct adaps_get_param_perframe{
-    //float internal_temperature;
-    __u32 internal_temperature; //since kernel doesn't use float type, the temperate is a expanded integer value (x100)
+struct adaps_dtof_runtime_status_param {
+    __u32 inside_temperature_x100; //since kernel doesn't use float type, this is a expanded integer value (x100), Eg 4515 means 45.15 degree
     __u32 expected_vop_abs_x100;
     __u32 expected_pvdd_x100;
 };
 
 #pragma pack(4)
- struct adaps_get_eeprom{
+struct adaps_dtof_calib_eeprom_param{
     __u8 pRawData[sizeof(swift_eeprom_data_t)];
     __u32 rawDataSize;//may be not need
 };
 #pragma pack()
 
-#define ADAPS_SET_PARAM_IN_CONFIG       \
-	_IOW('T', ADAPS_DTOF_PRIVATE + 2, struct adaps_set_param_in_config)
+#define ADAPS_SET_DTOF_INITIAL_PARAM       \
+    _IOW('T', ADAPS_DTOF_PRIVATE + 2, struct adaps_dtof_intial_param)
 
-#define ADAPS_SET_PARAM_IN_RUNTIME       \
-	_IOW('T', ADAPS_DTOF_PRIVATE + 3, struct adaps_set_param_in_runtime)
+#define ADAPS_UPDATE_DTOF_RUNTIME_PARAM       \
+    _IOW('T', ADAPS_DTOF_PRIVATE + 3, struct adaps_dtof_runtime_param)
 
-#define ADAPS_GET_PARAM_PERFRAME       \
-	_IOR('T', ADAPS_DTOF_PRIVATE + 4, struct adaps_get_param_perframe)
+#define ADAPS_GET_DTOF_RUNTIME_STATUS_PARAM       \
+    _IOR('T', ADAPS_DTOF_PRIVATE + 4, struct adaps_dtof_runtime_status_param)
 
-#define ADAPS_GET_EEPROM       \
-	_IOR('T', ADAPS_DTOF_PRIVATE + 5, struct adaps_get_eeprom)
+#define ADAPS_GET_DTOF_CALIB_EEPROM_PARAM       \
+    _IOR('T', ADAPS_DTOF_PRIVATE + 5, struct adaps_dtof_calib_eeprom_param)
 
-#define ADAPS_GET_EXPOSURE_PARAM       \
-	_IOR('T', ADAPS_DTOF_PRIVATE + 6, struct adaps_get_exposure_param)
+#define ADAPS_GET_DTOF_EXPOSURE_PARAM       \
+    _IOR('T', ADAPS_DTOF_PRIVATE + 6, struct adaps_dtof_exposure_param)
 
 
 #endif // FOR ADAPS_SWIFT

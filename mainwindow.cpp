@@ -1,4 +1,3 @@
-#include <execinfo.h>
 #include <signal.h>
 #include <QLCDNumber>
 #include <QTimer>
@@ -37,13 +36,20 @@ MainWindow::MainWindow(QWidget *parent) :
         QT_VERSION_STR
         );
     this->setWindowTitle(AppNameVersion);
-    DBG_NOTICE("AppVersion: %s\n", AppNameVersion);
-    //DBG_NOTICE("QT_VERSION_STR: %s, qVersion(): %s...", QT_VERSION_STR, qVersion());
-    // NOTICE: <mainwindow.cpp-MainWindow() 26> QT_VERSION_STR: 5.15.8, qVersion(): 5.15.2...
+    DBG_NOTICE("AppVersion: %s, Build on QT version: %s, Running QT version: %s...",
+        AppNameVersion, QT_VERSION_STR, qVersion());
+
+#if defined(RUN_ON_ROCKCHIP)
+#if defined(CONFIG_ADAPS_SWIFT_FLOOD)
+    DBG_NOTICE("module type: %s", "swift flood module");
+#else
+    DBG_NOTICE("module type: %s", "swift spot module");
+#endif
+#endif
 
     w = this->width();
     h = this->height();
-    DBG_INFO("MainWindow resolution: %d X %d\n", w, h);
+    DBG_INFO("MainWindow resolution: %d X %d", w, h);
 
     // 设置QLCDNumber的显示属性
     ui->lcdNumber->setDigitCount(8); // 显示格式为HH:MM:SS
@@ -80,6 +86,8 @@ MainWindow::MainWindow(QWidget *parent) :
     {
         DBG_ERROR("Fail to frame_process_thread init()...");
         ui->mainlabel->setText("Fail to frame_process_thread init(),\nPlease check camera is ready or not?");
+        delete frame_process_thread;
+        frame_process_thread = NULL;
         //QMessageBox::information(nullptr, "Warning Prompt", "No camera is detected, please double check!");
         return;
     }
@@ -105,12 +113,23 @@ MainWindow::MainWindow(QWidget *parent) :
 
 MainWindow::~MainWindow()
 {
+    DBG_INFO("frame_process_thread:%p...", frame_process_thread);
+
     if (NULL != frame_process_thread)
     {
+        bool isRunning = frame_process_thread->isRunning();
+        bool isFinished = frame_process_thread->isFinished();
+        bool isSleeping = frame_process_thread->isSleeping();
+
+        DBG_INFO("frame_process_thread isRunning():%d, isFinished(): %d, isSleeping: %d",
+            isRunning,
+            isFinished,
+            isSleeping
+            );
         if (frame_process_thread->isRunning())
         {
             frame_process_thread->exit(0);
-            frame_process_thread->wait(5000); // unit is milliseconds
+            //frame_process_thread->wait(WAIT_TIME_4_THREAD_EXIT); // unit is milliseconds
         }
         delete frame_process_thread;
     }
@@ -176,7 +195,25 @@ void MainWindow::clickQuitButton(void)
     else {
         if (NULL != frame_process_thread)
         {
-            frame_process_thread->stop(STOP_REQUEST_QUIT);
+            bool isRunning = frame_process_thread->isRunning();
+            bool isFinished = frame_process_thread->isFinished();
+            bool isSleeping = frame_process_thread->isSleeping();
+
+            DBG_INFO("frame_process_thread isRunning():%d, isFinished(): %d, isSleeping: %d",
+                isRunning,
+                isFinished,
+                isSleeping
+                );
+            if (isRunning)
+            {
+                frame_process_thread->stop(STOP_REQUEST_QUIT);
+            }
+            else {
+                if (isFinished)
+                {
+                    this->close(); // frame_process_thread->exit(1);
+                }
+            }
         }
         else {
             //this->close();
@@ -191,28 +228,6 @@ void MainWindow::onCtrl_X_Pressed(void)
     clickQuitButton();
 }
 
-void MainWindow::dump_stack()
-{
-    const int len = 1024;
-    void *func[len];
-    int size;
-    int i;
-    char **funs;
-
-    size = backtrace(func, len);
-    funs = (char**)backtrace_symbols(func, size);
-    if (funs == NULL) {
-        DBG_ERROR("backtrace_symbols() fail.\n");
-        return;
-    }
-
-    DBG_NOTICE("=========> stack trace: %d <=========", size);
-    for(i = 0; i < size; ++i)
-        DBG_NOTICE("%d %s", i, funs[i]);
-
-    free(funs);
-}
-
 void MainWindow::unixSignalHandler(int signal)
 {
     switch (signal) {
@@ -222,8 +237,8 @@ void MainWindow::unixSignalHandler(int signal)
             break;
 
         case SIGUSR1:
-            DBG_ERROR("User Signal 1 recieved,\nPlease check kernel log for detailed error information!");
-            ui->mainlabel->setText("User Signal 1 recieved, Please check kernel log for detailed error information!");
+            DBG_ERROR("User Signal 1 recieved\nPls check kernel log for detailed info!");
+            ui->mainlabel->setText("User Signal 1 recieved\nPls check kernel log for detailed info!");
             if (NULL != frame_process_thread)
             {
                 frame_process_thread->stop(STOP_REQUEST_STOP);
@@ -231,8 +246,8 @@ void MainWindow::unixSignalHandler(int signal)
             break;
 
         case SIGUSR2:
-            DBG_ERROR("User Signal 2 recieved,\nPlease check kernel log for detailed error information!");
-            ui->mainlabel->setText("User Signal 2 recieved, Please check kernel log for detailed error information!");
+            DBG_ERROR("User Signal 2 recieved\nPls check kernel log for detailed info!");
+            ui->mainlabel->setText("User Signal 2 recieved\nPls check kernel log for detailed info!");
             if (NULL != frame_process_thread)
             {
                 frame_process_thread->stop(STOP_REQUEST_STOP);
@@ -240,19 +255,19 @@ void MainWindow::unixSignalHandler(int signal)
             break;
 
         case SIGINT:
-            DBG_ERROR("CTRL-C recieved, graceful close() is executed!");
+            DBG_NOTICE("CTRL-C recieved, graceful close() is executed!");
             clickQuitButton();
             break;
 
+#if 0 // handled in main.cpp
         case SIGSEGV:
         case SIGABRT:
         case SIGBUS:
         case SIGTERM:
-            DBG_ERROR("Signal %d recieved, Call stack is printed, then graceful close() is executed!", signal);
-            dump_stack();
-
+            DBG_ERROR("graceful close() is executed!");
             clickQuitButton();
             break;
+#endif
 
         default:
             break;
@@ -263,7 +278,7 @@ void MainWindow::unixSignalHandler(int signal)
 
 void MainWindow::closeEvent(QCloseEvent *event)
 {
-    DBG_NOTICE("Last chance to do something before exit...");
+    DBG_INFO("Last chance to do something before exit...");
 
     // 在这里执行退出前的处理逻辑
     // 例如保存数据、释放资源等
@@ -364,7 +379,35 @@ bool MainWindow::update_status_info(status_params2 param2)
     ui->cur_exp_pvdd_value->setText(temp_string);
     ui->cur_environment_value->setText(temp_string);
     ui->cur_measurement_value->setText(temp_string);
+
+    ui->PHRButton->setEnabled(false);
+    ui->PCMButton->setEnabled(false);
+    ui->FHRButton->setEnabled(false);
 #endif
+
+    // disable the current mode button
+    switch (param2.work_mode) {
+        case WK_DTOF_PHR:
+            ui->PHRButton->setEnabled(false);
+            break;
+
+        case WK_DTOF_FHR:
+            ui->FHRButton->setEnabled(false);
+            break;
+
+        case WK_DTOF_PCM:
+            ui->PCMButton->setEnabled(false);
+            break;
+
+        case WK_RGB_NV12:
+        case WK_RGB_YUYV:
+            ui->RGBButton->setEnabled(false);
+            break;
+
+        default:
+            break;
+    }
+
     return true;
 }
 

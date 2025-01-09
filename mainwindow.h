@@ -44,7 +44,6 @@ private:
     QTimer      *test_timer;
     FrameProcessThread *frame_process_thread;
 
-    void dump_stack();
     void captureAndSaveScreenshot();
 };
 

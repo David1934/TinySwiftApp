@@ -68,8 +68,8 @@ public:
     int adaps_dtof_initilize();
     void ConvertDepthToColoredMap(u16 depth16_buffer[], u8 depth_colored_map[], int outImgWidth, int outImgHeight);
     void ConvertGreyscaleToColoredMap(u16 depth16_buffer[], u8 depth_colored_map[], int outImgWidth, int outImgHeight);
-    int dtof_decode(unsigned char *frm_rawdata , u16 depth16_buffer[], enum sensor_workmode swk);
-    void release();
+    int dtof_frame_decode(unsigned char *frm_rawdata , u16 depth16_buffer[], enum sensor_workmode swk);
+    void adaps_dtof_release();
     void mode_switch(struct sensor_params params, V4L2 *v4l2);
 
 private:
@@ -77,7 +77,7 @@ private:
     struct sensor_params m_sns_param;
     uint64_t m_exposure_time;
     int32_t  m_sensitivity;
-    struct adaps_get_eeprom *p_eeprominfo;
+    struct adaps_dtof_calib_eeprom_param *p_eeprominfo;
 
     struct BGRColor m_basic_colors[5];
     u16 m_LimitedMaxDistance;

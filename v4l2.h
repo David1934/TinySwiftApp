@@ -60,18 +60,18 @@ public:
     V4L2(struct sensor_params params);
     ~V4L2();
 
-    void nv12_2_rgb(unsigned char *nv12, unsigned char *rgb, int width, int height);
-    void yuyv_2_rgb(unsigned char *yuyv, unsigned char *rgb, int width, int height);
     int V4l2_initilize(void);
     int Start_streaming(void);
     int Capture_frame();
-    void mode_switch(struct sensor_params params);
+    void V4l2_mode_switch(struct sensor_params params);
     void Stop_streaming(void);
-    void Close(void);
+    void V4l2_close(void);
     void Get_frame_size_4_curr_wkmode(int *in_width, int *in_height, int *out_width, int *out_height);
-    int adaps_readTemperatureOfDtofSubdev(float *temperature);
-    void* adaps_getEEPROMData(void);
-    void* adaps_getExposureParam(void);
+#if defined(RUN_ON_ROCKCHIP)
+    int V4l2_get_dtof_runtime_status_param(float *temperature);
+    void* V4l2_get_dtof_calib_eeprom_param(void);
+    void* V4l2_get_dtof_exposure_param(void);
+#endif
 
 private:
     enum frame_data_type frm_type;
@@ -99,22 +99,24 @@ private:
 
     char        sd_devnode_4_dtof[DEV_NODE_LEN];
     int         fd_4_dtof;
-    struct adaps_get_eeprom *p_eeprominfo;
+    struct adaps_dtof_calib_eeprom_param *p_eeprominfo;
     unsigned int    last_temperature;
     unsigned int    last_expected_vop_abs_x100;
     unsigned int    last_expected_pvdd_x100;
 
     int init();
-    int adaps_readExposureParam(void);
-    int adaps_readEEPROMData(void);
-    int adaps_chkEEPROMChecksum(void);
-    bool save_eeprom(void *buf, int len);
-    int adaps_setParam4DtofSubdev(void);
+#if defined(RUN_ON_ROCKCHIP)
+    int get_dtof_exposure_param(void);
+    int get_dtof_calib_eeprom_param(void);
+    int check_crc32_4_dtof_calib_eeprom_param(void);
+    bool save_dtof_calib_eeprom_param(void *buf, int len);
+    int set_dtof_initial_param(void);
+#endif
     bool alloc_buffers(void);
     void free_buffers(void);
     int get_devnode_from_sysfs(struct media_entity_desc *entity_desc, char *p_devname);
     int get_subdev_node_4_sensor();
-    int Set_param_4_sensor_sub_device(int raw_w_4_curr_wkmode, int raw_h_4_curr_wkmode);
+    int set_param_4_sensor_sub_device(int raw_w_4_curr_wkmode, int raw_h_4_curr_wkmode);
 
 signals:
     void new_frame_process(unsigned int frm_sequence, void *frm_buf, int frm_len, struct timeval frm_timestamp, enum frame_data_type ftype, int total_bytes_per_line);

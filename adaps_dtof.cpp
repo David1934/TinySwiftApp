@@ -106,10 +106,10 @@ int ADAPS_DTOF::FillSetWrapperParamFromEepromInfo(uint8_t* pRawData, uint32_t ra
     return result;
 }
 
-void ADAPS_DTOF::initParams(WrapperDepthInitInputParams  *     initInputParams,WrapperDepthInitOutputParams      *initOutputParams)
+void ADAPS_DTOF::initParams(WrapperDepthInitInputParams* initInputParams,WrapperDepthInitOutputParams* initOutputParams)
 {
     SetWrapperParam set_param;
-    struct adaps_get_exposure_param *p_exposure_param;
+    struct adaps_dtof_exposure_param *p_exposure_param;
 
     memset(&set_param, 0, sizeof(SetWrapperParam));
     set_param.work_mode = static_cast<int>(m_sns_param.work_mode);
@@ -140,14 +140,14 @@ void ADAPS_DTOF::initParams(WrapperDepthInitInputParams  *     initInputParams,W
     set_param.OutAlgoVersion = (uint8_t*)m_DepthLibversion;
     DBG_INFO("depth algo lib version: %s", m_DepthLibversion);
 
-    p_eeprominfo = (struct adaps_get_eeprom *) m_v4l2->adaps_getEEPROMData();
+    p_eeprominfo = (struct adaps_dtof_calib_eeprom_param *) m_v4l2->V4l2_get_dtof_calib_eeprom_param();
     if (NULL == p_eeprominfo) {
         DBG_ERROR("p_eeprominfo is NULL for EEPROMInfo");
         return ;
     }
     FillSetWrapperParamFromEepromInfo(p_eeprominfo->pRawData, p_eeprominfo->rawDataSize, &set_param);
 
-    p_exposure_param = (struct adaps_get_exposure_param *) m_v4l2->adaps_getExposureParam();
+    p_exposure_param = (struct adaps_dtof_exposure_param *) m_v4l2->V4l2_get_dtof_exposure_param();
     if (NULL == p_exposure_param) {
         DBG_ERROR("p_exposure_param is NULL");
         return ;
@@ -157,7 +157,7 @@ void ADAPS_DTOF::initParams(WrapperDepthInitInputParams  *     initInputParams,W
 
     DBG_INFO("ptm fine exposure value: 0x%x\n", set_param.ptm_fine_exposure_value);
     DBG_INFO("exposure period value: 0x%x\n", set_param.exposure_period);
-    DBG_INFO("indoor calib temeprature: %f, outdoor: %f\n",
+    DBG_INFO("indoor calib temperature: %f, outdoor: %f\n",
            set_param.cali_ref_tempe[0], set_param.cali_ref_tempe[1]);
     DBG_INFO("indoor calib ref depth: %f, outdoor: %f\n",
            set_param.cali_ref_depth[0], set_param.cali_ref_depth[1]);
@@ -167,7 +167,6 @@ void ADAPS_DTOF::initParams(WrapperDepthInitInputParams  *     initInputParams,W
     initInputParams->dm_width = m_sns_param.out_frm_width;
     initInputParams->dm_height = m_sns_param.out_frm_height;
 
-    //need to check the below code   attention
     initInputParams->pRawData = p_eeprominfo->pRawData;
     initInputParams->rawDataSize = p_eeprominfo->rawDataSize;
     initInputParams->configFilePath = m_DepthLibConfigXmlPath;
@@ -250,11 +249,14 @@ int ADAPS_DTOF::adaps_dtof_initilize()
     return result;
 }
 
-void ADAPS_DTOF::release()
+void ADAPS_DTOF::adaps_dtof_release()
 {
 #if 1
-    DepthMapWrapperDestroy(m_handlerDepthLib);
-    m_handlerDepthLib = NULL;
+    if (NULL != m_handlerDepthLib)
+    {
+        DepthMapWrapperDestroy(m_handlerDepthLib);
+        m_handlerDepthLib = NULL;
+    }
 #else
     if (NULL != m_DepthMapWrapper)
     {
@@ -284,7 +286,7 @@ void ADAPS_DTOF::PrepareFrameParam(WrapperDepthCamConfig *wrapper_depth_map_conf
 {
     float  t = 0.0f;
 
-    if (-1 == m_v4l2->adaps_readTemperatureOfDtofSubdev(&t)) {
+    if (-1 == m_v4l2->V4l2_get_dtof_runtime_status_param(&t)) {
         DBG_ERROR("Fail to read temperature, errno: %s (%d)...", 
             strerror(errno), errno);
         return;
@@ -383,7 +385,7 @@ void ADAPS_DTOF::ConvertGreyscaleToColoredMap(u16 depth16_buffer[], u8 depth_col
     }
 }
 
-int ADAPS_DTOF::dtof_decode(unsigned char *frm_rawdata , u16 depth16_buffer[], enum sensor_workmode swk)
+int ADAPS_DTOF::dtof_frame_decode(unsigned char *frm_rawdata , u16 depth16_buffer[], enum sensor_workmode swk)
 {
     WrapperDepthCamConfig config;
     int result=0;
@@ -419,33 +421,28 @@ int ADAPS_DTOF::dtof_decode(unsigned char *frm_rawdata , u16 depth16_buffer[], e
     depthInput.formatParams.sliceHeight  = m_sns_param.raw_height;
     //DBG_INFO( "raw_width: %d raw_height: %d out_width: %d out_height: %d\n", m_sns_param.raw_width, m_sns_param.raw_height, m_sns_param.out_frm_width, m_sns_param.out_frm_height);
 
-    //depthInput.formatParams.planeSize    = pProcessRequestInfo->phInputBuffer[0]->planeSize[0];
-
-    //for (uint32_t index = 0; index < pProcessRequestInfo->phInputBuffer[0]->imageCount; index++) 
+    PrepareFrameParam(&config);
+    
+    //BOOL disableAlgo = CamX::OsUtils::GetPropertyBool("debug.adaps.disableAlgo", false);
+    bool disableAlgo =false;
+    
+    if (false == disableAlgo) 
     {
-        PrepareFrameParam(&config);
-
-        //BOOL disableAlgo = CamX::OsUtils::GetPropertyBool("debug.adaps.disableAlgo", false);
-        bool disableAlgo =false;
-
-        if (false == disableAlgo) 
-        {
-            done = DepthMapWrapperProcessFrame(m_handlerDepthLib,
-                                        depthInput,
-                                        &config,
-                                        1,
-                                        outputs);
-        }else
-        {
-            static  uint32_t count_g=0;
-            count_g++;
-            if(count_g%4 == 0)
-                done = 1;
-            else
-                done = 0;
-               
-           DBG_INFO( " bypass the algo done=%d \n",done);
-        }
+        done = DepthMapWrapperProcessFrame(m_handlerDepthLib,
+                                    depthInput,
+                                    &config,
+                                    1,
+                                    outputs);
+    }else
+    {
+        static  uint32_t count_g=0;
+        count_g++;
+        if(count_g%4 == 0)
+            done = 1;
+        else
+            done = 0;
+           
+       DBG_INFO( " bypass the algo done=%d \n",done);
     }
 
     result = (true == done) ? 0 : -1;

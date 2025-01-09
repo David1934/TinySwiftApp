@@ -9,10 +9,10 @@
 	<ConvolutionType>0</ConvolutionType>
 	<IsUndistort>true</IsUndistort>
 
-	<!-- SM8450 and windows:1032  SM8250:1040  SM8550:1040 HISI_RM:1056 RK3588:1280-->
+	<!-- SM8450 and windows:1032  SM8250:1040  SM8550:1040 Hisilicon:1056 RK3568/RK3588:1280-->
     <BufferWidthPHR>1280</BufferWidthPHR>
 
-	<!-- SM8450 and windows:4104  SM8250:4112  SM8550:4112 HISI_RM:4128 RK3588:4352 -->
+	<!-- SM8450 and windows:4104  SM8250:4112  SM8550:4112 Hisilicon:4128 RK3568/RK3588:4352 -->
 	<BufferWidthFHR>4352</BufferWidthFHR>
 	<IsConfidenceFilterUsed>false</IsConfidenceFilterUsed>
 	<IsAntiCrosstalk>false</IsAntiCrosstalk>

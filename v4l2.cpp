@@ -59,7 +59,7 @@ V4L2::~V4L2()
     }
 }
 
-void V4L2::mode_switch(struct sensor_params params)
+void V4L2::V4l2_mode_switch(struct sensor_params params)
 {
     memcpy(&snr_param, &params, sizeof(struct sensor_params));
 
@@ -244,7 +244,7 @@ int V4L2::get_subdev_node_4_sensor()
     return ret;
 }
 
-int V4L2::Set_param_4_sensor_sub_device(int raw_w_4_curr_wkmode, int raw_h_4_curr_wkmode)
+int V4L2::set_param_4_sensor_sub_device(int raw_w_4_curr_wkmode, int raw_h_4_curr_wkmode)
 {
     int ret = 0;
     struct v4l2_subdev_format sensorFmt;
@@ -258,7 +258,7 @@ int V4L2::Set_param_4_sensor_sub_device(int raw_w_4_curr_wkmode, int raw_h_4_cur
 
     ret = xioctl(fd_4_dtof, VIDIOC_SUBDEV_S_FMT, &sensorFmt);
     if (-1 == ret) {
-        DBG_ERROR("Fail to set format for dtof sub device, errno: %s (%d)...", 
+        DBG_ERROR("Fail to set format for dtof sensor sub device, errno: %s (%d)...", 
                strerror(errno), errno);
     }
 
@@ -367,7 +367,8 @@ void V4L2::free_buffers(void)
     }
 }
 
-bool V4L2::save_eeprom(void *buf, int len)
+#if defined(RUN_ON_ROCKCHIP)
+bool V4L2::save_dtof_calib_eeprom_param(void *buf, int len)
 {
     QDateTime       localTime = QDateTime::currentDateTime();
     QString         currentTime = localTime.toString("yyyyMMddhhmmss");
@@ -389,22 +390,21 @@ bool V4L2::save_eeprom(void *buf, int len)
     return true;
 }
 
-#if defined(RUN_ON_ROCKCHIP)
-void* V4L2::adaps_getExposureParam(void)
+void* V4L2::V4l2_get_dtof_exposure_param(void)
 {
     return &snr_param.exposureParam;
 }
 
-int V4L2::adaps_readExposureParam(void)
+int V4L2::get_dtof_exposure_param(void)
 {
     int ret = 0;
-    struct adaps_get_exposure_param param;
+    struct adaps_dtof_exposure_param param;
     memset(&param, 0, sizeof(param));
 
     if (SENSOR_TYPE_DTOF == snr_param.sensor_type)
     {
-        if (-1 == ioctl(fd_4_dtof, ADAPS_GET_EXPOSURE_PARAM, &param)) {
-            DBG_ERROR("Fail to get exposure param from dtof sub device, errno: %s (%d)...", 
+        if (-1 == ioctl(fd_4_dtof, ADAPS_GET_DTOF_EXPOSURE_PARAM, &param)) {
+            DBG_ERROR("Fail to get exposure param from dtof sensor device, errno: %s (%d)...", 
                    strerror(errno), errno);
             ret = -1;
         }else
@@ -416,16 +416,14 @@ int V4L2::adaps_readExposureParam(void)
 
     return ret;
 }
-#endif
 
-void* V4L2::adaps_getEEPROMData(void)
+void* V4L2::V4l2_get_dtof_calib_eeprom_param(void)
 {
     return p_eeprominfo;
 }
 
-#if defined(RUN_ON_ROCKCHIP)
 #if (ADS6401_MODDULE_SPOT == SWIFT_MODULE_TYPE)
-int V4L2::adaps_chkEEPROMChecksum(void)
+int V4L2::check_crc32_4_dtof_calib_eeprom_param(void)
 {
     int ret = 0;
 
@@ -434,7 +432,7 @@ int V4L2::adaps_chkEEPROMChecksum(void)
     p_swift_eeprom_data = (swift_eeprom_data_t *)p_eeprominfo->pRawData;
     if (Utils::is_env_var_true(ENV_VAR_SAVE_EEPROM_ENABLE))
     {
-        save_eeprom(p_eeprominfo->pRawData, sizeof(swift_eeprom_data_t));
+        save_dtof_calib_eeprom_param(p_eeprominfo->pRawData, sizeof(swift_eeprom_data_t));
     }
 
     Utils *utils = new Utils();
@@ -464,7 +462,7 @@ int V4L2::adaps_chkEEPROMChecksum(void)
 
 #else
 
-int V4L2::adaps_chkEEPROMChecksum(void)
+int V4L2::check_crc32_4_dtof_calib_eeprom_param(void)
 {
     int i = 0,ret=0;
     uint32_t read_crc32 = 0;
@@ -473,7 +471,7 @@ int V4L2::adaps_chkEEPROMChecksum(void)
     p_swift_eeprom_data = (swift_eeprom_data_t *)p_eeprominfo->pRawData;
     if (Utils::is_env_var_true(ENV_VAR_SAVE_EEPROM_ENABLE))
     {
-        save_eeprom(p_eeprominfo->pRawData, sizeof(swift_eeprom_data_t));
+        save_dtof_calib_eeprom_param(p_eeprominfo->pRawData, sizeof(swift_eeprom_data_t));
     }
 
     Utils *utils = new Utils();
@@ -576,16 +574,16 @@ check_exit:
 }
 #endif
 
-int V4L2::adaps_readEEPROMData(void)
+int V4L2::get_dtof_calib_eeprom_param(void)
 {
     int ret = 0;
 
     if (SENSOR_TYPE_DTOF == snr_param.sensor_type)
     {
-        p_eeprominfo = (struct adaps_get_eeprom *)malloc(sizeof(struct adaps_get_eeprom));
-        if (-1 == ioctl(fd_4_dtof, ADAPS_GET_EEPROM, p_eeprominfo)) {
-            DBG_ERROR("Fail to read eeprom of dtof sub device(%d, %s), errno: %s (%d), ADAPS_GET_EEPROM:0x%lx, sizeof(struct adaps_get_eeprom):%ld, sizeof(swift_eeprom_data_t): %ld...", fd_4_dtof, sd_devnode_4_dtof,
-                   strerror(errno), errno, ADAPS_GET_EEPROM, sizeof(struct adaps_get_eeprom), sizeof(swift_eeprom_data_t));
+        p_eeprominfo = (struct adaps_dtof_calib_eeprom_param *)malloc(sizeof(struct adaps_dtof_calib_eeprom_param));
+        if (-1 == ioctl(fd_4_dtof, ADAPS_GET_DTOF_CALIB_EEPROM_PARAM, p_eeprominfo)) {
+            DBG_ERROR("Fail to read eeprom of dtof sensor device(%d, %s), errno: %s (%d)...",
+                fd_4_dtof, sd_devnode_4_dtof, strerror(errno), errno);
             ret = -1;
             if (NULL != p_eeprominfo)
             {
@@ -596,7 +594,7 @@ int V4L2::adaps_readEEPROMData(void)
         {
             if (false == Utils::is_env_var_true(ENV_VAR_SKIP_EEPROM_CRC_CHK))
             {
-                ret = adaps_chkEEPROMChecksum();
+                ret = check_crc32_4_dtof_calib_eeprom_param();
                 ret = 0; // skip eeprom crc mismatch now, since there are some modules whose crc is mismatched.
             }
         }
@@ -605,53 +603,53 @@ int V4L2::adaps_readEEPROMData(void)
     return ret;
 }
 
-int V4L2::adaps_setParam4DtofSubdev(void)
+int V4L2::set_dtof_initial_param(void)
 {
     int ret = 0;
-    struct adaps_set_param_in_config set_inconfig;
-    set_inconfig.env_type = snr_param.env_type;
-    set_inconfig.measure_type = snr_param.measure_type;
-    set_inconfig.framerate_type = DEFAULT_DTOF_FRAMERATE;
-    set_inconfig.vcselzonecount_type = AdapsVcselZoneCount4;
+    struct adaps_dtof_intial_param param;
+    param.env_type = snr_param.env_type;
+    param.measure_type = snr_param.measure_type;
+    param.framerate_type = DEFAULT_DTOF_FRAMERATE;
+    param.vcselzonecount_type = AdapsVcselZoneCount4;
 
     if (SENSOR_TYPE_DTOF == snr_param.sensor_type)
     {
-        if (-1 == ioctl(fd_4_dtof, ADAPS_SET_PARAM_IN_CONFIG, &set_inconfig)) {
-            DBG_ERROR("Fail to set param for dtof sub device, errno: %s (%d)...", 
+        if (-1 == ioctl(fd_4_dtof, ADAPS_SET_DTOF_INITIAL_PARAM, &param)) {
+            DBG_ERROR("Fail to set initial param for dtof sensor device, errno: %s (%d)...", 
                    strerror(errno), errno);
             ret = -1;
         }else
         {     
-            DBG_INFO("adaps_set_param_in_config set_inconfig.env_type=%d   set_inconfig.measure_type=%d  set_inconfig.framerate_type=%d     ",
-                set_inconfig.env_type,
-                set_inconfig.measure_type,
-                set_inconfig.framerate_type);
+            DBG_INFO("dtof_intial_param env_type=%d measure_type=%d framerate_type=%d     ",
+                param.env_type,
+                param.measure_type,
+                param.framerate_type);
         }
     }
 
     return ret;
 }
 
-int V4L2::adaps_readTemperatureOfDtofSubdev(float *temperature)
+int V4L2::V4l2_get_dtof_runtime_status_param(float *temperature)
 {
     int ret = 0;
-    struct adaps_get_param_perframe perframe;
-    memset(&perframe,0,sizeof(perframe));
+    struct adaps_dtof_runtime_status_param param;
+    memset(&param,0,sizeof(param));
 
     if (SENSOR_TYPE_DTOF == snr_param.sensor_type)
     {
-        if (-1 == ioctl(fd_4_dtof, ADAPS_GET_PARAM_PERFRAME, &perframe)) {
-            DBG_ERROR("Fail to read per frame param from dtof sub device, errno: %s (%d)...", 
+        if (-1 == ioctl(fd_4_dtof, ADAPS_GET_DTOF_RUNTIME_STATUS_PARAM, &param)) {
+            DBG_ERROR("Fail to get runtime status param from dtof sensor device, errno: %s (%d)...", 
                    strerror(errno), errno);
             ret = -1;
         }else
         {     
-            last_temperature = perframe.internal_temperature;
-            last_expected_vop_abs_x100 = perframe.expected_vop_abs_x100;
-            last_expected_pvdd_x100 = perframe.expected_pvdd_x100;
+            last_temperature = param.inside_temperature_x100;
+            last_expected_vop_abs_x100 = param.expected_vop_abs_x100;
+            last_expected_pvdd_x100 = param.expected_pvdd_x100;
 
-            *temperature = (float) ((double)perframe.internal_temperature /(double)100.0f);
-            DBG_INFO("internal_temperature: %d, temperature: %f\n", perframe.internal_temperature, *temperature);
+            *temperature = (float) ((double)param.inside_temperature_x100 /(double)100.0f);
+            DBG_INFO("internal_temperature: %d, temperature: %f\n", param.inside_temperature_x100, *temperature);
         }
     }
 
@@ -764,14 +762,14 @@ int V4L2::V4l2_initilize(void)
 #if defined(RUN_ON_ROCKCHIP)
     if (SENSOR_TYPE_DTOF == snr_param.sensor_type)
     {
-        if (0 > adaps_readEEPROMData())
+        if (0 > get_dtof_calib_eeprom_param())
         {
 #if !defined(IGNORE_REAL_COMMUNICATION)
             return 0 - __LINE__;
 #endif
         }
 
-        if (0 > adaps_setParam4DtofSubdev())
+        if (0 > set_dtof_initial_param())
         {
             return 0 - __LINE__;
         }
@@ -780,9 +778,9 @@ int V4L2::V4l2_initilize(void)
 #if !defined(VIDIOC_S_FMT_INCLUDE_VIDIOC_SUBDEV_S_FMT)
     if (0 != fd_4_dtof)
     {
-        ret = Set_param_4_sensor_sub_device(snr_param.raw_width, snr_param.raw_height);
+        ret = set_param_4_sensor_sub_device(snr_param.raw_width, snr_param.raw_height);
         if (0 > ret) {
-            DBG_ERROR("Fail to Set_param_4_sensor_sub_device, errno: %s (%d)...", 
+            DBG_ERROR("Fail to set_param_4_sensor_sub_device, errno: %s (%d)...", 
                    strerror(errno), errno);
             return ret;
         }
@@ -842,7 +840,7 @@ int V4L2::V4l2_initilize(void)
 #if defined(RUN_ON_ROCKCHIP)
     if (SENSOR_TYPE_DTOF == snr_param.sensor_type)
     {
-        if (0 > adaps_readExposureParam())
+        if (0 > get_dtof_exposure_param())
         {
             return 0 - __LINE__;
         }
@@ -990,7 +988,7 @@ void V4L2::Stop_streaming(void)
     return;
 }
 
-void V4L2::Close(void)
+void V4L2::V4l2_close(void)
 {
     if (SENSOR_TYPE_DTOF == snr_param.sensor_type)
     {
@@ -999,7 +997,7 @@ void V4L2::Close(void)
             free(p_eeprominfo);
             p_eeprominfo = NULL;
         }
-        if (-1 == close(fd_4_dtof)) {
+        if ((0 != fd_4_dtof) && (-1 == close(fd_4_dtof))) {
             DBG_ERROR("Fail to close device %d (%s), errno: %s (%d)...", fd_4_dtof, sd_devnode_4_dtof,
                 strerror(errno), errno);
             return;
@@ -1018,73 +1016,6 @@ void V4L2::Close(void)
     }
 
     return;
-}
-
-void V4L2::nv12_2_rgb(unsigned char *nv12 , unsigned char *rgb, int width , int height)
-{
-    const int nv_start = width * height;
-    int  i, j, index = 0, rgb_index = 0;
-    unsigned char y, u, v;
-    int r, g, b, nv_index = 0;
-
-    for (i = 0; i < height; i++) {
-        for (j = 0; j < width; j++){
-            nv_index = i / 2 * width + j - j % 2;
-
-            y = nv12[rgb_index];
-            u = nv12[nv_start + nv_index];
-            v = nv12[nv_start + nv_index + 1];
-
-            r = y + (140 * (v - 128)) / 100;
-            g = y - (34 * (u - 128)) / 100 - (71 * (v - 128)) / 100;
-            b = y + (177 * (u - 128)) / 100;
-
-            if (r > 255)   r = 255;
-            if (g > 255)   g = 255;
-            if (b > 255)   b = 255;
-            if (r < 0)     r = 0;
-            if (g < 0)     g = 0;
-            if (b < 0)     b = 0;
-
-            index = rgb_index ;
-            rgb[index * 3 + 0] = r;
-            rgb[index * 3 + 1] = g;
-            rgb[index * 3 + 2] = b;
-            rgb_index++;
-        }
-    }
-    return;
-}
-
-
-void V4L2::yuyv_2_rgb(unsigned char *yuyv, unsigned char *rgb, int width, int height) {
-    int i, j;
-    int y0, u, y1, v;
-    int r, g, b;
-
-    for (i = 0, j = 0; i < (width * height) * 2; i+=4, j+=6) {
-        y0 = yuyv[i];
-        u = yuyv[i + 1] - 128;
-        y1 = yuyv[i + 2];
-        v = yuyv[i + 3] - 128;
-
-        r = y0 + 1.370705 * v;
-        g = y0 - 0.698001 * v - 0.337633 * u;
-        b = y0 + 1.732446 * u;
-
-        /* Ensure RGB values are within range */
-        rgb[j] = (r > 255) ? 255 : ((r < 0) ? 0 : r);
-        rgb[j + 1] = (g > 255) ? 255 : ((g < 0) ? 0 : g);
-        rgb[j + 2] = (b > 255) ? 255 : ((b < 0) ? 0 : b);
-
-        r = y1 + 1.370705 * v;
-        g = y1 - 0.698001 * v - 0.337633 * u;
-        b = y1 + 1.732446 * u;
-
-        rgb[j + 3] = (r > 255) ? 255 : ((r < 0) ? 0 : r);
-        rgb[j + 4] = (g > 255) ? 255 : ((g < 0) ? 0 : g);
-        rgb[j + 5] = (b > 255) ? 255 : ((b < 0) ? 0 : b);
-    }
 }
 
 void V4L2::Get_frame_size_4_curr_wkmode(int *in_width, int *in_height, int *out_width, int *out_height)

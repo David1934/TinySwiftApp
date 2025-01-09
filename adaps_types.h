@@ -46,18 +46,18 @@ struct VcselZoneData
 
 typedef struct ADAPS_MIRROR_FRAME_SET
 {
-	UINT8 mirror_x;
-	UINT8 mirror_y;
+    UINT8 mirror_x;
+    UINT8 mirror_y;
 }AdapsMirrorFrameSet;
 
 // adaps tof operation mode
 enum adaps_work_mode {
-	ADAPS_PTM_PHR_MODE   = 0, 
-	ADAPS_PCM_MODE = 1,
-	ADAPS_PTM_FHR_MODE   = 2,	
+    ADAPS_PTM_PHR_MODE   = 0,
+    ADAPS_PCM_MODE = 1,
+    ADAPS_PTM_FHR_MODE   = 2,
     ADAPS_PTM_DEBUG_PHR_MODE = 3,
-	ADAPS_PTM_DEBUG_FHR_MODE=4,
-	ADAPS_MODE_MAX,
+    ADAPS_PTM_DEBUG_FHR_MODE=4,
+    ADAPS_MODE_MAX,
 };
 
 typedef enum

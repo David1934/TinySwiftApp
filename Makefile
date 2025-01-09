@@ -14,9 +14,9 @@ EQ            = =
 
 CC            = /home/david/rk_build/buildroot/output/rockchip_rk3568/host/bin/aarch64-buildroot-linux-gnu-gcc
 CXX           = /home/david/rk_build/buildroot/output/rockchip_rk3568/host/bin/aarch64-buildroot-linux-gnu-g++
-DEFINES       = -DRUN_ON_ROCKCHIP -DRUN_ON_RK3568 -DCONFIG_VIDEO_ADS6401 -DCONFIG_ADAPS_SWIFT_FLOOD -DQT_NO_DEBUG -DQT_WIDGETS_LIB -DQT_GUI_LIB -DQT_CORE_LIB
+DEFINES       = -DRUN_ON_ROCKCHIP -DRUN_ON_RK3568 -DCONFIG_VIDEO_ADS6401 -DCONFIG_ADAPS_SWIFT_FLOOD -DQT_WIDGETS_LIB -DQT_GUI_LIB -DQT_CORE_LIB
 CFLAGS        = -pipe -D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -Os -g0 -D_FORTIFY_SOURCE=1 -DUSE_UPDATEENGINE=ON -DSUCCESSFUL_BOOT=ON --sysroot=/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot -Wall -Wextra -D_REENTRANT -fPIC $(DEFINES)
-CXXFLAGS      = -pipe -D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -Os -g0 -D_FORTIFY_SOURCE=1 --sysroot=/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot -Wall -Wextra -D_REENTRANT -fPIC $(DEFINES)
+CXXFLAGS      = -pipe -D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -Os -g0 -D_FORTIFY_SOURCE=1 --sysroot=/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot -g -Wall -Wextra -D_REENTRANT -fPIC $(DEFINES)
 INCPATH       = -I. -I../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5 -I../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets -I../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui -I../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore -I. -I../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/libdrm -I. -I../../buildroot/output/rockchip_rk3568/host/mkspecs/devices/linux-buildroot-g++
 QMAKE         = /home/david/rk_build/buildroot/output/rockchip_rk3568/host/bin/qmake
 DEL_FILE      = rm -f
@@ -39,7 +39,7 @@ COMPRESS      = gzip -9f
 DISTNAME      = SpadisQT1.0.0
 DISTDIR = /home/david/rk_build/app/SpadisQT/.tmp/SpadisQT1.0.0
 LINK          = /home/david/rk_build/buildroot/output/rockchip_rk3568/host/bin/aarch64-buildroot-linux-gnu-g++
-LFLAGS        = --sysroot=/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot -Wl,-rpath,/vendor/lib64/ -Wl,-O1
+LFLAGS        = --sysroot=/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot -rdynamic -Wl,-rpath,/vendor/lib64/
 LIBS          = $(SUBLIBS) -L/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/lib -latomic -L/home/david/rk_build/app/SpadisQT -ladaps_swift_decode /home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/lib/libQt5Widgets.so /home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/lib/libQt5Gui.so /home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/lib/libQt5Core.so -lmali_hook -lmali_hook_injector -lmali -ldrm -lwayland-client -lwayland-server -lpthread  -lrt -lpthread -ldl 
 AR            = /home/david/rk_build/buildroot/output/rockchip_rk3568/host/bin/aarch64-buildroot-linux-gnu-ar cqs
 RANLIB        = 
@@ -481,7 +481,7 @@ compiler_moc_predefs_make_all: moc_predefs.h
 compiler_moc_predefs_clean:
 	-$(DEL_FILE) moc_predefs.h
 moc_predefs.h: ../../buildroot/output/rockchip_rk3568/host/mkspecs/features/data/dummy.cpp
-	/home/david/rk_build/buildroot/output/rockchip_rk3568/host/bin/aarch64-buildroot-linux-gnu-g++ -pipe -D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -Os -g0 -D_FORTIFY_SOURCE=1 --sysroot=/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot -Wall -Wextra -dM -E -o moc_predefs.h ../../buildroot/output/rockchip_rk3568/host/mkspecs/features/data/dummy.cpp
+	/home/david/rk_build/buildroot/output/rockchip_rk3568/host/bin/aarch64-buildroot-linux-gnu-g++ -pipe -D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -Os -g0 -D_FORTIFY_SOURCE=1 --sysroot=/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot -g -Wall -Wextra -dM -E -o moc_predefs.h ../../buildroot/output/rockchip_rk3568/host/mkspecs/features/data/dummy.cpp
 
 compiler_moc_header_make_all: moc_mainwindow.cpp moc_globalapplication.cpp moc_FrameProcessThread.cpp moc_v4l2.cpp moc_adaps_dtof.cpp
 compiler_moc_header_clean:
@@ -1443,6 +1443,13 @@ mainwindow.o: mainwindow.cpp ../../buildroot/output/rockchip_rk3568/host/aarch64
 		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets/QShortcut \
 		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets/qshortcut.h \
 		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/QCloseEvent \
+		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/QScreen \
+		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qscreen.h \
+		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QList \
+		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QRect \
+		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QSize \
+		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QSizeF \
+		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/QTransform \
 		mainwindow.h \
 		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets/QMainWindow \
 		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets/qmainwindow.h \

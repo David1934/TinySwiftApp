@@ -157,3 +157,71 @@ void Utils::hexdump(const unsigned char * buf, int buf_len, const char * title)
     }
 }
 
+void Utils::nv12_2_rgb(unsigned char *nv12 , unsigned char *rgb, int width , int height)
+{
+    const int nv_start = width * height;
+    int  i, j, index = 0, rgb_index = 0;
+    unsigned char y, u, v;
+    int r, g, b, nv_index = 0;
+
+    for (i = 0; i < height; i++) {
+        for (j = 0; j < width; j++){
+            nv_index = i / 2 * width + j - j % 2;
+
+            y = nv12[rgb_index];
+            u = nv12[nv_start + nv_index];
+            v = nv12[nv_start + nv_index + 1];
+
+            r = y + (140 * (v - 128)) / 100;
+            g = y - (34 * (u - 128)) / 100 - (71 * (v - 128)) / 100;
+            b = y + (177 * (u - 128)) / 100;
+
+            if (r > 255)   r = 255;
+            if (g > 255)   g = 255;
+            if (b > 255)   b = 255;
+            if (r < 0)     r = 0;
+            if (g < 0)     g = 0;
+            if (b < 0)     b = 0;
+
+            index = rgb_index ;
+            rgb[index * 3 + 0] = r;
+            rgb[index * 3 + 1] = g;
+            rgb[index * 3 + 2] = b;
+            rgb_index++;
+        }
+    }
+    return;
+}
+
+
+void Utils::yuyv_2_rgb(unsigned char *yuyv, unsigned char *rgb, int width, int height) {
+    int i, j;
+    int y0, u, y1, v;
+    int r, g, b;
+
+    for (i = 0, j = 0; i < (width * height) * 2; i+=4, j+=6) {
+        y0 = yuyv[i];
+        u = yuyv[i + 1] - 128;
+        y1 = yuyv[i + 2];
+        v = yuyv[i + 3] - 128;
+
+        r = y0 + 1.370705 * v;
+        g = y0 - 0.698001 * v - 0.337633 * u;
+        b = y0 + 1.732446 * u;
+
+        /* Ensure RGB values are within range */
+        rgb[j] = (r > 255) ? 255 : ((r < 0) ? 0 : r);
+        rgb[j + 1] = (g > 255) ? 255 : ((g < 0) ? 0 : g);
+        rgb[j + 2] = (b > 255) ? 255 : ((b < 0) ? 0 : b);
+
+        r = y1 + 1.370705 * v;
+        g = y1 - 0.698001 * v - 0.337633 * u;
+        b = y1 + 1.732446 * u;
+
+        rgb[j + 3] = (r > 255) ? 255 : ((r < 0) ? 0 : r);
+        rgb[j + 4] = (g > 255) ? 255 : ((g < 0) ? 0 : g);
+        rgb[j + 5] = (b > 255) ? 255 : ((b < 0) ? 0 : b);
+    }
+}
+
+

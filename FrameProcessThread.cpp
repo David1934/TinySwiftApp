@@ -92,10 +92,13 @@ void FrameProcessThread::mode_switch(QString mode_type)
         sns_param.work_mode = WKMODE_4_RGB_SENSOR;
         sns_param.env_type = AdapsEnvTypeUninitilized;
         sns_param.measure_type = AdapsMeasurementTypeUninitilized;
-        v4l2->mode_switch(sns_param);
+        v4l2->V4l2_mode_switch(sns_param);
         v4l2->Get_frame_size_4_curr_wkmode(&sns_param.raw_width, &sns_param.raw_height, &sns_param.out_frm_width, &sns_param.out_frm_height);
 #if defined(RUN_ON_ROCKCHIP)
-        if (NULL != adaps_dtof) adaps_dtof->release();
+        if (NULL != adaps_dtof)
+        {
+            adaps_dtof->adaps_dtof_release();
+        }
 #endif
     }
     else
@@ -123,7 +126,7 @@ void FrameProcessThread::mode_switch(QString mode_type)
             sns_param.measure_type = AdapsMeasurementTypeNormal;
         }
 
-        v4l2->mode_switch(sns_param);
+        v4l2->V4l2_mode_switch(sns_param);
         v4l2->Get_frame_size_4_curr_wkmode(&sns_param.raw_width, &sns_param.raw_height, &sns_param.out_frm_width, &sns_param.out_frm_height);
 #if defined(RUN_ON_ROCKCHIP)
         if (NULL != adaps_dtof)
@@ -283,7 +286,7 @@ bool FrameProcessThread::new_frame_handle(unsigned int frm_sequence, void *frm_r
                     }
                 }
                 else {
-                    decodeRet = adaps_dtof->dtof_decode((unsigned char *)frm_rawdata,depth_buffer,sns_param.work_mode);
+                    decodeRet = adaps_dtof->dtof_frame_decode((unsigned char *)frm_rawdata,depth_buffer,sns_param.work_mode);
                     if (0 == decodeRet)
                     {
                         if (sns_param.save_frame_cnt > 0)
@@ -307,7 +310,7 @@ bool FrameProcessThread::new_frame_handle(unsigned int frm_sequence, void *frm_r
                         }
                     }
                     else {
-                        DBG_ERROR("dtof_decode() return %d , errno: %s (%d), save_frame_cnt: %d...", decodeRet, strerror(errno), errno, sns_param.save_frame_cnt);
+                        DBG_ERROR("dtof_frame_decode() return %d , errno: %s (%d), save_frame_cnt: %d...", decodeRet, strerror(errno), errno, sns_param.save_frame_cnt);
                     }
                 }
             }
@@ -361,7 +364,7 @@ bool FrameProcessThread::new_frame_handle(unsigned int frm_sequence, void *frm_r
                     }
                 }
                 else {
-                    decodeRet = adaps_dtof->dtof_decode((unsigned char *)frm_rawdata,depth_buffer,sns_param.work_mode);
+                    decodeRet = adaps_dtof->dtof_frame_decode((unsigned char *)frm_rawdata,depth_buffer,sns_param.work_mode);
                     if (0 == decodeRet)
                     {
                         if (sns_param.save_frame_cnt > 0)
@@ -390,7 +393,7 @@ bool FrameProcessThread::new_frame_handle(unsigned int frm_sequence, void *frm_r
                         }
                     }
                     else {
-                        //DBG_ERROR("dtof_decode() return %d , errno: %s (%d), save_frame_cnt: %d...", decodeRet, strerror(errno), errno, sns_param.save_frame_cnt);
+                        //DBG_ERROR("dtof_frame_decode() return %d , errno: %s (%d), save_frame_cnt: %d...", decodeRet, strerror(errno), errno, sns_param.save_frame_cnt);
                     }
                 }
             }
@@ -400,14 +403,14 @@ bool FrameProcessThread::new_frame_handle(unsigned int frm_sequence, void *frm_r
         case FDATA_TYPE_YUYV:
             if (v4l2)
             {
-                v4l2->yuyv_2_rgb((unsigned char *)frm_rawdata,rgb_buffer,sns_param.out_frm_width,sns_param.out_frm_height);
+                utils->yuyv_2_rgb((unsigned char *)frm_rawdata,rgb_buffer,sns_param.out_frm_width,sns_param.out_frm_height);
             }
             break;
 
         case FDATA_TYPE_NV12:
             if (v4l2)
             {
-                v4l2->nv12_2_rgb((unsigned char *)frm_rawdata,rgb_buffer,sns_param.out_frm_width,sns_param.out_frm_height);
+                utils->nv12_2_rgb((unsigned char *)frm_rawdata,rgb_buffer,sns_param.out_frm_width,sns_param.out_frm_height);
             }
         break;
 
@@ -434,14 +437,14 @@ void FrameProcessThread::onThreadLoopExit()
     if (v4l2)
     {
         v4l2->Stop_streaming();
-        v4l2->Close();
+        v4l2->V4l2_close();
     }
     if (SENSOR_TYPE_DTOF == sns_param.sensor_type)
     {
 /*
         if (adaps_dtof)
         {
-            adaps_dtof->release();
+            adaps_dtof->adaps_dtof_release();
         }
 */
         if (NULL != depth_buffer)
@@ -469,6 +472,11 @@ void FrameProcessThread::stop(int stop_request_code)
     else {
         emit threadLoopExit();
     }
+}
+
+bool FrameProcessThread::isSleeping()
+{
+    return sleeping;
 }
 
 int FrameProcessThread::init(int index)
@@ -528,11 +536,17 @@ void FrameProcessThread::run()
     {
         while(!stopped)
         {
-            msleep(FRAME_INTERVAL);
+            if (this->isInterruptionRequested()) {
+                 DBG_NOTICE("Thread is interrupted, cleaning up...");
+                 break;
+             }
 
             if(!stopped)
             {
                 ret=v4l2->Capture_frame();
+                sleeping = true;
+                QThread::msleep(FRAME_INTERVAL);
+                sleeping = false;
             }
 
             if(ret < 0)
@@ -544,6 +558,7 @@ void FrameProcessThread::run()
                 if ((0 != qApp->get_save_cnt()) && (0 == sns_param.save_frame_cnt)) // if already capture expected frames, try to quit.
                 {
                     stop(STOP_REQUEST_STOP);
+                    //break;
                 }
             }
         }

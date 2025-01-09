@@ -21,6 +21,7 @@ public:
     void stop(int stop_request_code);
     void mode_switch(QString sensortype);
     int init(int index);
+    bool isSleeping();
 
 protected:
     void run();
@@ -28,6 +29,7 @@ protected:
 private:
     volatile int majorindex;
     volatile bool stopped;
+    volatile bool sleeping;
     volatile bool skip_frame_process;
     struct sensor_params sns_param;
 

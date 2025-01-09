@@ -16,9 +16,9 @@
 #endif
 
 #define VERSION_MAJOR                           2
-#define VERSION_MINOR                           0
-#define VERSION_REVISION                        1
-#define LAST_MODIFIED_TIME                      "20250108A"
+#define VERSION_MINOR                           1
+#define VERSION_REVISION                        0
+#define LAST_MODIFIED_TIME                      "20250114A"
 
 #define DEFAULT_DTOF_FRAMERATE                  AdapsFramerateType30FPS // AdapsFramerateType60FPS
 
@@ -52,6 +52,8 @@
 
 #define DEFAULT_TIMER_TEST_TIMES                0
 #define TIMER_TEST_INTERVAL                     5   // unit is second
+
+#define WAIT_TIME_4_THREAD_EXIT                 10  // unit is  milliseconds
 
 #if defined(RUN_ON_ROCKCHIP)
 #define WKMODE_4_RGB_SENSOR                     WK_RGB_NV12    // On DELL notebook, it is WK_MODE_YUYV, on Apple notebook it is WK_MODE_NV12?
@@ -243,7 +245,7 @@ struct sensor_params
     AdapsEnvironmentType advisedEnvType;
     AdapsMeasurementType advisedMeasureType;
 #if defined(RUN_ON_ROCKCHIP)
-    struct adaps_get_exposure_param exposureParam;
+    struct adaps_dtof_exposure_param exposureParam;
 #endif
 };
 
