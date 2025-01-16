@@ -10,6 +10,9 @@ FrameProcessThread::FrameProcessThread()
     majorindex = -1;
     rgb_buffer = NULL;
     depth_buffer = NULL;
+#if defined(ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT)
+    merged_depth_buffer = NULL;
+#endif
     v4l2 = NULL;
     utils = NULL;
     sns_param.sensor_type = qApp->get_sensor_type();
@@ -65,6 +68,14 @@ FrameProcessThread::~FrameProcessThread()
         free(depth_buffer);
         depth_buffer = NULL;
     }
+
+#if defined(ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT)
+    if (NULL != merged_depth_buffer)
+    {
+        free(merged_depth_buffer);
+        merged_depth_buffer = NULL;
+    }
+#endif
 
     if (NULL != adaps_dtof)
     {
@@ -211,7 +222,7 @@ bool FrameProcessThread::info_update(status_params1 param1)
     status_params2 param2;
 
     param2.sensor_type = sns_param.sensor_type;
-    param2.fps = param1.fps;
+    param2.mipi_rx_fps = param1.mipi_rx_fps;
     param2.streamed_time_us = param1.streamed_time_us;
     param2.work_mode = sns_param.work_mode;
 #if defined(RUN_ON_ROCKCHIP)
@@ -364,7 +375,41 @@ bool FrameProcessThread::new_frame_handle(unsigned int frm_sequence, void *frm_r
                     }
                 }
                 else {
-                    decodeRet = adaps_dtof->dtof_frame_decode((unsigned char *)frm_rawdata,depth_buffer,sns_param.work_mode);
+                    decodeRet = adaps_dtof->dtof_frame_decode((unsigned char *)frm_rawdata, depth_buffer, sns_param.work_mode);
+#if defined(ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT)
+                    int new_added_spot_count = adaps_dtof->DepthBufferMerge(merged_depth_buffer, depth_buffer, sns_param.out_frm_width, sns_param.out_frm_height);
+
+                    if (0 == decodeRet)
+                    {
+                        if (sns_param.save_frame_cnt > 0)
+                        {
+                            if (true == Utils::is_env_var_true(ENV_VAR_SAVE_FRAME_ENABLE))
+                            {
+                                save_frame(frm_sequence,merged_depth_buffer,sns_param.out_frm_width*sns_param.out_frm_height*sizeof(u16),
+                                    sns_param.out_frm_width, sns_param.out_frm_height,
+                                    frm_timestamp, FDATA_TYPE_DTOF_DECODED_DEPTH16);
+                            }
+
+                            if (Utils::is_env_var_true(ENV_VAR_SAVE_DEPTH_TXT_ENABLE))
+                            {
+                                save_depth_txt_file(merged_depth_buffer, frm_sequence, sns_param.out_frm_width*sns_param.out_frm_height*sizeof(u16));
+                            }
+                        }
+                        adaps_dtof->ConvertDepthToColoredMap(merged_depth_buffer,rgb_buffer,sns_param.out_frm_width,sns_param.out_frm_height);
+                        if (sns_param.save_frame_cnt > 0)
+                        {
+                            if (true == Utils::is_env_var_true(ENV_VAR_SAVE_FRAME_ENABLE))
+                            {
+                                save_frame(frm_sequence,rgb_buffer,sns_param.out_frm_width*sns_param.out_frm_height*RGB_IMAGE_CHANEL,
+                                    sns_param.out_frm_width, sns_param.out_frm_height,
+                                    frm_timestamp, FDATA_TYPE_RGB888);
+                            }
+                        }
+                    }
+                    else {
+                        //DBG_ERROR("dtof_frame_decode() return %d , errno: %s (%d), save_frame_cnt: %d...", decodeRet, strerror(errno), errno, sns_param.save_frame_cnt);
+                    }
+#else
                     if (0 == decodeRet)
                     {
                         if (sns_param.save_frame_cnt > 0)
@@ -395,6 +440,7 @@ bool FrameProcessThread::new_frame_handle(unsigned int frm_sequence, void *frm_r
                     else {
                         //DBG_ERROR("dtof_frame_decode() return %d , errno: %s (%d), save_frame_cnt: %d...", decodeRet, strerror(errno), errno, sns_param.save_frame_cnt);
                     }
+#endif
                 }
             }
             break;
@@ -421,6 +467,16 @@ bool FrameProcessThread::new_frame_handle(unsigned int frm_sequence, void *frm_r
     }
     if (0 == decodeRet)
     {
+#if defined(ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT)
+        if (NULL != merged_depth_buffer)
+        {
+            memset(merged_depth_buffer, 0, sizeof(u16)*sns_param.out_frm_width*sns_param.out_frm_height);
+        }
+#endif
+        if (NULL != depth_buffer)
+        {
+            memset(depth_buffer, 0, sizeof(u16)*sns_param.out_frm_width*sns_param.out_frm_height);
+        }
         QImage img = QImage(rgb_buffer, sns_param.out_frm_width, sns_param.out_frm_height, sns_param.out_frm_width*RGB_IMAGE_CHANEL,QImage::Format_RGB888);
         emit newFrameReady4Display(img);
     }
@@ -452,6 +508,13 @@ void FrameProcessThread::onThreadLoopExit()
             free(depth_buffer);
             depth_buffer = NULL;
         }
+#if defined(ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT)
+        if (NULL != merged_depth_buffer)
+        {
+            free(merged_depth_buffer);
+            merged_depth_buffer = NULL;
+        }
+#endif
     }
     if (NULL != rgb_buffer)
     {
@@ -514,6 +577,18 @@ int FrameProcessThread::init(int index)
                 //ui->mainlabel->clear();
                 //ui->mainlabel->setText("Camera is ready for use.");
                 depth_buffer = (u16 *)malloc(sizeof(u16)*sns_param.out_frm_width*sns_param.out_frm_height);
+                if (NULL != depth_buffer)
+                {
+                    memset(depth_buffer, 0, sizeof(u16)*sns_param.out_frm_width*sns_param.out_frm_height);
+                }
+
+#if defined(ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT)
+                merged_depth_buffer = (u16 *)malloc(sizeof(u16)*sns_param.out_frm_width*sns_param.out_frm_height);
+                if (NULL != merged_depth_buffer)
+                {
+                    memset(merged_depth_buffer, 0, sizeof(u16)*sns_param.out_frm_width*sns_param.out_frm_height);
+                }
+#endif
             }
 #endif
         }

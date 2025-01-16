@@ -1,3 +1,14 @@
+X. @2025/01/24 -- version update to 2.1.0_LM20250124A
+    redmine #1863: swift ROI动态修改速度验证
+    http://gerrit.adaps.corp/c/SpadisQT/+/4408
+
+    patch set 5: update the min and max temperature to 15 and 100 degree to sync with swift algo lib;
+    patch set 8: add DepthBufferMerge for ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT;
+
+    要使能动态更新ROI sram内容和切换测试，需打开SpadisQT.pro中以下这些编译开关（缺省是关闭的）
+#    DEFINES += CONFIG_ADAPS_SWIFT_FLOOD
+#    DEFINES += ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT
+
 X. @2025/01/14 -- version update to 2.1.0_LM20250114A
     redmine #2058: 散点swift模组在rk3568 Linux开发板上的适配
     http://gerrit.adaps.corp/c/SpadisQT/+/4380

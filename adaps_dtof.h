@@ -19,7 +19,21 @@
 #include "v4l2.h"
 #include "depthmapwrapper.h"
 
-const int DEPTH_MASK = 0x1FFF; // For depth16 format, the low 13 bits is distance
+/* https://developer.android.com/reference/android/graphics/ImageFormat#DEPTH16
+*
+* Android dense depth image format.
+* Each pixel is 16 bits, representing a depth ranging measurement from a depth camera or similar sensor. The 16-bit sample consists of a confidence value and the actual ranging measurement.
+* The confidence value is an estimate of correctness for this sample. It is encoded in the 3 most significant bits of the sample, with a value of 0 representing 100% confidence, a value of 1
+* representing 0% confidence, a value of 2 representing 1/7, a value of 3 representing 2/7, and so on.
+*
+*/
+
+// BUT, to extend the maximum measurement distance from 8.192 meters to 16.384 meters, 
+// we have modified depth16 format. The lower 14 bits represent the actual distance, and the higher 2 bits represent the confidence level.
+const int CONFIDENCE_MASK = 0x3;
+const int DEPTH_MASK = 0x3FFF; // For depth16 format, the low 13 bits is distance
+const int DEPTH_BITS = 14;
+
 const int COLOR_HIGH = 9000;
 const int COLOR_MEDIUM = 9000;
 const int COLOR_MAP_HIGH = COLOR_MEDIUM;
@@ -28,12 +42,18 @@ const int RANGE_MIN = 30;
 const int RANGE_MAX = 8192;
 
 #define MAX_DEPTH_OUTPUT_FORMATS 3
-#define CHIP_TEMPERATURE_THRESHOLD                 10.0
-#define CHIP_TEMPERATURE_MAX_THRESHOLD             80.0
+#define CHIP_TEMPERATURE_MIN_THRESHOLD             15.0
+#define CHIP_TEMPERATURE_MAX_THRESHOLD             100.0
 
 /* Minimum and maximum macros */
 #define MAX(a,b)  (((a) > (b)) ? (a) : (b))
 #define MIN(a,b)  (((a) < (b)) ? (a) : (b))
+
+enum depth_confidence_level{
+    ANDROID_CONF_HIGH = 0,
+    ANDROID_CONF_LOW = 1,
+//    ANDROID_CONF_MEDIUM = 3
+};
 
 struct BGRColor
 {
@@ -71,6 +91,9 @@ public:
     int dtof_frame_decode(unsigned char *frm_rawdata , u16 depth16_buffer[], enum sensor_workmode swk);
     void adaps_dtof_release();
     void mode_switch(struct sensor_params params, V4L2 *v4l2);
+#if defined(ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT)
+    int DepthBufferMerge(u16 merged_depth16_buffer[], const u16 to_merge_depth16_buffer[], int outImgWidth, int outImgHeight);
+#endif
 
 private:
     V4L2 *m_v4l2;
@@ -95,6 +118,12 @@ private:
     DepthMapWrapper*      m_DepthMapWrapper;
 #endif
     bool m_conversionLibInited;
+    uint32_t m_decoded_frame_cnt;
+
+#if defined(ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT)
+    uint8_t cur_calib_sram_data_group_idx;
+    bool trace_calib_sram_switch;
+#endif
 
     int FillSetWrapperParamFromEepromInfo(uint8_t* pRawData, uint32_t rawDataSize, SetWrapperParam* setparam);
     void initParams(WrapperDepthInitInputParams  *     initInputParams,WrapperDepthInitOutputParams      *initOutputParams);

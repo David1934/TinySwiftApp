@@ -15,7 +15,7 @@ V4L2::V4L2(struct sensor_params params)
     fd = 0;
     firstFrameTimeUsec = 0;
     rxFrameCnt = 0;
-    fps = 0;
+    mipi_rx_fps = 0;
     streamed_timeUs = 0;
     last_temperature = 0;
     init();
@@ -649,7 +649,7 @@ int V4L2::V4l2_get_dtof_runtime_status_param(float *temperature)
             last_expected_pvdd_x100 = param.expected_pvdd_x100;
 
             *temperature = (float) ((double)param.inside_temperature_x100 /(double)100.0f);
-            DBG_INFO("internal_temperature: %d, temperature: %f\n", param.inside_temperature_x100, *temperature);
+            //DBG_INFO("internal_temperature: %d, temperature: %f\n", param.inside_temperature_x100, *temperature);
         }
     }
 
@@ -861,7 +861,7 @@ int V4L2::Start_streaming(void)
 {
     firstFrameTimeUsec = 0;
     rxFrameCnt = 0;
-    fps = 0;
+    mipi_rx_fps = 0;
     streamed_timeUs = 0;
     if (-1 == ioctl(fd, VIDIOC_STREAMON, &buf_type))
     {
@@ -916,7 +916,12 @@ int V4L2::Capture_frame()
 
     gettimeofday(&tv,NULL);
     rxFrameCnt++;
-    DBG_INFO("Rx %ld frames for dev %s", rxFrameCnt, video_dev);
+
+    if (rxFrameCnt < 10 || (0 == rxFrameCnt %50))
+    {
+        DBG_INFO("Rx %ld frames for dev %s", rxFrameCnt, video_dev);
+    }
+
     if (0 == firstFrameTimeUsec)
     {
         firstFrameTimeUsec = tv.tv_sec*1000000 + tv.tv_usec;
@@ -945,10 +950,10 @@ int V4L2::Capture_frame()
     else {
         currTimeUsec = tv.tv_sec*1000000 + tv.tv_usec;
         streamed_timeUs = (currTimeUsec - firstFrameTimeUsec);
-        fps = (rxFrameCnt * 1000000) / streamed_timeUs;
+        mipi_rx_fps = (rxFrameCnt * 1000000) / streamed_timeUs;
     }
 
-    param1.fps = fps;
+    param1.mipi_rx_fps = mipi_rx_fps;
     param1.streamed_time_us = streamed_timeUs;
 #if defined(RUN_ON_ROCKCHIP)
     param1.curr_temperature = last_temperature;
@@ -978,7 +983,7 @@ void V4L2::Stop_streaming(void)
 
     DBG_NOTICE("\n------Test Statistics------streamed: %02d:%02d:%02d, rxFrameCnt: %ld, fps: %d, frame raw size: %d X %d---\n",
         streamed_second/3600,streamed_second/60,streamed_second%60,
-        rxFrameCnt, fps, 
+        rxFrameCnt, mipi_rx_fps, 
         snr_param.raw_width, snr_param.raw_height);
 
     if (-1 == ioctl(fd, VIDIOC_STREAMOFF, &buf_type)) {

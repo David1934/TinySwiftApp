@@ -39,6 +39,9 @@ private:
     Utils *utils;
     V4L2 *v4l2;
     u16 *depth_buffer;
+#if defined(ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT)
+    u16 *merged_depth_buffer;
+#endif
     unsigned char *rgb_buffer;
     int stop_req_code;
     bool save_frame(unsigned int frm_sequence, void *frm_buf, int buf_size, int frm_w, int frm_h, struct timeval frm_timestamp, enum frame_data_type);

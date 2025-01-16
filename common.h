@@ -9,6 +9,8 @@
 //#define IGNORE_REAL_COMMUNICATION
 #include "rk-camera-module.h"
 
+#define MAX_CALIB_SRAM_DATA_GROUP_CNT                   9
+
 #else
 
 #include "adaps_types.h"
@@ -18,7 +20,7 @@
 #define VERSION_MAJOR                           2
 #define VERSION_MINOR                           1
 #define VERSION_REVISION                        0
-#define LAST_MODIFIED_TIME                      "20250114A"
+#define LAST_MODIFIED_TIME                      "20250124A"
 
 #define DEFAULT_DTOF_FRAMERATE                  AdapsFramerateType30FPS // AdapsFramerateType60FPS
 
@@ -80,14 +82,16 @@
 #define ENV_VAR_DISABLE_EXPAND_PIXEL            "disable_expand_pixel"      // processed in adaps decode algo lib
 #define ENV_VAR_DISABLE_COMPOSE_SUBFRAME        "disable_compose_subframe"  // processed in adaps decode algo lib
 #define ENV_VAR_DUMP_ROI_SRAM_SIZE              "dump_roi_sram_size"
+#define ENV_VAR_TRACE_ROI_SRAM_SWITCH           "trace_roi_sram_switch"
+#define ENV_VAR_DUMP_SPOT_DEPTH                 "dump_spot_depth"
 
 #define __tostr(x)                          #x
 #define __stringify(x)                      __tostr(x)
-    
+
 #define VERSION_STRING                      __stringify(VERSION_MAJOR) "."  \
             __stringify(VERSION_MINOR) "."  \
             __stringify(VERSION_REVISION)
-    
+
 #define APP_NAME                          "SpadisQT"
 #define APP_VERSION_CODE                 (VERSION_MAJOR << 16 | VERSION_MINOR << 8 | VERSION_REVISION)
 #define APP_VERSION                      VERSION_STRING "_LM" LAST_MODIFIED_TIME
@@ -251,7 +255,7 @@ struct sensor_params
 
 struct status_params1
 {
-    int fps;
+    int mipi_rx_fps;
     unsigned long streamed_time_us;
 #if defined(RUN_ON_ROCKCHIP)
     unsigned int curr_temperature;
@@ -262,7 +266,7 @@ struct status_params1
 
 struct status_params2
 {
-    int fps;
+    int mipi_rx_fps;
     unsigned long streamed_time_us;
     unsigned int sensor_type;
     unsigned int work_mode;

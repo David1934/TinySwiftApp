@@ -43,6 +43,9 @@ private:
     int         to_test_times;
     QTimer      *test_timer;
     FrameProcessThread *frame_process_thread;
+    unsigned long firstDisplayFrameTimeUsec;
+    unsigned long displayedFrameCnt;
+    int displayed_fps;
 
     void captureAndSaveScreenshot();
 };

@@ -70,6 +70,9 @@ typedef struct {
     AdapsMeasurementType *advised_measure_type_out;
     int32_t focutPoint[2];// 0 is x,1 is y
     WrapperDepthSramSpodposDataInfo strSpodPosData;
+#if defined(ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT)
+    int calib_sram_data_group_idx;
+#endif
 } AdapsParamAndOutForProcessEveryFrame;
 //end: add by hzt 2021-12-6 for adaps control
 

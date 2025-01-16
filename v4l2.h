@@ -79,7 +79,7 @@ private:
     struct buffer *buffers;
     unsigned long firstFrameTimeUsec;
     unsigned long rxFrameCnt;
-    int fps;
+    int mipi_rx_fps;
     unsigned long streamed_timeUs;
 
     struct v4l2_requestbuffers	req_bufs;

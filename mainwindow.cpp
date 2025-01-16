@@ -27,25 +27,30 @@ MainWindow::MainWindow(QWidget *parent) :
     int w;
     int h;
 
+    firstDisplayFrameTimeUsec = 0;
+    displayedFrameCnt = 0;
+    displayed_fps = 0;
     frame_process_thread = NULL;
     ui->setupUi(this);
-    sprintf(AppNameVersion, "%s %s built at %s,%s by QT %s",
-        APP_NAME,
+    sprintf(AppNameVersion, "%s %s built at %s,%s"
+#if defined(RUN_ON_ROCKCHIP)
+        " --- for %s module"
+#endif
+
+        ,APP_NAME,
         APP_VERSION,
-        __DATE__, __TIME__,
-        QT_VERSION_STR
+        __DATE__, __TIME__
+#if defined(RUN_ON_ROCKCHIP)
+#if defined(CONFIG_ADAPS_SWIFT_FLOOD)
+        ,"Flood"
+#else
+        ,"Spot"
+#endif
+#endif
         );
     this->setWindowTitle(AppNameVersion);
     DBG_NOTICE("AppVersion: %s, Build on QT version: %s, Running QT version: %s...",
         AppNameVersion, QT_VERSION_STR, qVersion());
-
-#if defined(RUN_ON_ROCKCHIP)
-#if defined(CONFIG_ADAPS_SWIFT_FLOOD)
-    DBG_NOTICE("module type: %s", "swift flood module");
-#else
-    DBG_NOTICE("module type: %s", "swift spot module");
-#endif
-#endif
 
     w = this->width();
     h = this->height();
@@ -320,7 +325,7 @@ bool MainWindow::update_status_info(status_params2 param2)
 
     unsigned int streamed_time_seconds = param2.streamed_time_us / 1000000;
 
-    sprintf(temp_string, "%d fps", param2.fps);
+    sprintf(temp_string, "%d (%d) fps", displayed_fps, param2.mipi_rx_fps);
     ui->framerate_value->setText(temp_string);
 
     sprintf(temp_string, "%02d:%02d:%02d", streamed_time_seconds/3600, streamed_time_seconds/60, streamed_time_seconds%60);
@@ -342,8 +347,12 @@ bool MainWindow::update_status_info(status_params2 param2)
     else {
 #if defined(CONFIG_ADAPS_SWIFT_FLOOD)
         ui->cur_module_type_value->setText("Flood");
+        ui->pvddLabel->setVisible(false);
+        ui->cur_exp_pvdd_value->setVisible(false);
 #else
         ui->cur_module_type_value->setText("Spot");
+        sprintf(temp_string, "%d.%02d V", param2.curr_exp_pvdd/100, param2.curr_exp_pvdd%100);
+        ui->cur_exp_pvdd_value->setText(temp_string);
 #endif
     }
 
@@ -352,9 +361,6 @@ bool MainWindow::update_status_info(status_params2 param2)
 
     sprintf(temp_string, "-%d.%02d V", param2.curr_exp_vop_abs/100, param2.curr_exp_vop_abs%100);
     ui->cur_exp_vop_value->setText(temp_string);
-
-    sprintf(temp_string, "%d.%02d V", param2.curr_exp_pvdd/100, param2.curr_exp_pvdd%100);
-    ui->cur_exp_pvdd_value->setText(temp_string);
 
     if (param2.env_type >= AdapsEnvTypeIndoor && param2.env_type <= AdapsEnvTypeOutdoor)
     {
@@ -413,6 +419,10 @@ bool MainWindow::update_status_info(status_params2 param2)
 
 bool MainWindow::new_frame_display(QImage image)
 {
+    struct timeval tv;
+    long currTimeUsec;
+    unsigned long streamed_timeUs;
+
     ui->mainlabel->clear();
     if(image.isNull())
     {
@@ -423,7 +433,17 @@ bool MainWindow::new_frame_display(QImage image)
         image = image.scaled(ui->mainlabel->width(),ui->mainlabel->height(),Qt::IgnoreAspectRatio,Qt::SmoothTransformation);
         QPixmap pix = QPixmap::fromImage(image,Qt::AutoColor);
         ui->mainlabel->setPixmap(pix);
-
+        gettimeofday(&tv,NULL);
+        displayedFrameCnt++;
+        if (1 == displayedFrameCnt)
+        {
+            firstDisplayFrameTimeUsec = tv.tv_sec*1000000 + tv.tv_usec;
+        }
+        else {
+            currTimeUsec = tv.tv_sec*1000000 + tv.tv_usec;
+            streamed_timeUs = (currTimeUsec - firstDisplayFrameTimeUsec);
+            displayed_fps = (displayedFrameCnt * 1000000) / streamed_timeUs;
+        }
     }
 
     return true;
