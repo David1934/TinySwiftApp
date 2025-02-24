@@ -14,7 +14,7 @@ EQ            = =
 
 CC            = /home/david/rk_build/buildroot/output/rockchip_rk3568/host/bin/aarch64-buildroot-linux-gnu-gcc
 CXX           = /home/david/rk_build/buildroot/output/rockchip_rk3568/host/bin/aarch64-buildroot-linux-gnu-g++
-DEFINES       = -DRUN_ON_ROCKCHIP -DRUN_ON_RK3568 -DCONFIG_VIDEO_ADS6401 -DCONFIG_ADAPS_SWIFT_FLOOD -DQT_WIDGETS_LIB -DQT_GUI_LIB -DQT_CORE_LIB
+DEFINES       = -DRUN_ON_ROCKCHIP -DRUN_ON_RK3568 -DCONFIG_VIDEO_ADS6401 -DQT_WIDGETS_LIB -DQT_GUI_LIB -DQT_CORE_LIB
 CFLAGS        = -pipe -D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -Os -g0 -D_FORTIFY_SOURCE=1 -DUSE_UPDATEENGINE=ON -DSUCCESSFUL_BOOT=ON --sysroot=/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot -Wall -Wextra -D_REENTRANT -fPIC $(DEFINES)
 CXXFLAGS      = -pipe -D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -Os -g0 -D_FORTIFY_SOURCE=1 --sysroot=/home/david/rk_build/buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot -g -Wall -Wextra -D_REENTRANT -fPIC $(DEFINES)
 INCPATH       = -I. -I../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5 -I../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets -I../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui -I../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore -I. -I../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/libdrm -I. -I../../buildroot/output/rockchip_rk3568/host/mkspecs/devices/linux-buildroot-g++
@@ -190,10 +190,10 @@ DIST          = ../../buildroot/output/rockchip_rk3568/host/mkspecs/features/spe
 		depthmapwrapper.h \
 		globalapplication.h \
 		FrameProcessThread.h \
-		rk-camera-module.h \
 		utils.h \
 		v4l2.h \
-		adaps_dtof.h globalapplication.cpp \
+		adaps_dtof.h \
+		rk-camera-module.h globalapplication.cpp \
 		main.cpp \
 		mainwindow.cpp \
 		FrameProcessThread.cpp \
@@ -449,7 +449,7 @@ distdir: FORCE
 	@test -d $(DISTDIR) || mkdir -p $(DISTDIR)
 	$(COPY_FILE) --parents $(DIST) $(DISTDIR)/
 	$(COPY_FILE) --parents ../../buildroot/output/rockchip_rk3568/host/mkspecs/features/data/dummy.cpp $(DISTDIR)/
-	$(COPY_FILE) --parents mainwindow.h common.h depthmapwrapper.h globalapplication.h FrameProcessThread.h rk-camera-module.h utils.h v4l2.h adaps_dtof.h $(DISTDIR)/
+	$(COPY_FILE) --parents mainwindow.h common.h depthmapwrapper.h globalapplication.h FrameProcessThread.h utils.h v4l2.h adaps_dtof.h rk-camera-module.h $(DISTDIR)/
 	$(COPY_FILE) --parents globalapplication.cpp main.cpp mainwindow.cpp FrameProcessThread.cpp utils.cpp v4l2.cpp adaps_dtof.cpp $(DISTDIR)/
 	$(COPY_FILE) --parents mainwindow.ui $(DISTDIR)/
 
@@ -1880,7 +1880,8 @@ adaps_dtof.o: adaps_dtof.cpp adaps_dtof.h \
 		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qfile.h \
 		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qfiledevice.h \
 		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QFile \
-		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QByteArray
+		../../buildroot/output/rockchip_rk3568/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QByteArray \
+		ads6401_roi_sram_test_data.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o adaps_dtof.o adaps_dtof.cpp
 
 moc_mainwindow.o: moc_mainwindow.cpp 

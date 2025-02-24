@@ -28,7 +28,7 @@
 #define DATA_SAVE_PATH                          "/tmp/" // "/sdcard/"
 #define DEFAULT_SAVE_FRAME_CNT                  0
 #define RTCTIME_DISPLAY_FMT                     "hh:mm:ss"  // "yyyy/MM/dd hh:mm:ss"
-#define FRAME_INTERVAL                          1   // unit is ms
+#define FRAME_INTERVAL_US                       10   // unit is us
 
 // query the video node by the command 'v4l2-ctl --list-devices' or 'media-ctl -p -d /dev/media0'
 
@@ -77,7 +77,6 @@
 #define ENV_VAR_DBGINFO_ENABLE                  "debug_info_enable"
 #define ENV_VAR_SKIP_FRAME_PROCESS              "skip_frame_process"
 #define ENV_VAR_SKIP_EEPROM_CRC_CHK             "skip_eeprom_crc_check"
-#define ENV_VAR_TEST_PATTERN_TYPE               "test_pattern_index"
 #define ENV_VAR_DUMP_LENS_INTRINSIC             "dump_lens_intrinsic"
 #define ENV_VAR_DISABLE_EXPAND_PIXEL            "disable_expand_pixel"      // processed in adaps decode algo lib
 #define ENV_VAR_DISABLE_COMPOSE_SUBFRAME        "disable_compose_subframe"  // processed in adaps decode algo lib

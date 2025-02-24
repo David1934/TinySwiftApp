@@ -34,7 +34,7 @@ FrameProcessThread::FrameProcessThread()
         utils = new Utils();
         v4l2 = new V4L2(sns_param);
         v4l2->Get_frame_size_4_curr_wkmode(&sns_param.raw_width, &sns_param.raw_height, &sns_param.out_frm_width, &sns_param.out_frm_height);
-        DBG_INFO( "raw_width: %d raw_height: %d FRAME_INTERVAL: %d ms\n", sns_param.raw_width, sns_param.raw_height, FRAME_INTERVAL);
+        DBG_INFO( "raw_width: %d raw_height: %d\n", sns_param.raw_width, sns_param.raw_height);
 #if defined(RUN_ON_ROCKCHIP)
         adaps_dtof = new ADAPS_DTOF(sns_param, v4l2);
 #endif
@@ -241,7 +241,6 @@ bool FrameProcessThread::info_update(status_params1 param1)
 bool FrameProcessThread::new_frame_handle(unsigned int frm_sequence, void *frm_rawdata, int buf_len, struct timeval frm_timestamp, enum frame_data_type ftype, int total_bytes_per_line)
 {
     int decodeRet = 0;
-    int test_pattern_index = 0;
     static int run_times = 0;
 
     Q_UNUSED(frm_sequence);
@@ -257,21 +256,6 @@ bool FrameProcessThread::new_frame_handle(unsigned int frm_sequence, void *frm_r
         case FDATA_TYPE_DTOF_RAW_GRAYSCALE:
             if (adaps_dtof)
             {
-                test_pattern_index = Utils::get_env_var_intvalue(ENV_VAR_TEST_PATTERN_TYPE);
-                if (0 == run_times)
-                {
-                    DBG_NOTICE("test_pattern_index: %d, test_pattern_buffer_length: %d, work_mode: %d, to_capture_frame_cnt: %d...\n",
-                        test_pattern_index, buf_len, sns_param.work_mode, qApp->get_save_cnt());
-                }
-
-                if ((test_pattern_index >= ETP_00_TO_FF) && (test_pattern_index <= ETP_FULL_FF))
-                {
-                    utils->test_pattern_generate((unsigned char *) frm_rawdata, buf_len, test_pattern_index);
-                    if (0 == run_times)
-                    {
-                        utils->hexdump((unsigned char *) frm_rawdata, 64, "1st 64 bytes of TEST PATTERN");
-                    }
-                }
                 run_times++;
 
                 if (sns_param.save_frame_cnt > 0)
@@ -620,7 +604,9 @@ void FrameProcessThread::run()
             {
                 ret=v4l2->Capture_frame();
                 sleeping = true;
-                QThread::msleep(FRAME_INTERVAL);
+                //QThread::msleep(FRAME_INTERVAL);
+                QThread::usleep(FRAME_INTERVAL_US);
+                //QThread::yieldCurrentThread();
                 sleeping = false;
             }
 
