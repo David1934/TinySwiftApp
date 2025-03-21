@@ -93,6 +93,11 @@ typedef enum hawk_chip_eco_version {
     HAWK_CHIP_ECO_VER_ECO1,
     HAWK_CHIP_ECO_VER_ECO2,
     HAWK_CHIP_ECO_VER_ECO3,
+    HAWK_CHIP_ECO_VER_ECO4,
+    HAWK_CHIP_ECO_VER_ECO5,
+    HAWK_CHIP_ECO_VER_ECO6,
+    HAWK_CHIP_ECO_VER_ECO7,
+    HAWK_CHIP_ECO_VER_ECO8,
 }hawk_chip_eco_version_t;
 
 typedef enum hawk_lens_type {
@@ -157,6 +162,13 @@ struct hawk_otp_key_data
 {
     u16 chip_eco_version;
     struct hawk_otp_temperature_param temperature_param[HAWK_OTP_TEMPERATURE_PARAM_COUNT];
+}__attribute__ ((packed));
+
+struct hawk_otp_ref_voltage
+{
+    bool otp_blank;
+    bool otp_read;   // whether read the otp data or not?
+    u16 adc_reference_voltage;      // unit is mV
 }__attribute__ ((packed));
 
 struct hawk_norflash_op_param
@@ -263,6 +275,15 @@ struct hawk_norflash_op_param
 #define ADTOF_GET_SOC_BOARD_VERSION      \
     _IOR('T', ADAPS_DTOF_PRIVATE + 33, __u16 *)             // 0x21
 
+#define ADTOF_GET_HAWK_OTP_REF_VOLTAGE       \
+    _IOR('T', ADAPS_DTOF_PRIVATE + 34, struct hawk_otp_ref_voltage *)          // 0x22
+
+#define ADTOF_SET_MCU_ERR_REPORT_MASK      \
+    _IOW('T', ADAPS_DTOF_PRIVATE + 35, __u16 *)             // 0x23
+
+#define ADTOF_SET_PVDD_VOLTAGE_4_WEAK_LASER      \
+    _IOW('T', ADAPS_DTOF_PRIVATE + 36, __u16 *)             // 0x24
+
 #endif // FOR ADAPS_HAWK
 
 
@@ -311,7 +332,36 @@ struct hawk_norflash_op_param
 #define MEMBER_SIZE(structure, member)      sizeof(((structure*)0)->member)
 
 #if (ADS6401_MODDULE_SPOT == SWIFT_MODULE_TYPE)
+enum {
+    CALIBRATION_INFO,
+    SRAM_DATA,
+    INTRINSIC,
+    OUTDOOR_OFFSET,
+    SPOT_OFFSET_B,
+    SPOT_OFFSET_A,
+    TDC_DELAY,
+    REF_DISTANCE,
+    PROXIMITY,
+    HOTPIXEL_DEADPIXEL,
+    WALKERROR,
+    SPOT_ENERGY,
+    NOISE,
+    RESERVED,
+    RESERVED2,
+    CHECKSUM_ALL = 19
+};
+
+#define SWIFT_MODULE_INFO_LENGTH            16
 #define SWIFT_OFFSET_SIZE                   960
+
+#define SWIFT_WALKERROR_SIZE                24960 //26 * 960
+#define SWIFT_SPOTENERGY_SIZE               960
+#define SWIFT_NOISE_SIZE                    10732
+#define SWIFT_CHECKSUM_SIZE                 20
+#define SWIFT_EEPROM_MAX_SIZE               65535
+#define MODULE_INFO_RESERVED_SIZE           176
+#define WALKERROR_RESERVED_SIZE             5760
+
 #pragma pack(4)
 typedef struct SwiftEepromData
 {
@@ -331,7 +381,7 @@ typedef struct SwiftEepromData
     // Page 187 - 246
     float           spotOffset[SWIFT_OFFSET_SIZE]; // 3840 bytes, 60 pages
     // Page 247
-    __u32           tdcDelay[16]; // 8 bytes
+    __u32           tdcDelay[16]; // 64 bytes
     // Page 248
     float           indoorCalibTemperature; // Calibration temperature.
     float           indoorCalibRefDistance; // Calibration reference distance.
@@ -345,17 +395,7 @@ typedef struct SwiftEepromData
     // Page 253
     uint16_t        markedPixels[32];  // 16 hot pixels, 16 dead pixels.
     // Page 254
-    char            moduleInfo[64]; // adaps calibration info.
-#if 1
-    // Page 255
-    char            reservedPage255[SWIFT_DEVICE_NAME_LENGTH];
-    // Page 256
-    __u32           totalChecksum;
-    __u32           sramDataChecksum;
-    __u32           spotPositionChecksum;
-    __u32           spotOffsetChecksum;
-    __u32           proximityChecksum;
-#else // to be synced with SpadisPC
+    char            moduleInfo[SWIFT_MODULE_INFO_LENGTH]; // adaps calibration info.
     //Page  255-256
     char            reserved1[MODULE_INFO_RESERVED_SIZE];
     //Page  257-622
@@ -364,12 +404,14 @@ typedef struct SwiftEepromData
     char            reserved2[WALKERROR_RESERVED_SIZE];
     //Page  737-796           
     float           SpotEnergy[SWIFT_SPOTENERGY_SIZE];
+
+    float           RawDepthMean[SWIFT_SPOTENERGY_SIZE];
     //Page  796-1023
     char            noise[SWIFT_NOISE_SIZE];
     //Page  1024
-    uint8_t         checksum[SWIFT_CHECKSUM_SIZE];
-#endif
+    uint8_t            checksum[SWIFT_CHECKSUM_SIZE];
 }swift_eeprom_data_t;
+#pragma pack()
 
 #define  AD4001_EEPROM_VERSION_INFO_OFFSET                  OFFSET(swift_eeprom_data_t, deviceName)               /// 0, 0x00
 #define  AD4001_EEPROM_VERSION_INFO_SIZE                    MEMBER_SIZE(swift_eeprom_data_t, deviceName)
@@ -405,10 +447,11 @@ typedef struct SwiftEepromData
 #define  AD4001_EEPROM_PROX_HISTOGRAM_OFFSET                OFFSET(swift_eeprom_data_t, pxyHistogram)               /// 15824+12x(sizeof(float))=15872
 #define  AD4001_EEPROM_PROX_HISTOGRAM_SIZE                  MEMBER_SIZE(swift_eeprom_data_t, pxyHistogram)          /// 256
 
-#define  AD4001_EEPROM_TOTAL_CHECKSUM_OFFSET                OFFSET(swift_eeprom_data_t, totalChecksum)
-#define  AD4001_EEPROM_TOTAL_CHECKSUM_SIZE                  MEMBER_SIZE(swift_eeprom_data_t, totalChecksum)
+#define  AD4001_EEPROM_MODULE_INFO_OFFSET                   OFFSET(swift_eeprom_data_t, moduleInfo)
+#define  AD4001_EEPROM_MODULE_INFO_SIZE                     MEMBER_SIZE(swift_eeprom_data_t, moduleInfo)
 
-#pragma pack()
+#define  AD4001_EEPROM_WALK_ERROR_OFFSET                    OFFSET(swift_eeprom_data_t, WalkError)
+#define  AD4001_EEPROM_WALK_ERROR_SIZE                      MEMBER_SIZE(swift_eeprom_data_t, WalkError)
 
 #else  // swift FLOOD module
 
@@ -434,6 +477,27 @@ typedef struct SwiftEepromData
 
 //offset
 #define OFFSET_VALID_DATA_LENGTH                            960
+
+// from SpadisPC\SpadisLib\eepromSettings.h
+enum SwiftFloodEEPROMSizeInfo
+{
+    PageStartSoftwareVersion = 0,
+    PageLenSoftwareVersion = 1,
+    PageStartModuleInfo = 1,
+    PageLenModuleInfo = 1,
+    PageStartCalibrationData = 2,
+    PageLenCalibrationData = 1,
+    PageStartSram1Data = 3,
+    PageLenSram1Data = 32,
+    PageStartSram0Data = 35,
+    PageLenSram0Data = 32,
+    PageStartOffset1Data = 67,
+    PageLenOffset1Data = 60,
+    PageStartOffset0Data = 127,
+    PageLenOffset0Data = 60,
+    PageStartOffsetCRC = 187,
+    PageLenOffsetCRC = 1
+};
 
 
 #pragma pack(1)
@@ -464,12 +528,13 @@ typedef struct SwiftEepromData
     unsigned char   sramData[ALL_ROISRAM_GROUP_SIZE];// 512*8 ,BUT 480(datat)+4(crc) is valid for every 512 bytes
 
     //page 67-186
-    float           spotOffset[SWIFT_OFFSET_SIZE]; // 64*60=3840 bytes = 960*4, 60 pages  for one offset.  here we have 2 offset???
+    float           spotOffset[SWIFT_OFFSET_SIZE]; // 64*60=3840 bytes = 960*4, 60 pages  for one offset.  here we have 2 offset
 
     //page 187
     unsigned int    Crc32Offset[OFFSET_NUM];
     unsigned char   Pg187Reserved[64-32]; //64-32=32
 }swift_eeprom_data_t;
+#pragma pack()
 
 #define  AD4001_EEPROM_VERSION_INFO_OFFSET                  OFFSET(swift_eeprom_data_t, Version)
 #define  AD4001_EEPROM_VERSION_INFO_SIZE                    MEMBER_SIZE(swift_eeprom_data_t, Version)
@@ -511,7 +576,6 @@ typedef struct SwiftEepromData
 
 #define ONE_SPOD_OFFSET_BYTE_SIZE                           3840//240*4*4
 
-#pragma pack()
 #endif
 
 
@@ -544,27 +608,24 @@ struct adaps_dtof_runtime_status_param {
     __u32 expected_pvdd_x100;
 };
 
-#pragma pack(4)
-struct adaps_dtof_calib_eeprom_param{
-    __u8 pRawData[sizeof(swift_eeprom_data_t)];
-    __u32 rawDataSize;//may be not need
+struct adaps_dtof_eeprom_data_state{
+    __u8 state;
 };
-#pragma pack()
 
 #define ADAPS_SET_DTOF_INITIAL_PARAM       \
-    _IOW('T', ADAPS_DTOF_PRIVATE + 2, struct adaps_dtof_intial_param)
+    _IOW('T', ADAPS_DTOF_PRIVATE + 0, struct adaps_dtof_intial_param)
 
 #define ADAPS_UPDATE_DTOF_RUNTIME_PARAM       \
-    _IOW('T', ADAPS_DTOF_PRIVATE + 3, struct adaps_dtof_runtime_param)
+    _IOW('T', ADAPS_DTOF_PRIVATE + 1, struct adaps_dtof_runtime_param)
 
 #define ADAPS_GET_DTOF_RUNTIME_STATUS_PARAM       \
-    _IOR('T', ADAPS_DTOF_PRIVATE + 4, struct adaps_dtof_runtime_status_param)
+    _IOR('T', ADAPS_DTOF_PRIVATE + 2, struct adaps_dtof_runtime_status_param)
 
-#define ADAPS_GET_DTOF_CALIB_EEPROM_PARAM       \
-    _IOR('T', ADAPS_DTOF_PRIVATE + 5, struct adaps_dtof_calib_eeprom_param)
+#define ADAPS_GET_DTOF_EEPROM_DATA_STATE       \
+    _IOR('T', ADAPS_DTOF_PRIVATE + 3, struct adaps_dtof_eeprom_data_state)
 
 #define ADAPS_GET_DTOF_EXPOSURE_PARAM       \
-    _IOR('T', ADAPS_DTOF_PRIVATE + 6, struct adaps_dtof_exposure_param)
+    _IOR('T', ADAPS_DTOF_PRIVATE + 4, struct adaps_dtof_exposure_param)
 
 
 #endif // FOR ADAPS_SWIFT

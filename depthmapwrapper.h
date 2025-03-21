@@ -15,14 +15,16 @@
 #define CP_DLL_PUBLIC __attribute__ ((visibility ("default")))
 #endif
 
-#define ADAPS_SPARSE_POINT_POSITION_DATA_SIZE 960
-#define AdapsAlgoLibVersionLength  32
+#define ADAPS_SPARSE_POINT_POSITION_DATA_SIZE   960
+#define AdapsAlgoLibVersionLength               32
+#define ZONE_SIZE                               (4)
+#define SWIFT_SPOT_COUNTS_PER_ZONE              (240)
 
 struct AdapsSparsePointPositionData
 {
-    UINT32 x_pos[ADAPS_SPARSE_POINT_POSITION_DATA_SIZE];
-    UINT32 y_pos[ADAPS_SPARSE_POINT_POSITION_DATA_SIZE];
-    UINT32 hist[ADAPS_SPARSE_POINT_POSITION_DATA_SIZE];
+    uint32_t x_pos[ADAPS_SPARSE_POINT_POSITION_DATA_SIZE];
+    uint32_t y_pos[ADAPS_SPARSE_POINT_POSITION_DATA_SIZE];
+    uint32_t hist[ADAPS_SPARSE_POINT_POSITION_DATA_SIZE];
 };
 
 typedef struct pc_pack {
@@ -31,6 +33,17 @@ typedef struct pc_pack {
     float Z;
     float c;
 } pc_pkt_t;
+
+struct SpotPoint {
+    uint16_t x;
+    uint16_t y;
+    uint8_t  zoneId;     // the zone of spot belong to  
+    uint8_t  indexInZone;// index in the zone
+
+    uint16_t histRaw[768];
+    uint32_t histConved[768];
+
+};
 
 typedef enum {
     WRAPPER_CAM_FORMAT_NONE,
@@ -57,10 +70,23 @@ typedef struct {
 
 //begin: add by hzt 2021-12-6 for adaps control
 typedef struct {
-    UINT32 ulRoiIndex;
-    UINT8* pucSramData;
-    UINT32 ulSramDataSize;
+    uint32_t ulRoiIndex;
+    uint8_t* pucSramData;
+    uint32_t ulSramDataSize;
 } WrapperDepthSramSpodposDataInfo;
+
+typedef struct {
+    uint8_t FocusLeftTopX; // default is 0;
+    uint8_t FocusLeftTopY; // default is 0;
+    uint8_t FocusRightBottomX; // default is 210;
+    uint8_t FocusRightBottomY; // default is 160;
+} FocusRoi;
+
+typedef struct CircleForMask {
+    float CircleMaskR;
+    int   CircleMaskCenterX;
+    int   CircleMaskCenterY;
+}CircleForMask;
 
 typedef struct {
     AdapsEnvironmentType env_type_in;
@@ -70,6 +96,7 @@ typedef struct {
     AdapsMeasurementType *advised_measure_type_out;
     int32_t focutPoint[2];// 0 is x,1 is y
     WrapperDepthSramSpodposDataInfo strSpodPosData;
+    FocusRoi             focusRoi;
 #if defined(ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT)
     int calib_sram_data_group_idx;
 #endif
@@ -115,12 +142,13 @@ typedef struct {
         uint32_t  out_image_length;
         uint32_t* count_pt_cloud;
     };
+    struct SpotPoint* (*outAllPointsPtr)[ZONE_SIZE][SWIFT_SPOT_COUNTS_PER_ZONE];
 } WrapperDepthOutput;
 
 typedef struct {
     WrapperDepthFormatParams formatParams;
     const int8_t* in_image;
-    int32_t in_image_fd;
+    int32_t in_image_size;
 } WrapperDepthInput;
 
 //begin: add by hzt 2021-12-6 for adaps control
@@ -128,6 +156,8 @@ typedef struct {
     uint8_t work_mode;
     bool compose_subframe;
     bool expand_pixel;
+    // set walkerror algo version, values:{ 0, 1, 2 } 
+    // 0: not apply walkerror , now latest version is 2
     bool walkerror;
     AdapsMirrorFrameSet mirror_frame;
     float* adapsLensIntrinsicData;          // 9xsizeof(float)
@@ -146,6 +176,14 @@ typedef struct {
     uint8_t zone_cnt;
     uint8_t peak_index;
     uint8_t* spot_cali_data;//add 2023-11-7
+    //zondID | spotID | X     | Y     | paramD | paramX | paramY | paramZ | param0 | dummy | dummy2
+    //1byte  | 1byte  |1byte  |1byte  | 4byte  | 4byte  | 4byte  | 4byte  | 4byte  | 1byte | 1byte
+    //Every spot has 26byte data (zondID to dummy2)
+    uint8_t* walk_error_para_list; // length: 900*26
+    uint8_t* calibrationInfo; // length:64 ,byte 0-8 ofilm version ,byte 9-26 adaps sdk version v4.0-180-g3b7adfgh
+#ifdef WINDOWS_BUILD
+    bool dump_data;
+#endif
 } SetWrapperParam;
 
 typedef struct {
@@ -194,6 +232,8 @@ void DepthMapWrapperDestroy(void * handler);
 
 CP_DLL_PUBLIC
 void DepthMapWrapperGetVersion(char* version);
+
+void DepthMapWrapperSetCircleMask(void* pDepthMapWrapper, CircleForMask circleForMask);
 
 
 #ifdef __cplusplus

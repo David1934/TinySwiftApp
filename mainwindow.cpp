@@ -33,20 +33,9 @@ MainWindow::MainWindow(QWidget *parent) :
     frame_process_thread = NULL;
     ui->setupUi(this);
     sprintf(AppNameVersion, "%s %s built at %s,%s"
-#if defined(RUN_ON_ROCKCHIP)
-        " --- for %s module"
-#endif
-
         ,APP_NAME,
         APP_VERSION,
         __DATE__, __TIME__
-#if defined(RUN_ON_ROCKCHIP)
-#if defined(CONFIG_ADAPS_SWIFT_FLOOD)
-        ,"Flood"
-#else
-        ,"Spot"
-#endif
-#endif
         );
     this->setWindowTitle(AppNameVersion);
     DBG_NOTICE("AppVersion: %s, Build on QT version: %s, Running QT version: %s...",
@@ -345,12 +334,12 @@ bool MainWindow::update_status_info(status_params2 param2)
         ui->cur_module_type_value->setText("RGB");
     }
     else {
+        ui->cur_module_type_value->setText(SWIFT_MODULE_TYPE_NAME);
+
 #if defined(CONFIG_ADAPS_SWIFT_FLOOD)
-        ui->cur_module_type_value->setText("Flood");
         ui->pvddLabel->setVisible(false);
         ui->cur_exp_pvdd_value->setVisible(false);
 #else
-        ui->cur_module_type_value->setText("Spot");
         sprintf(temp_string, "%d.%02d V", param2.curr_exp_pvdd/100, param2.curr_exp_pvdd%100);
         ui->cur_exp_pvdd_value->setText(temp_string);
 #endif

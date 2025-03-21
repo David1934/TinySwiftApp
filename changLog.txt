@@ -1,3 +1,56 @@
+X. @2025/03/26 -- version update to 2.2.0_LM20250326A
+    redmine #2222: SpadisQT: 更新EEPROM数据结构到最新64K版本，增加misc device提高软件灵活性
+    http://gerrit.adaps.corp/c/SpadisQT/+/4628
+
+    patch set 2: add mmap for eeprom data since 64K eeprom is too big for ioctl command;
+    patch set 6: enable multi-thread and neom support for algo lib in adapsdepthsettings.xml;
+    patch set 7: use depthInput.in_image_size to pass the frame buffer size for raw data to 
+       the algo lib, multi-thread need know it;
+    patch set 8: use environment varibles to control mirror x and y;
+    patch set 10: update the UI screen (better display effect) to 1520x1080 to fit the rotated screen;
+    patch set 11: add an environment varible to disable walk_error process;
+    patch set 12: set_param.peak_index = 1 and TimeBinInterval to 500(192 bins) to reach 60 fps;
+    patch set 13: always use Outdoot FHR mode now according to qinyu;
+    patch set 14: add adaps_dtof->adaps_dtof_release() --> DepthMapWrapperDestroy(m_handlerDepthLib) 
+      when exit from SpadisQT;
+    patch set 15: adjust UI layout, and fix build error on PC Deepin Linux system;
+    patch set 16: add the macro definition SWIFT_MODULE_TYPE_NAME, to simply the code;
+    patch set 17: move ADAPS ioctl command to misc_device to set PVDD voltage value before the sensor 
+      v4l2-subdevice power-on;
+    
+    1. 增加misc device (/dev/ads6401_spot 或 /dev/ads6401_flood), 添加mmap支持，以便从eeprom读
+       出来的标定数据在用户层和驱动层共享（0拷贝），_IOR宏定义中size是14 bits,最大16K bytes,
+       无法再支持64K bytes的eeprom数据传输；
+    2. 将我们新增的ioctl命令，从sensor_ioctl()移到misc_ioctl(), 以便在dToF sensor上电前能做一
+       些准备工作（比如读取eeprom数据、配置环境类型，测量类型等），outdoor模式pvdd需要高一点的
+       电压，需要在上电前获得这个信息；
+    3. 更新EEPROM数据结构到最新64K版本，关键是增加了walkerror参数信息，新增crc8算法（已与欧菲同步），
+       但是以下几个字段crc8 不匹配，可能欧菲有更新数据但是忘记更新crc8的值？
+        ERROR: <v4l2.cpp-check_crc32_4_dtof_calib_eeprom_param() 495> 3.Checksum intrinsic (offset:4160, length: 36) validation fail.
+        ERROR: <v4l2.cpp-check_crc32_4_dtof_calib_eeprom_param() 558> 12.Checksum SpotEnergy (offset:47104, length: 3840) validation fail.
+        ERROR: <v4l2.cpp-check_crc32_4_dtof_calib_eeprom_param() 565> 13.Checksum noise (offset:54784, length: 10732) validation fail.
+        ERROR: <v4l2.cpp-check_crc32_4_dtof_calib_eeprom_param() 572> 14.Checksum checksum_all validation fail.
+    4. 因为rk3568的屏是类似于手机屏，原本是纵向显示的，SpadisQT界面显示好小，秦宇建议旋转90度，通过下列命令可将屏幕旋转270度，
+       同时调整mainwindow.ui的布局大小，大部分控件调大后，比原来更好看一些；
+         rk3568开发板屏幕桌面如何旋转90度？
+            cat /sys/kernel/debug/dri/0/summary
+            查看Connector名字，旋转如：
+            echo "output:DSI-1:rotate270" > /tmp/.weston_drm.conf
+            等待界面刷新
+    5. FHR模式60 fps验证（ad6401.c编译开关FRAMERATE_TEST_4_60FPS缺省不打开）
+       a. fine曝光时间改为0x01(kernel space ads6401.c驱动)
+       b. mipi速率提高为1.5G(kernel space ads6401.c驱动)
+       c. 算法库支持多线程
+       d. 算法库卷积使用neom
+       e. 384 bins改成192 bins (XML里TimeBinInterval从250改成500)
+
+X. @2025/03/20 -- version update to 2.1.0_LM20250124A
+    redmine #2242: [宇树科技需求] swift 60FPS支持的验证
+    http://gerrit.adaps.corp/c/SpadisQT/+/4500
+    
+    1. 在FrameProcessThread::run()中，QThread::msleep(1)替换为QThread::usleep(10),减少delay,提高帧率；
+    2. 增加SpadisQT_release.sh脚本
+
 X. @2025/01/24 -- version update to 2.1.0_LM20250124A
     redmine #1863: swift ROI动态修改速度验证
     http://gerrit.adaps.corp/c/SpadisQT/+/4408

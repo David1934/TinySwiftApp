@@ -30,6 +30,113 @@
 #define DEV_NODE_LEN                32
 #define FMT_NUM_PLANES              1
 
+#if defined(RUN_ON_ROCKCHIP)
+#if (ADS6401_MODDULE_SPOT == SWIFT_MODULE_TYPE)
+inline void EepromGetSwiftDeviceNumAddress(uint32_t* offset, uint32_t* length) {
+    *offset = OFFSET(swift_eeprom_data_t, deviceName);
+    *length = MEMBER_SIZE(swift_eeprom_data_t, deviceName);
+}
+
+inline void EepromGetSwiftSramDataAddress(uint32_t* offset, uint32_t* length) {
+    *offset = OFFSET(swift_eeprom_data_t, sramData);
+    *length = MEMBER_SIZE(swift_eeprom_data_t, sramData);
+}
+
+inline void EepromGetSwiftIntrinsicAddress(uint32_t* offset, uint32_t* length) {
+    *offset = OFFSET(swift_eeprom_data_t, intrinsic);
+    *length = MEMBER_SIZE(swift_eeprom_data_t, intrinsic);
+}
+
+inline void EepromGetSwiftSpotPosAddress(uint32_t* offset, uint32_t* length) {
+    *offset = OFFSET(swift_eeprom_data_t, spotPos);
+    *length = MEMBER_SIZE(swift_eeprom_data_t, spotPos);
+}
+
+inline void EepromGetSwiftOutDoorOffsetAddress(uint32_t* offset, uint32_t* length) {
+    *offset = OFFSET(swift_eeprom_data_t, spotPos);
+    *length = MEMBER_SIZE(swift_eeprom_data_t, spotPos) / 2;
+}
+
+inline void EepromGetSwiftSpotOffsetbAddress(uint32_t* offset, uint32_t* length) {
+    *offset = OFFSET(swift_eeprom_data_t, spotPos) + SWIFT_OFFSET_SIZE * sizeof(float);
+    *length = MEMBER_SIZE(swift_eeprom_data_t, spotPos) / 2;
+}
+
+inline void EepromGetSwiftSpotOffsetaAddress(uint32_t* offset, uint32_t* length) {
+    *offset = OFFSET(swift_eeprom_data_t, spotOffset);
+    *length = MEMBER_SIZE(swift_eeprom_data_t, spotOffset);
+}
+
+inline void EepromGetSwiftSpotOffsetAddress(uint32_t* offset, uint32_t* length) {
+    *offset = OFFSET(swift_eeprom_data_t, spotOffset);
+    *length = MEMBER_SIZE(swift_eeprom_data_t, spotOffset);
+}
+
+inline void EepromGetSwiftTdcDelayAddress(uint32_t* offset, uint32_t* length) {
+    *offset = OFFSET(swift_eeprom_data_t, tdcDelay);
+    *length = MEMBER_SIZE(swift_eeprom_data_t, tdcDelay);
+}
+
+inline void EepromGetSwiftRefDistanceAddress(uint32_t* offset, uint32_t* length) {
+    *offset = OFFSET(swift_eeprom_data_t, indoorCalibTemperature);
+    *length = MEMBER_SIZE(swift_eeprom_data_t, indoorCalibTemperature)
+        + MEMBER_SIZE(swift_eeprom_data_t, indoorCalibRefDistance)
+        + MEMBER_SIZE(swift_eeprom_data_t, outdoorCalibTemperature)
+        + MEMBER_SIZE(swift_eeprom_data_t, outdoorCalibRefDistance)
+        + MEMBER_SIZE(swift_eeprom_data_t, calibrationInfo);
+}
+
+inline void EepromGetSwiftCalibInfoAddress(uint32_t* offset, uint32_t* length) {
+    *offset = OFFSET(swift_eeprom_data_t, indoorCalibTemperature);
+    *length = MEMBER_SIZE(swift_eeprom_data_t, indoorCalibTemperature)
+        + MEMBER_SIZE(swift_eeprom_data_t, indoorCalibRefDistance)
+        + MEMBER_SIZE(swift_eeprom_data_t, outdoorCalibTemperature)
+        + MEMBER_SIZE(swift_eeprom_data_t, outdoorCalibRefDistance);
+}
+
+inline void EepromGetSwiftPxyAddress(uint32_t* offset, uint32_t* length) {
+    *offset = OFFSET(swift_eeprom_data_t, pxyHistogram);
+    *length = MEMBER_SIZE(swift_eeprom_data_t, pxyHistogram)
+        + MEMBER_SIZE(swift_eeprom_data_t, pxyDepth)
+        + MEMBER_SIZE(swift_eeprom_data_t, pxyNumberOfPulse);
+}
+
+inline void EepromGetSwiftMarkedPixelAddress(uint32_t* offset, uint32_t* length) {
+    *offset = OFFSET(swift_eeprom_data_t, markedPixels);
+    *length = MEMBER_SIZE(swift_eeprom_data_t, markedPixels);
+}
+
+inline void EepromGetSwiftModuleInfoAddress(uint32_t* offset, uint32_t* length) {
+    *offset = OFFSET(swift_eeprom_data_t, moduleInfo);
+    *length = MEMBER_SIZE(swift_eeprom_data_t, moduleInfo);
+}
+
+inline void EepromGetSwiftWalkErrorAddress(uint32_t* offset, uint32_t* length) {
+    *offset = OFFSET(swift_eeprom_data_t, WalkError);
+    *length = MEMBER_SIZE(swift_eeprom_data_t, WalkError);
+}
+
+inline void EepromGetSwiftSpotEnergyAddress(uint32_t* offset, uint32_t* length) {
+    *offset = OFFSET(swift_eeprom_data_t, SpotEnergy);
+    *length = MEMBER_SIZE(swift_eeprom_data_t, SpotEnergy);
+}
+
+inline void EepromGetSwiftRawDepthAddress(uint32_t* offset, uint32_t* length) {
+    *offset = OFFSET(swift_eeprom_data_t, RawDepthMean);
+    *length = MEMBER_SIZE(swift_eeprom_data_t, RawDepthMean);
+}
+
+inline void EepromGetSwiftNoiseAddress(uint32_t* offset, uint32_t* length) {
+    *offset = OFFSET(swift_eeprom_data_t, noise);
+    *length = MEMBER_SIZE(swift_eeprom_data_t, noise);
+}
+
+inline void EepromGetSwiftChecksumAddress(uint32_t* offset, uint32_t* length) {
+    *offset = OFFSET(swift_eeprom_data_t, checksum);
+    *length = MEMBER_SIZE(swift_eeprom_data_t, checksum);
+}
+#endif
+#endif
 
 struct buffer
 {
@@ -81,6 +188,8 @@ private:
     unsigned long rxFrameCnt;
     int mipi_rx_fps;
     unsigned long streamed_timeUs;
+    void *mapped_eeprom_buffer;
+    int eeprom_data_size;
 
     struct v4l2_requestbuffers	req_bufs;
     enum	v4l2_buf_type	buf_type;
@@ -97,12 +206,16 @@ private:
     int         frame_buffer_count;
     struct sensor_data *sensordata;
 
+#if defined(RUN_ON_ROCKCHIP)
     char        sd_devnode_4_dtof[DEV_NODE_LEN];
     int         fd_4_dtof;
-    struct adaps_dtof_calib_eeprom_param *p_eeprominfo;
+    char        devnode_4_misc[DEV_NODE_LEN];
+    int         fd_4_misc;
+    swift_eeprom_data_t *p_eeprominfo;
     unsigned int    last_temperature;
     unsigned int    last_expected_vop_abs_x100;
     unsigned int    last_expected_pvdd_x100;
+#endif
 
     int init();
 #if defined(RUN_ON_ROCKCHIP)
@@ -111,6 +224,7 @@ private:
     int check_crc32_4_dtof_calib_eeprom_param(void);
     bool save_dtof_calib_eeprom_param(void *buf, int len);
     int set_dtof_initial_param(void);
+    bool check_crc_4_eeprom_item(uint8_t *pEEPROMData, uint32_t offset, uint32_t length, uint8_t savedCRC, char *tag);
 #endif
     bool alloc_buffers(void);
     void free_buffers(void);

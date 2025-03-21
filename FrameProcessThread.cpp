@@ -22,7 +22,7 @@ FrameProcessThread::FrameProcessThread()
     if (SENSOR_TYPE_DTOF == sns_param.sensor_type)
     {
         sns_param.work_mode = qApp->get_wk_mode();
-        sns_param.env_type = AdapsEnvTypeIndoor;
+        sns_param.env_type = AdapsEnvTypeOutdoor;
         if (WK_DTOF_FHR == sns_param.work_mode)
         {
             sns_param.measure_type = AdapsMeasurementTypeFull;
@@ -281,7 +281,7 @@ bool FrameProcessThread::new_frame_handle(unsigned int frm_sequence, void *frm_r
                     }
                 }
                 else {
-                    decodeRet = adaps_dtof->dtof_frame_decode((unsigned char *)frm_rawdata,depth_buffer,sns_param.work_mode);
+                    decodeRet = adaps_dtof->dtof_frame_decode((unsigned char *)frm_rawdata, buf_len, depth_buffer, sns_param.work_mode);
                     if (0 == decodeRet)
                     {
                         if (sns_param.save_frame_cnt > 0)
@@ -359,7 +359,7 @@ bool FrameProcessThread::new_frame_handle(unsigned int frm_sequence, void *frm_r
                     }
                 }
                 else {
-                    decodeRet = adaps_dtof->dtof_frame_decode((unsigned char *)frm_rawdata, depth_buffer, sns_param.work_mode);
+                    decodeRet = adaps_dtof->dtof_frame_decode((unsigned char *)frm_rawdata, buf_len, depth_buffer, sns_param.work_mode);
 #if defined(ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT)
                     int new_added_spot_count = adaps_dtof->DepthBufferMerge(merged_depth_buffer, depth_buffer, sns_param.out_frm_width, sns_param.out_frm_height);
 
@@ -481,12 +481,10 @@ void FrameProcessThread::onThreadLoopExit()
     }
     if (SENSOR_TYPE_DTOF == sns_param.sensor_type)
     {
-/*
         if (adaps_dtof)
         {
             adaps_dtof->adaps_dtof_release();
         }
-*/
         if (NULL != depth_buffer)
         {
             free(depth_buffer);

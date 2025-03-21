@@ -102,6 +102,7 @@ int main(int argc, char *argv[])
 #endif
 
     w.setWindowFlags(w.windowFlags() & ~Qt::WindowMaximizeButtonHint & ~Qt::WindowMinimizeButtonHint);
+    //w.setStyleSheet("QMainWindow::title { font-family: Arial; font-size: 21pt; }");
     w.show();
     getScreenResolution();
 

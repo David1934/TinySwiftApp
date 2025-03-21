@@ -8,16 +8,21 @@
 
 V4L2::V4L2(struct sensor_params params)
 {
+#if defined(RUN_ON_ROCKCHIP)
     p_eeprominfo = NULL;
+    mapped_eeprom_buffer = NULL;
+    eeprom_data_size = sizeof(swift_eeprom_data_t);
+    last_temperature = 0;
+    fd_4_dtof = 0;
+    fd_4_misc = 0;
+#endif
     buffers = NULL;
     sensordata = NULL;
-    fd_4_dtof = 0;
     fd = 0;
     firstFrameTimeUsec = 0;
     rxFrameCnt = 0;
     mipi_rx_fps = 0;
     streamed_timeUs = 0;
-    last_temperature = 0;
     init();
     memcpy(&snr_param, &params, sizeof(struct sensor_params));
 
@@ -28,6 +33,10 @@ V4L2::V4L2(struct sensor_params params)
     else {
         memset(sensor_sd_name, 0, DEV_NODE_LEN);
     }
+#if defined(RUN_ON_ROCKCHIP)
+    memset(devnode_4_misc, 0, DEV_NODE_LEN);
+    sprintf(devnode_4_misc, "%s_%s", VIDEO_DEV_4_MISC_DEVICE, SWIFT_MODULE_TYPE_NAME);
+#endif
     memcpy(media_dev, sensordata[params.work_mode].media_devnode, DEV_NODE_LEN);
     memcpy(video_dev, sensordata[params.work_mode].video_devnode, DEV_NODE_LEN);
     snr_param.raw_width = sensordata[params.work_mode].raw_w;
@@ -234,8 +243,10 @@ int V4L2::get_subdev_node_4_sensor()
         DBG_INFO("   %2d:%2d      %2d    %16s   %s", entity_desc.v4l.major, entity_desc.v4l.minor, id,entity_desc.name,cur_devnode);
         if(strcmp(sensor_sd_name, entity_desc.name) == 0)
         {
+#if defined(RUN_ON_ROCKCHIP)
             strcpy(sd_devnode_4_dtof, cur_devnode);
             DBG_INFO("sd_devnode_4_dtof: %s", sd_devnode_4_dtof);
+#endif
             ret = 0;
             break;
         }
@@ -247,6 +258,8 @@ int V4L2::get_subdev_node_4_sensor()
 int V4L2::set_param_4_sensor_sub_device(int raw_w_4_curr_wkmode, int raw_h_4_curr_wkmode)
 {
     int ret = 0;
+
+#if defined(RUN_ON_ROCKCHIP)
     struct v4l2_subdev_format sensorFmt;
 
     memset(&sensorFmt, 0, sizeof(sensorFmt));
@@ -256,11 +269,12 @@ int V4L2::set_param_4_sensor_sub_device(int raw_w_4_curr_wkmode, int raw_h_4_cur
     sensorFmt.format.height = raw_h_4_curr_wkmode;
     DBG_INFO("--VIDIOC_SUBDEV_S_FMT--fd_4_dtof:%d, sd_devnode_4_dtof:%s, width:%d, height:%d", fd_4_dtof, sd_devnode_4_dtof, raw_w_4_curr_wkmode, raw_h_4_curr_wkmode);
 
-    ret = xioctl(fd_4_dtof, VIDIOC_SUBDEV_S_FMT, &sensorFmt);
+    ret = ioctl(fd_4_dtof, VIDIOC_SUBDEV_S_FMT, &sensorFmt);
     if (-1 == ret) {
         DBG_ERROR("Fail to set format for dtof sensor sub device, errno: %s (%d)...", 
                strerror(errno), errno);
     }
+#endif
 
     return ret;
 }
@@ -403,7 +417,7 @@ int V4L2::get_dtof_exposure_param(void)
 
     if (SENSOR_TYPE_DTOF == snr_param.sensor_type)
     {
-        if (-1 == ioctl(fd_4_dtof, ADAPS_GET_DTOF_EXPOSURE_PARAM, &param)) {
+        if (-1 == misc_ioctl(fd_4_misc, ADAPS_GET_DTOF_EXPOSURE_PARAM, &param)) {
             DBG_ERROR("Fail to get exposure param from dtof sensor device, errno: %s (%d)...", 
                    strerror(errno), errno);
             ret = -1;
@@ -423,38 +437,140 @@ void* V4L2::V4l2_get_dtof_calib_eeprom_param(void)
 }
 
 #if (ADS6401_MODDULE_SPOT == SWIFT_MODULE_TYPE)
+bool V4L2::check_crc_4_eeprom_item(uint8_t *pEEPROMData, uint32_t offset, uint32_t length, uint8_t savedCRC, char *tag)
+{
+    bool ret = true;
+    unsigned char computedCRC = 0;
+    pEEPROMData += offset;
+
+    Utils *utils = new Utils();
+    computedCRC = utils->CRC8Calculate(pEEPROMData, length);
+    delete utils;
+
+    if (computedCRC != savedCRC) {
+        //DBG_ERROR("crc8 MISMATCHED for eeprom[%s] at offset:%d, lenth: %d, saved crc8: 0x%02x, calc crc8: 0x%02x", tag, offset, length, savedCRC, computedCRC);
+        ret = false;
+    }
+    else {
+        //DBG_INFO("crc8 matched for eeprom[%s] at offset:%d, lenth: %d, saved crc8: 0x%02x, calc crc8: 0x%02x", tag, offset, length, savedCRC, computedCRC);
+        ret = true;
+    }
+
+    return ret;
+}
+
 int V4L2::check_crc32_4_dtof_calib_eeprom_param(void)
 {
     int ret = 0;
+    uint32_t offset;
+    uint32_t length;
+    uint8_t checkSum[SWIFT_CHECKSUM_SIZE] = { 0 };
+    uint8_t *pEEPROMData = (uint8_t *) p_eeprominfo;
 
-    uint32_t saved_crc32 = 0;
-    swift_eeprom_data_t *p_swift_eeprom_data;
-    p_swift_eeprom_data = (swift_eeprom_data_t *)p_eeprominfo->pRawData;
     if (Utils::is_env_var_true(ENV_VAR_SAVE_EEPROM_ENABLE))
     {
-        save_dtof_calib_eeprom_param(p_eeprominfo->pRawData, sizeof(swift_eeprom_data_t));
+        save_dtof_calib_eeprom_param(pEEPROMData, eeprom_data_size);
     }
 
-    Utils *utils = new Utils();
-    uint32_t calc_crc32 = utils->crc32(0, (const unsigned char *)p_eeprominfo->pRawData, AD4001_EEPROM_TOTAL_CHECKSUM_OFFSET - AD4001_EEPROM_VERSION_INFO_OFFSET);
-    delete utils;
-    saved_crc32 = p_swift_eeprom_data->totalChecksum;
-    if (calc_crc32 == saved_crc32)
-    {
-        DBG_INFO("EEPROM crc32 matched!!! sizeof(swift_eeprom_data_t)=%ld, length before totalChecksum:%ld,calc_crc32:0x%x,saved_crc32:0x%x",
-                sizeof(swift_eeprom_data_t),
-                AD4001_EEPROM_TOTAL_CHECKSUM_OFFSET - AD4001_EEPROM_VERSION_INFO_OFFSET,
-                calc_crc32,
-                saved_crc32);
+    EepromGetSwiftChecksumAddress(&offset, &length);
+    memcpy(checkSum, pEEPROMData + offset, length);
+
+    // checksum1 - calibrationInfo
+    EepromGetSwiftDeviceNumAddress(&offset, &length);
+    if (!check_crc_4_eeprom_item(pEEPROMData, offset, length, checkSum[CALIBRATION_INFO], "1.CALIBRATION_INFO")) {
+        DBG_ERROR("1.Checksum calibrationInfo (offset:%d, length: %d) validation fail.\n", offset, length);
+        ret = -EIO;
     }
-    else {
-        DBG_ERROR("EEPROM crc32 mismatched!!! eeprominfo->pRawData: %p, sizeof(swift_eeprom_data_t)=%ld, length before totalChecksum:%ld,calc_crc32:0x%x,saved_crc32:0x%x",
-                p_eeprominfo->pRawData,
-                sizeof(swift_eeprom_data_t),
-                AD4001_EEPROM_TOTAL_CHECKSUM_OFFSET - AD4001_EEPROM_VERSION_INFO_OFFSET,
-                calc_crc32,
-                saved_crc32);
-        ret = -1;
+
+    // checksum2 - sramData
+    EepromGetSwiftSramDataAddress(&offset, &length);
+    if (!check_crc_4_eeprom_item(pEEPROMData, offset, length, checkSum[SRAM_DATA], "2.SRAM_DATA")) {
+        DBG_ERROR("2.Checksum sramdata (offset:%d, length: %d) validation fail.\n", offset, length);
+        ret = -EIO;
+    }
+
+    // checksum3 - intrinsic
+    EepromGetSwiftIntrinsicAddress(&offset, &length);
+    if (!check_crc_4_eeprom_item(pEEPROMData, offset, length, checkSum[INTRINSIC], "3.INTRINSIC")) {
+        DBG_ERROR("3.Checksum intrinsic (offset:%d, length: %d) validation fail.\n", offset, length);
+        ret = -EIO;
+    }
+
+    // checksum4 - outdoor offset
+    EepromGetSwiftOutDoorOffsetAddress(&offset, &length);
+    if (!check_crc_4_eeprom_item(pEEPROMData, offset, length, checkSum[OUTDOOR_OFFSET], "4.OUTDOOR_OFFSET")) {
+        DBG_ERROR("4.Checksum outdoor offset (offset:%d, length: %d) validation fail.\n", offset, length);
+        ret = -EIO;
+    }
+
+    // checksum5 - spotOffsetB
+    EepromGetSwiftSpotOffsetbAddress(&offset, &length);
+    if (!check_crc_4_eeprom_item(pEEPROMData, offset, length, checkSum[SPOT_OFFSET_B], "5.SPOT_OFFSET_B")) {
+        DBG_ERROR("5.Checksum spotOffsetB (offset:%d, length: %d) validation fail.\n", offset, length);
+        ret = -EIO;
+    }
+
+    // checksum6 - spotOffsetA
+    EepromGetSwiftSpotOffsetaAddress(&offset, &length);
+    if (!check_crc_4_eeprom_item(pEEPROMData, offset, length, checkSum[SPOT_OFFSET_A], "6.SPOT_OFFSET_A")) {
+        DBG_ERROR("6.Checksum spotOffsetA (offset:%d, length: %d) validation fail.\n", offset, length);
+        ret = -EIO;
+    }
+
+    // checksum7 - tdcDelay
+    EepromGetSwiftTdcDelayAddress(&offset, &length);
+    if (!check_crc_4_eeprom_item(pEEPROMData, offset, length, checkSum[TDC_DELAY], "7.TDC_DELAY")) {
+        DBG_ERROR("7.Checksum tdcDelay (offset:%d, length: %d) validation fail.\n", offset, length);
+        ret = -EIO;
+    }
+
+    // checksum8 - refDistance
+    EepromGetSwiftRefDistanceAddress(&offset, &length);
+    if (!check_crc_4_eeprom_item(pEEPROMData, offset, length, checkSum[REF_DISTANCE], "8.REF_DISTANCE")) {
+        DBG_ERROR("8.Checksum refDistance (offset:%d, length: %d) validation fail.\n", offset, length);
+        ret = -EIO;
+    }
+
+    // checksum9 - proximity
+    EepromGetSwiftPxyAddress(&offset, &length);
+    if (!check_crc_4_eeprom_item(pEEPROMData, offset, length, checkSum[PROXIMITY], "9.PROXIMITY")) {
+        DBG_ERROR("9.Checksum proximity (offset:%d, length: %d) validation fail.\n", offset, length);
+        ret = -EIO;
+    }
+
+    // checksum10 - hotPixel & deadPixel
+    EepromGetSwiftMarkedPixelAddress(&offset, &length);
+    if (!check_crc_4_eeprom_item(pEEPROMData, offset, length, checkSum[HOTPIXEL_DEADPIXEL], "10.HOTPIXEL_DEADPIXEL")) {
+        DBG_ERROR("10.Checksum hotPixel & deadPixel (offset:%d, length: %d) validation fail.\n", offset, length);
+        ret = -EIO;
+    }
+
+    // checksum11 - WalkError
+    EepromGetSwiftWalkErrorAddress(&offset, &length);
+    if (!check_crc_4_eeprom_item(pEEPROMData, offset, length, checkSum[WALKERROR], "11.WALKERROR")) {
+        DBG_ERROR("11.Checksum WalkError (offset:%d, length: %d) validation fail.\n", offset, length);
+        ret = -EIO;
+    }
+
+    // checksum12 - SpotEnergy
+    EepromGetSwiftSpotEnergyAddress(&offset, &length);
+    if (!check_crc_4_eeprom_item(pEEPROMData, offset, length, checkSum[SPOT_ENERGY], "12.SPOT_ENERGY")) {
+        DBG_ERROR("12.Checksum SpotEnergy (offset:%d, length: %d) validation fail.\n", offset, length);
+        ret = -EIO;
+    }
+
+    // checksum13 - noise
+    EepromGetSwiftNoiseAddress(&offset, &length);
+    if (!check_crc_4_eeprom_item(pEEPROMData, offset, length, checkSum[NOISE], "13.NOISE")) {
+        DBG_ERROR("13.Checksum noise (offset:%d, length: %d) validation fail.\n", offset, length);
+        ret = -EIO;
+    }
+
+    // checksum_all 
+    EepromGetSwiftChecksumAddress(&offset, &length);
+    if (!check_crc_4_eeprom_item(pEEPROMData, 0, eeprom_data_size - length, checkSum[CHECKSUM_ALL], "14.CHECKSUM_ALL")) {
+        DBG_ERROR("14.Checksum checksum_all validation fail.\n");
+        ret = -EIO;
     }
 
     return ret;
@@ -467,18 +583,17 @@ int V4L2::check_crc32_4_dtof_calib_eeprom_param(void)
     int i = 0,ret=0;
     uint32_t read_crc32 = 0;
     uint32_t calc_crc32 = 0;
-    swift_eeprom_data_t *p_swift_eeprom_data;
-    p_swift_eeprom_data = (swift_eeprom_data_t *)p_eeprominfo->pRawData;
+    uint8_t *pEEPROMData = (uint8_t *) p_eeprominfo;
     if (Utils::is_env_var_true(ENV_VAR_SAVE_EEPROM_ENABLE))
     {
-        save_dtof_calib_eeprom_param(p_eeprominfo->pRawData, sizeof(swift_eeprom_data_t));
+        save_dtof_calib_eeprom_param(pEEPROMData, eeprom_data_size);
     }
 
     Utils *utils = new Utils();
 
     //do page 0 crc
-    calc_crc32 = utils->crc32(0, (const unsigned char *) p_eeprominfo->pRawData, AD4001_EEPROM_VERSION_INFO_SIZE + AD4001_EEPROM_SN_INFO_SIZE);
-    if(p_swift_eeprom_data->Crc32Pg0 == calc_crc32)
+    calc_crc32 = utils->crc32(0, (const unsigned char *) pEEPROMData, AD4001_EEPROM_VERSION_INFO_SIZE + AD4001_EEPROM_SN_INFO_SIZE);
+    if(p_eeprominfo->Crc32Pg0 == calc_crc32)
     {
         DBG_INFO("EEPROM Crc32Pg0 matched!!! sizeof(swift_eeprom_data_t)=%ld, calc_crc32:0x%x",
                 sizeof(swift_eeprom_data_t),
@@ -489,16 +604,16 @@ int V4L2::check_crc32_4_dtof_calib_eeprom_param(void)
         DBG_ERROR("EEPROM Crc32Pg0 MISMATCHED!!! AD4001_EEPROM_ROISRAM_DATA_OFFSET=%ld, calc_crc32:0x%x,read Crc32Pg0:0x%x",
                 AD4001_EEPROM_ROISRAM_DATA_OFFSET,
                 calc_crc32,
-                p_swift_eeprom_data->Crc32Pg0);
+                p_eeprominfo->Crc32Pg0);
         //hex_data_dump((const u8 *) sensor->eeprom_data, 64, "eeprom data head");
         ret = -1;
         //goto check_exit;
     }
 
     //do page 1 crc
-    calc_crc32 = utils->crc32(0, (const unsigned char *) p_eeprominfo->pRawData + AD4001_EEPROM_MODULE_INFO_OFFSET, AD4001_EEPROM_MODULE_INFO_SIZE);
+    calc_crc32 = utils->crc32(0, (const unsigned char *) pEEPROMData + AD4001_EEPROM_MODULE_INFO_OFFSET, AD4001_EEPROM_MODULE_INFO_SIZE);
 
-    if(p_swift_eeprom_data->Crc32Pg1 == calc_crc32)
+    if(p_eeprominfo->Crc32Pg1 == calc_crc32)
     {
         DBG_INFO("EEPROM Crc32Pg1 matched!!! calc_crc32:0x%x",
                 calc_crc32);
@@ -507,23 +622,22 @@ int V4L2::check_crc32_4_dtof_calib_eeprom_param(void)
     else {
         DBG_ERROR("EEPROM Crc32Pg1 MISMATCHED!!! calc_crc32:0x%x,read Crc32Pg1:0x%x",
                 calc_crc32,
-                p_swift_eeprom_data->Crc32Pg1);
+                p_eeprominfo->Crc32Pg1);
         ret = -1;
         //goto check_exit;
     }
 
     //do page 2 crc
-    calc_crc32 = utils->crc32(0, (const unsigned char *) p_eeprominfo->pRawData + AD4001_EEPROM_TDCDELAY_OFFSET, AD4001_EEPROM_TDCDELAY_SIZE+AD4001_EEPROM_INTRINSIC_SIZE+AD4001_EEPROM_INDOOR_CALIBTEMPERATURE_SIZE+AD4001_EEPROM_OUTDOOR_CALIBTEMPERATURE_SIZE+AD4001_EEPROM_INDOOR_CALIBREFDISTANCE_SIZE+AD4001_EEPROM_OUTDOOR_CALIBREFDISTANCE_SIZE);
-    if(p_swift_eeprom_data->Crc32Pg2 == calc_crc32)
+    calc_crc32 = utils->crc32(0, (const unsigned char *) pEEPROMData + AD4001_EEPROM_TDCDELAY_OFFSET, AD4001_EEPROM_TDCDELAY_SIZE+AD4001_EEPROM_INTRINSIC_SIZE+AD4001_EEPROM_INDOOR_CALIBTEMPERATURE_SIZE+AD4001_EEPROM_OUTDOOR_CALIBTEMPERATURE_SIZE+AD4001_EEPROM_INDOOR_CALIBREFDISTANCE_SIZE+AD4001_EEPROM_OUTDOOR_CALIBREFDISTANCE_SIZE);
+    if(p_eeprominfo->Crc32Pg2 == calc_crc32)
     {
         DBG_INFO("EEPROM Crc32Pg2 matched!!! calc_crc32:0x%x",
                 calc_crc32);
-        //hex_data_dump((const u8 *) sensor->eeprom_data, 64, "eeprom data head");
     }
     else {
         DBG_ERROR("EEPROM Crc32Pg2 MISMATCHED!!! calc_crc32:0x%x,read Crc32Pg2:0x%x",
                 calc_crc32,
-                p_swift_eeprom_data->Crc32Pg2);
+                p_eeprominfo->Crc32Pg2);
         ret = -1;
         //goto check_exit;
     }
@@ -531,8 +645,8 @@ int V4L2::check_crc32_4_dtof_calib_eeprom_param(void)
     //do sram data crc for every zone
     for ( i = 0; i < ZONE_COUNT_PER_SRAM_GROUP * CALIB_SRAM_GROUP_COUNT; ++i)
     {
-        calc_crc32 = utils->crc32(0, (const unsigned char *) p_eeprominfo->pRawData + AD4001_EEPROM_ROISRAM_DATA_OFFSET + i*SRAM_ZONE_OCUPPY_SPACE, SRAM_ZONE_VALID_DATA_LENGTH);
-        read_crc32 = *(uint32_t*)(p_eeprominfo->pRawData + AD4001_EEPROM_ROISRAM_DATA_OFFSET + i*SRAM_ZONE_OCUPPY_SPACE + SRAM_ZONE_VALID_DATA_LENGTH);
+        calc_crc32 = utils->crc32(0, (const unsigned char *) pEEPROMData + AD4001_EEPROM_ROISRAM_DATA_OFFSET + i*SRAM_ZONE_OCUPPY_SPACE, SRAM_ZONE_VALID_DATA_LENGTH);
+        read_crc32 = *(uint32_t*)(pEEPROMData + AD4001_EEPROM_ROISRAM_DATA_OFFSET + i*SRAM_ZONE_OCUPPY_SPACE + SRAM_ZONE_VALID_DATA_LENGTH);
         if (calc_crc32 != read_crc32)
         {
             DBG_ERROR("SRAM %d CRC checksum MISMATCHED, calc_crc32=0x%x   read_crc32=0x%x\n", i, calc_crc32, read_crc32);
@@ -554,10 +668,10 @@ int V4L2::check_crc32_4_dtof_calib_eeprom_param(void)
     //do offset crc 
     for ( i = 0; i < 8; ++i)
     {
-        calc_crc32 = utils->crc32(0, (unsigned char*)(p_swift_eeprom_data->spotOffset)+i*OFFSET_VALID_DATA_LENGTH, OFFSET_VALID_DATA_LENGTH);
-        if (calc_crc32 != p_swift_eeprom_data->Crc32Offset[i])
+        calc_crc32 = utils->crc32(0, (unsigned char*)(p_eeprominfo->spotOffset)+i*OFFSET_VALID_DATA_LENGTH, OFFSET_VALID_DATA_LENGTH);
+        if (calc_crc32 != p_eeprominfo->Crc32Offset[i])
         {
-            DBG_ERROR("offset %d CRC checksum MISMATCHED, read_crc=0x%x, calc_crc32:0x%x\n", i, p_swift_eeprom_data->Crc32Offset[i], calc_crc32);
+            DBG_ERROR("offset %d CRC checksum MISMATCHED, read_crc=0x%x, calc_crc32:0x%x\n", i, p_eeprominfo->Crc32Offset[i], calc_crc32);
             ret = -1;
             //goto check_exit;
         }
@@ -580,18 +694,18 @@ int V4L2::get_dtof_calib_eeprom_param(void)
 
     if (SENSOR_TYPE_DTOF == snr_param.sensor_type)
     {
-        p_eeprominfo = (struct adaps_dtof_calib_eeprom_param *)malloc(sizeof(struct adaps_dtof_calib_eeprom_param));
-        if (-1 == ioctl(fd_4_dtof, ADAPS_GET_DTOF_CALIB_EEPROM_PARAM, p_eeprominfo)) {
-            DBG_ERROR("Fail to read eeprom of dtof sensor device(%d, %s), errno: %s (%d)...",
-                fd_4_dtof, sd_devnode_4_dtof, strerror(errno), errno);
+        struct adaps_dtof_eeprom_data_state eeprom_state;
+        if (-1 == misc_ioctl(fd_4_misc, ADAPS_GET_DTOF_EEPROM_DATA_STATE, &eeprom_state)) {
+            DBG_ERROR("Fail to read eeprom state of dtof misc device(%d, %s), errno: %s (%d)...",
+                fd_4_misc, devnode_4_misc, strerror(errno), errno);
             ret = -1;
-            if (NULL != p_eeprominfo)
-            {
-                free(p_eeprominfo);
-                p_eeprominfo = NULL;
-            }
         }else
         {
+            if (eeprom_state.state)
+            {
+                p_eeprominfo = (swift_eeprom_data_t *) mapped_eeprom_buffer;
+            }
+
             if (false == Utils::is_env_var_true(ENV_VAR_SKIP_EEPROM_CRC_CHK))
             {
                 ret = check_crc32_4_dtof_calib_eeprom_param();
@@ -607,6 +721,7 @@ int V4L2::set_dtof_initial_param(void)
 {
     int ret = 0;
     struct adaps_dtof_intial_param param;
+
     param.env_type = snr_param.env_type;
     param.measure_type = snr_param.measure_type;
     param.framerate_type = DEFAULT_DTOF_FRAMERATE;
@@ -614,7 +729,7 @@ int V4L2::set_dtof_initial_param(void)
 
     if (SENSOR_TYPE_DTOF == snr_param.sensor_type)
     {
-        if (-1 == ioctl(fd_4_dtof, ADAPS_SET_DTOF_INITIAL_PARAM, &param)) {
+        if (-1 == misc_ioctl(fd_4_misc, ADAPS_SET_DTOF_INITIAL_PARAM, &param)) {
             DBG_ERROR("Fail to set initial param for dtof sensor device, errno: %s (%d)...", 
                    strerror(errno), errno);
             ret = -1;
@@ -638,7 +753,7 @@ int V4L2::V4l2_get_dtof_runtime_status_param(float *temperature)
 
     if (SENSOR_TYPE_DTOF == snr_param.sensor_type)
     {
-        if (-1 == ioctl(fd_4_dtof, ADAPS_GET_DTOF_RUNTIME_STATUS_PARAM, &param)) {
+        if (-1 == misc_ioctl(fd_4_misc, ADAPS_GET_DTOF_RUNTIME_STATUS_PARAM, &param)) {
             DBG_ERROR("Fail to get runtime status param from dtof sensor device, errno: %s (%d)...", 
                    strerror(errno), errno);
             ret = -1;
@@ -667,10 +782,39 @@ int V4L2::V4l2_initilize(void)
 
     if (SENSOR_TYPE_DTOF == snr_param.sensor_type)
     {
+#if defined(RUN_ON_ROCKCHIP)
         ret = get_subdev_node_4_sensor();
         if (ret < 0)
         {
             DBG_ERROR("Fail to get subdev node for dtof sensor...");
+            return 0 - __LINE__;
+        }
+
+        if ((fd_4_misc = open(devnode_4_misc, O_RDWR)) == -1)
+        {
+            DBG_ERROR("Fail to open device %s , errno: %s (%d)...", 
+                devnode_4_misc, strerror(errno), errno);
+            return 0 - __LINE__;
+        }
+
+        if (0 != fd_4_misc)
+        {
+            mapped_eeprom_buffer = mmap(NULL, eeprom_data_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd_4_misc, 0);
+            if (mapped_eeprom_buffer == MAP_FAILED) {
+                DBG_ERROR("Failed to mmap buffer, eeprom_data_size: %d...", eeprom_data_size);
+                return 0 - __LINE__;
+            }
+        }
+
+        if (0 > get_dtof_calib_eeprom_param())
+        {
+#if !defined(IGNORE_REAL_COMMUNICATION)
+            return 0 - __LINE__;
+#endif
+        }
+
+        if (0 > set_dtof_initial_param())
+        {
             return 0 - __LINE__;
         }
 
@@ -680,6 +824,8 @@ int V4L2::V4l2_initilize(void)
                 sd_devnode_4_dtof, strerror(errno), errno);
             return 0 - __LINE__;
         }
+
+#endif
     }
 
     if ((fd = open(video_dev, O_RDWR)) == -1)
@@ -762,17 +908,6 @@ int V4L2::V4l2_initilize(void)
 #if defined(RUN_ON_ROCKCHIP)
     if (SENSOR_TYPE_DTOF == snr_param.sensor_type)
     {
-        if (0 > get_dtof_calib_eeprom_param())
-        {
-#if !defined(IGNORE_REAL_COMMUNICATION)
-            return 0 - __LINE__;
-#endif
-        }
-
-        if (0 > set_dtof_initial_param())
-        {
-            return 0 - __LINE__;
-        }
     }
 
 #if !defined(VIDIOC_S_FMT_INCLUDE_VIDIOC_SUBDEV_S_FMT)
@@ -943,9 +1078,9 @@ int V4L2::Capture_frame()
         total_bytes_per_line = bytesused/snr_param.raw_height;
         payload_bytes_per_line = (snr_param.raw_width * bits_per_pixel)/8;
         padding_bytes_per_line = total_bytes_per_line - payload_bytes_per_line;
-        DBG_NOTICE("\n------frame raw size: %d X %d, bits_per_pixel: %d, payload_bytes_per_line: %d, total_bytes_per_line: %d, padding_bytes_per_line: %d---\n",
+        DBG_NOTICE("\n------frame raw size: %d X %d, bits_per_pixel: %d, payload_bytes_per_line: %d, total_bytes_per_line: %d, padding_bytes_per_line: %d, frame_buffer_size: %d---\n",
             snr_param.raw_width, snr_param.raw_height,
-            bits_per_pixel, payload_bytes_per_line, total_bytes_per_line, padding_bytes_per_line);
+            bits_per_pixel, payload_bytes_per_line, total_bytes_per_line, padding_bytes_per_line, bytesused);
     }
     else {
         currTimeUsec = tv.tv_sec*1000000 + tv.tv_usec;
@@ -997,16 +1132,30 @@ void V4L2::V4l2_close(void)
 {
     if (SENSOR_TYPE_DTOF == snr_param.sensor_type)
     {
+#if defined(RUN_ON_ROCKCHIP)
+        if (NULL != mapped_eeprom_buffer)
+        {
+            if (munmap(mapped_eeprom_buffer, eeprom_data_size)) {
+                DBG_ERROR("Failed to unmap buffer");
+            }
+            mapped_eeprom_buffer = NULL;
+        }
+
         if (NULL != p_eeprominfo)
         {
-            free(p_eeprominfo);
             p_eeprominfo = NULL;
+        }
+        if ((0 != fd_4_misc) && (-1 == close(fd_4_misc))) {
+            DBG_ERROR("Fail to close device %d (%s), errno: %s (%d)...", fd_4_misc, devnode_4_misc,
+                strerror(errno), errno);
+            return;
         }
         if ((0 != fd_4_dtof) && (-1 == close(fd_4_dtof))) {
             DBG_ERROR("Fail to close device %d (%s), errno: %s (%d)...", fd_4_dtof, sd_devnode_4_dtof,
                 strerror(errno), errno);
             return;
         }
+#endif
     }
 
     free_buffers();

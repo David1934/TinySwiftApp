@@ -88,7 +88,7 @@ public:
     int adaps_dtof_initilize();
     void ConvertDepthToColoredMap(u16 depth16_buffer[], u8 depth_colored_map[], int outImgWidth, int outImgHeight);
     void ConvertGreyscaleToColoredMap(u16 depth16_buffer[], u8 depth_colored_map[], int outImgWidth, int outImgHeight);
-    int dtof_frame_decode(unsigned char *frm_rawdata , u16 depth16_buffer[], enum sensor_workmode swk);
+    int dtof_frame_decode(unsigned char *frm_rawdata, int buf_len, u16 depth16_buffer[], enum sensor_workmode swk);
     void adaps_dtof_release();
     void mode_switch(struct sensor_params params, V4L2 *v4l2);
 #if defined(ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT)
@@ -100,7 +100,8 @@ private:
     struct sensor_params m_sns_param;
     uint64_t m_exposure_time;
     int32_t  m_sensitivity;
-    struct adaps_dtof_calib_eeprom_param *p_eeprominfo;
+    swift_eeprom_data_t *p_eeprominfo;
+    SetWrapperParam set_param;
 
     struct BGRColor m_basic_colors[5];
     u16 m_LimitedMaxDistance;
@@ -125,7 +126,7 @@ private:
     bool trace_calib_sram_switch;
 #endif
 
-    int FillSetWrapperParamFromEepromInfo(uint8_t* pRawData, uint32_t rawDataSize, SetWrapperParam* setparam);
+    int FillSetWrapperParamFromEepromInfo(uint8_t* pEEPROMData, SetWrapperParam* setparam);
     void initParams(WrapperDepthInitInputParams  *     initInputParams,WrapperDepthInitOutputParams      *initOutputParams);
     void PrepareFrameParam(WrapperDepthCamConfig *wrapper_depth_map_config);
     u8 normalizeGreyscale(u16 range);

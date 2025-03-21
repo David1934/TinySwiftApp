@@ -34,12 +34,14 @@ public:
     Utils();
     ~Utils();
     uint32_t crc32(uint32_t initial, const unsigned char *buf, size_t len);
+    unsigned char CRC8Calculate(const unsigned char buffer[], int len);
     QByteArray loadNextFileToBuffer();
     bool is_replay_data_exist();
     void test_pattern_generate(unsigned char *write_buf, int len, int ptn_idx);
     void hexdump(const unsigned char * buf, int buf_len, const char * title);
     void nv12_2_rgb(unsigned char *nv12, unsigned char *rgb, int width, int height);
     void yuyv_2_rgb(unsigned char *yuyv, unsigned char *rgb, int width, int height);
+    bool IsASCII(const char c);
 
     static bool is_env_var_true(const char *var_name)
     {

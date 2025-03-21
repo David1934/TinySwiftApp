@@ -18,9 +18,9 @@
 #endif
 
 #define VERSION_MAJOR                           2
-#define VERSION_MINOR                           1
+#define VERSION_MINOR                           2
 #define VERSION_REVISION                        0
-#define LAST_MODIFIED_TIME                      "20250124A"
+#define LAST_MODIFIED_TIME                      "20250326A"
 
 #define DEFAULT_DTOF_FRAMERATE                  AdapsFramerateType30FPS // AdapsFramerateType60FPS
 
@@ -38,6 +38,7 @@
 #define MEDIA_DEVNAME_4_RGB_SENSOR              "/dev/media0"
 #define VIDEO_DEV_4_RGB_SENSOR                  "/dev/video0"
 #define VIDEO_DEV_4_RGB_RK3588                  "/dev/video55"
+#define VIDEO_DEV_4_MISC_DEVICE                 "/dev/ads6401"
 
 #if defined(RUN_ON_RK3568)
     // for rk3568
@@ -62,7 +63,11 @@
 
 #define DEFAULT_SENSOR_TYPE                     SENSOR_TYPE_DTOF
 #define DEFAULT_WORK_MODE                       WK_DTOF_FHR
-
+    #if (ADS6401_MODDULE_SPOT == SWIFT_MODULE_TYPE)
+        #define SWIFT_MODULE_TYPE_NAME          "Spot"
+    #else
+        #define SWIFT_MODULE_TYPE_NAME          "Flood"
+    #endif
 #else
 #define WKMODE_4_RGB_SENSOR                     WK_RGB_YUYV    // On DELL notebook, it is WK_MODE_YUYV, on Apple notebook it is WK_MODE_NV12?
 
@@ -83,6 +88,9 @@
 #define ENV_VAR_DUMP_ROI_SRAM_SIZE              "dump_roi_sram_size"
 #define ENV_VAR_TRACE_ROI_SRAM_SWITCH           "trace_roi_sram_switch"
 #define ENV_VAR_DUMP_SPOT_DEPTH                 "dump_spot_depth"
+#define ENV_VAR_MIRROR_X_ENABLE                 "mirror_x_enable"
+#define ENV_VAR_MIRROR_Y_ENABLE                 "mirror_y_enable"
+#define ENV_VAR_DISABLE_WALK_ERROR              "disable_walk_error"      // processed in adaps decode algo lib
 
 #define __tostr(x)                          #x
 #define __stringify(x)                      __tostr(x)
@@ -93,7 +101,12 @@
 
 #define APP_NAME                          "SpadisQT"
 #define APP_VERSION_CODE                 (VERSION_MAJOR << 16 | VERSION_MINOR << 8 | VERSION_REVISION)
+
+#if defined(RUN_ON_ROCKCHIP)
+#define APP_VERSION                      VERSION_STRING "_LM" LAST_MODIFIED_TIME "_For_" SWIFT_MODULE_TYPE_NAME "_Module"
+#else
 #define APP_VERSION                      VERSION_STRING "_LM" LAST_MODIFIED_TIME
+#endif
 
 inline const char* get_filename(const char* path) {
     const char* file = strrchr(path, '/');
@@ -131,16 +144,16 @@ inline char *get_env_var_stringvalue(const char *var_name)
 }
 
 #if defined(TRACE_IOCTL)
-#define xioctl(fh, request, arg) ({                    \
+#define misc_ioctl(fh, request, arg) ({                    \
     int ret_val;                                       \
     do {                                               \
-        printf("<%s> %d XIOCTL(%d, 0x%x, 0x%x) \n", get_filename(__FILE__), __LINE__, fh, request, arg);   \
+        printf("<%s> %d MISC_IOCTL(%d, 0x%x, 0x%x) \n", get_filename(__FILE__), __LINE__, fh, request, arg);   \
         ret_val = ioctl(fh, request, arg);             \
     } while (-1 == ret_val && EINTR == errno);         \
     ret_val;                                           \
 })
 #else
-#define xioctl                  ioctl
+#define misc_ioctl                  ioctl
 #endif
 
 #if defined(DEBUG_PRO)

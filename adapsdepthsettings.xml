@@ -1,12 +1,13 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <!-- copy this file to "SpadisPC\out\x64\Debug" for windows and to /vendor/etc/camera for linux&android	-->
 <Algorithm>
+    <UseMultiThread>true</UseMultiThread>
 	<IndoorOffset>0.000</IndoorOffset>
 	<OutdoorOffset>0.000</OutdoorOffset>
 	<FhrFullOffset>0.000</FhrFullOffset>
 	<OutdoorFhrFullOffset>0.000</OutdoorFhrFullOffset>
 	<!-- ConvolutionType now is set to 0:CPU 、1:NEON 、2:DSP(Android) or AVX (windows)	-->
-	<ConvolutionType>0</ConvolutionType>
+	<ConvolutionType>1</ConvolutionType>
 	<IsUndistort>true</IsUndistort>
 
 	<!-- SM8450 and windows:1032  SM8250:1040  SM8550:1040 Hisilicon:1056 RK3568/RK3588:1280-->
@@ -18,7 +19,7 @@
 	<IsAntiCrosstalk>false</IsAntiCrosstalk>
 	<MultiPeakMinbinThreshold>10</MultiPeakMinbinThreshold>
 	<!-- time bin interval : 125, 250 or 500 -->
-	<TimeBinInterval>250</TimeBinInterval>
+	<TimeBinInterval>500</TimeBinInterval>
 	<!-- Module Type 0:Spots module, 1:array module -->
 	<ModuleType>0</ModuleType>
 	<!-- FrameAccumulateCount -->

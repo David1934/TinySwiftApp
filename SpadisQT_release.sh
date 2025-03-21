@@ -26,7 +26,7 @@ FILES_LST=(
     "mainwindow.cpp"
     "mainwindow.h"
     "mainwindow.ui"
-    "Makefile"
+#    "Makefile"
     "rk-camera-module.h"
     "SpadisQT.pro"
     "utils.cpp"
@@ -54,14 +54,15 @@ Released by: $CURRENT_USER
     please comment 'DEFINES += CONFIG_ADAPS_SWIFT_FLOOD' line if you'd like to use ads6401 as a SPOT module;
     please uncomment 'DEFINES += CONFIG_ADAPS_SWIFT_FLOOD' line if you'd like to use ads6401 as a FLOOD module;
 
-  Once you built the app sucessfully, you can use the following steps to deployment SpadisQT to your devlop board:
-  
+  Once you built the app sucessfully, you can use the following steps to deployment SpadisQT to your develop board:
+
   Step 1: create some directories with the below commands
     mkdir /vendor
     mkdir /vendor/lib64
     mkdir /vendor/etc
     mkdir /vendor/etc/camera
-  
+    mkdir /data/vendor/camera
+
   Step 2A: copy some files to develop board from the build directory if you develop board support ssh login;
     scp Z:\rk_build\app\SpadisQT\libadaps_swift_decode.so root@[fe80::5047:afff:fe7a:1234]:/vendor/lib64/libadaps_swift_decode.so
     scp Z:\rk_build\app\SpadisQT\adapsdepthsettings.xml root@[fe80::5047:afff:fe7a:1234]:/vendor/etc/camera/adapsdepthsettings.xml
@@ -77,7 +78,7 @@ Released by: $CURRENT_USER
 
   (Note: Replace 'Z:\rk_build\app\SpadisQT' with your real path;)
 
-  Step 3: add the executable attribute for SpadisQT
+  Step 3: add the executable attribute for SpadisQT file
     chmod +x /usr/bin/SpadisQT
   
   If you have any questions, please feel free to contact us (https://adapsphotonics.com/).
