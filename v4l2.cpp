@@ -1078,7 +1078,7 @@ int V4L2::Capture_frame()
         total_bytes_per_line = bytesused/snr_param.raw_height;
         payload_bytes_per_line = (snr_param.raw_width * bits_per_pixel)/8;
         padding_bytes_per_line = total_bytes_per_line - payload_bytes_per_line;
-        DBG_NOTICE("\n------frame raw size: %d X %d, bits_per_pixel: %d, payload_bytes_per_line: %d, total_bytes_per_line: %d, padding_bytes_per_line: %d, frame_buffer_size: %d---\n",
+        DBG_NOTICE("------frame raw size: %d X %d, bits_per_pixel: %d, payload_bytes_per_line: %d, total_bytes_per_line: %d, padding_bytes_per_line: %d, frame_buffer_size: %d---\n",
             snr_param.raw_width, snr_param.raw_height,
             bits_per_pixel, payload_bytes_per_line, total_bytes_per_line, padding_bytes_per_line, bytesused);
     }
@@ -1116,7 +1116,7 @@ void V4L2::Stop_streaming(void)
     if (rxFrameCnt <= 0) // not started yet.
         return;
 
-    DBG_NOTICE("\n------Test Statistics------streamed: %02d:%02d:%02d, rxFrameCnt: %ld, fps: %d, frame raw size: %d X %d---\n",
+    DBG_NOTICE("------Test Statistics------streamed: %02d:%02d:%02d, rxFrameCnt: %ld, fps: %d, frame raw size: %d X %d---\n",
         streamed_second/3600,streamed_second/60,streamed_second%60,
         rxFrameCnt, mipi_rx_fps, 
         snr_param.raw_width, snr_param.raw_height);

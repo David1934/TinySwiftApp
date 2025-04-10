@@ -2,7 +2,9 @@
 #define FrameProcessThread_H
 
 #include <QThread>
+#if !defined(NO_UI_APPLICATION)
 #include <QImage>
+#endif
 #include <QDebug>
 #include"v4l2.h"
 #if defined(RUN_ON_ROCKCHIP)
@@ -17,11 +19,12 @@ public:
     FrameProcessThread();
     ~FrameProcessThread();
 
-    QImage majorImage;
     void stop(int stop_request_code);
-    void mode_switch(QString sensortype);
     int init(int index);
     bool isSleeping();
+#if !defined(NO_UI_APPLICATION)
+    void setWatchSpot(QSize img_widget_size, QPoint point);
+#endif
 
 protected:
     void run();
@@ -32,6 +35,7 @@ private:
     volatile bool sleeping;
     volatile bool skip_frame_process;
     struct sensor_params sns_param;
+    char *expected_md5_string;
 
 #if defined(RUN_ON_ROCKCHIP)
     ADAPS_DTOF *adaps_dtof;
@@ -43,7 +47,11 @@ private:
     u16 *merged_depth_buffer;
 #endif
     unsigned char *rgb_buffer;
+    unsigned char *confidence_map_buffer;
     int stop_req_code;
+#if !defined(NO_UI_APPLICATION)
+    QPoint watchSpot;
+#endif
     bool save_frame(unsigned int frm_sequence, void *frm_buf, int buf_size, int frm_w, int frm_h, struct timeval frm_timestamp, enum frame_data_type);
     void save_depth_txt_file(void *frm_buf,unsigned int frm_sequence,int frm_len);
 
@@ -53,7 +61,11 @@ private slots:
     void onThreadLoopExit();
 
 signals:
-    void newFrameReady4Display(QImage image);
+
+#if !defined(NO_UI_APPLICATION)
+    void newFrameReady4Display(QImage image, QImage img4confidence);
+    void updateWatchSpotInfo(QPoint spot, enum frame_data_type ftype, watchPointInfo_t wpi);
+#endif
     bool update_runtime_display(status_params2 param2);
     void threadLoopExit();
     void threadEnd(int exit_request_code);

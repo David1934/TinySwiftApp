@@ -31,7 +31,7 @@
 // BUT, to extend the maximum measurement distance from 8.192 meters to 16.384 meters, 
 // we have modified depth16 format. The lower 14 bits represent the actual distance, and the higher 2 bits represent the confidence level.
 const int CONFIDENCE_MASK = 0x3;
-const int DEPTH_MASK = 0x3FFF; // For depth16 format, the low 13 bits is distance
+const int DEPTH_MASK = 0x3FFF; // For depth16 format, the low 14 bits is distance
 const int DEPTH_BITS = 14;
 
 const int COLOR_HIGH = 9000;
@@ -43,7 +43,7 @@ const int RANGE_MAX = 8192;
 
 #define MAX_DEPTH_OUTPUT_FORMATS 3
 #define CHIP_TEMPERATURE_MIN_THRESHOLD             15.0
-#define CHIP_TEMPERATURE_MAX_THRESHOLD             100.0
+#define CHIP_TEMPERATURE_MAX_THRESHOLD             90.0
 
 /* Minimum and maximum macros */
 #define MAX(a,b)  (((a) > (b)) ? (a) : (b))
@@ -52,7 +52,7 @@ const int RANGE_MAX = 8192;
 enum depth_confidence_level{
     ANDROID_CONF_HIGH = 0,
     ANDROID_CONF_LOW = 1,
-//    ANDROID_CONF_MEDIUM = 3
+    ANDROID_CONF_MEDIUM = 3
 };
 
 struct BGRColor
@@ -86,11 +86,11 @@ public:
     ~ADAPS_DTOF();
 
     int adaps_dtof_initilize();
-    void ConvertDepthToColoredMap(u16 depth16_buffer[], u8 depth_colored_map[], int outImgWidth, int outImgHeight);
+    void GetDepth4watchSpot(const u16 depth16_buffer[], const int outImgWidth, const int outImgHeight, u8 x, u8 y, u16 *distance, u8 *confidence);
+    void ConvertDepthToColoredMap(const u16 depth16_buffer[], u8 depth_colored_map[], u8 depth_confidence_map[], const int outImgWidth, const int outImgHeight);
     void ConvertGreyscaleToColoredMap(u16 depth16_buffer[], u8 depth_colored_map[], int outImgWidth, int outImgHeight);
     int dtof_frame_decode(unsigned char *frm_rawdata, int buf_len, u16 depth16_buffer[], enum sensor_workmode swk);
     void adaps_dtof_release();
-    void mode_switch(struct sensor_params params, V4L2 *v4l2);
 #if defined(ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT)
     int DepthBufferMerge(u16 merged_depth16_buffer[], const u16 to_merge_depth16_buffer[], int outImgWidth, int outImgHeight);
 #endif

@@ -42,6 +42,9 @@ public:
     void nv12_2_rgb(unsigned char *nv12, unsigned char *rgb, int width, int height);
     void yuyv_2_rgb(unsigned char *yuyv, unsigned char *rgb, int width, int height);
     bool IsASCII(const char c);
+    void GetRgb4watchPoint(const u8 rgb_buffer[], const int outImgWidth, const int outImgHeight, u8 x, u8 y, u8 *r, u8 *g, u8 *b);
+    void GetPidTid(const char *callfunc, const int callline);
+    int MD5Check4Buffer(const unsigned char* buffer, int size, const char *expected_md5_string, const char *call_func, int call_line);
 
     static bool is_env_var_true(const char *var_name)
     {
@@ -77,6 +80,8 @@ private:
     uint32_t m_crc32_table[256];
     void generate_crc32_table();
     void loadFiles(const QString &directoryPath, const QString &fileExtension);
+    unsigned char hexCharToValue(char c);
+    void hexStringToByteArray(const char* hexString, unsigned char* byteArray, int byteArrayLength);
 };
 
 #endif // UTILS_H

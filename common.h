@@ -18,9 +18,9 @@
 #endif
 
 #define VERSION_MAJOR                           2
-#define VERSION_MINOR                           2
+#define VERSION_MINOR                           3
 #define VERSION_REVISION                        0
-#define LAST_MODIFIED_TIME                      "20250326A"
+#define LAST_MODIFIED_TIME                      "20250422A"
 
 #define DEFAULT_DTOF_FRAMERATE                  AdapsFramerateType30FPS // AdapsFramerateType60FPS
 
@@ -59,21 +59,23 @@
 #define WAIT_TIME_4_THREAD_EXIT                 10  // unit is  milliseconds
 
 #if defined(RUN_ON_ROCKCHIP)
-#define WKMODE_4_RGB_SENSOR                     WK_RGB_NV12    // On DELL notebook, it is WK_MODE_YUYV, on Apple notebook it is WK_MODE_NV12?
+    #define DEFAULT_CFG_4_COWORK_WITH_HOST      true
+    #define DEFAULT_SENSOR_TYPE                 SENSOR_TYPE_DTOF
+    #define DEFAULT_ENVIRONMENT_TYPE            AdapsEnvTypeIndoor
+    #define DEFAULT_MEASUREMENT_TYPE            AdapsMeasurementTypeFull
 
-#define DEFAULT_SENSOR_TYPE                     SENSOR_TYPE_DTOF
-#define DEFAULT_WORK_MODE                       WK_DTOF_FHR
     #if (ADS6401_MODDULE_SPOT == SWIFT_MODULE_TYPE)
         #define SWIFT_MODULE_TYPE_NAME          "Spot"
     #else
         #define SWIFT_MODULE_TYPE_NAME          "Flood"
     #endif
 #else
-#define WKMODE_4_RGB_SENSOR                     WK_RGB_YUYV    // On DELL notebook, it is WK_MODE_YUYV, on Apple notebook it is WK_MODE_NV12?
-
-#define DEFAULT_SENSOR_TYPE                     SENSOR_TYPE_RGB
-#define DEFAULT_WORK_MODE                       WKMODE_4_RGB_SENSOR
+    #define DEFAULT_SENSOR_TYPE                 SENSOR_TYPE_RGB
+    #define DEFAULT_CFG_4_COWORK_WITH_HOST      false
 #endif
+
+#define WKMODE_4_RGB_SENSOR                     WK_RGB_YUYV    // On DELL notebook, it is WK_MODE_YUYV, on Apple notebook it is WK_MODE_NV12?
+#define DEFAULT_WORK_MODE                       WK_UNINITIALIZED
 
 #define DEBUG_PRO
 #define ENV_VAR_SAVE_EEPROM_ENABLE              "save_eeprom_enable"
@@ -83,7 +85,7 @@
 #define ENV_VAR_SKIP_FRAME_PROCESS              "skip_frame_process"
 #define ENV_VAR_SKIP_EEPROM_CRC_CHK             "skip_eeprom_crc_check"
 #define ENV_VAR_DUMP_LENS_INTRINSIC             "dump_lens_intrinsic"
-#define ENV_VAR_DISABLE_EXPAND_PIXEL            "disable_expand_pixel"      // processed in adaps decode algo lib
+#define ENV_VAR_ENABLE_EXPAND_PIXEL             "enable_expand_pixel"      // processed in adaps decode algo lib
 #define ENV_VAR_DISABLE_COMPOSE_SUBFRAME        "disable_compose_subframe"  // processed in adaps decode algo lib
 #define ENV_VAR_DUMP_ROI_SRAM_SIZE              "dump_roi_sram_size"
 #define ENV_VAR_TRACE_ROI_SRAM_SWITCH           "trace_roi_sram_switch"
@@ -91,6 +93,8 @@
 #define ENV_VAR_MIRROR_X_ENABLE                 "mirror_x_enable"
 #define ENV_VAR_MIRROR_Y_ENABLE                 "mirror_y_enable"
 #define ENV_VAR_DISABLE_WALK_ERROR              "disable_walk_error"      // processed in adaps decode algo lib
+#define ENV_VAR_DUMP_MID_CONF_ENABLE            "log_medium_confidence_spot"
+#define ENV_VAR_EXPECTED_FRAME_MD5SUM           "expected_frame_md5sum"
 
 #define __tostr(x)                          #x
 #define __stringify(x)                      __tostr(x)
@@ -223,6 +227,7 @@ enum stop_request_code{
 };
 
 enum sensortype{
+    SENSOR_TYPE_UNINITIALIZED,
     SENSOR_TYPE_RGB,
     SENSOR_TYPE_DTOF
 };
@@ -244,8 +249,24 @@ enum sensor_workmode{
     WK_DTOF_FHR,
     WK_RGB_NV12,
     WK_RGB_YUYV,
-    WK_COUNT
+    WK_UNINITIALIZED,
+    WK_COUNT = WK_UNINITIALIZED,
 };
+
+typedef union watchPointInfo
+{
+    struct
+    {
+        u8 red;
+        u8 green;
+        u8 blue;
+    };
+    struct
+    {
+        u16 distance;
+        u8 confidence;
+    };
+} watchPointInfo_t;
 
 struct sensor_params
 {
@@ -293,6 +314,8 @@ struct status_params2
 
 Q_DECLARE_METATYPE(struct status_params1);
 Q_DECLARE_METATYPE(struct status_params2);
+Q_DECLARE_METATYPE(enum frame_data_type);
+Q_DECLARE_METATYPE(watchPointInfo_t);
 
 #endif // COMMON_H
 

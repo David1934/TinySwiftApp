@@ -1,14 +1,14 @@
 #include <execinfo.h>
+#if !defined(NO_UI_APPLICATION)
 #include <QScreen>
 #include <QDesktopWidget>
-
+#endif
 #include "mainwindow.h"
 #include "globalapplication.h"
 #include <csignal>
 #include <unistd.h>
 
-static QApplication* app = nullptr;
-
+static GlobalApplication* app = nullptr;
 static MainWindow* mainWindow = nullptr;
 
 static void dump_stack()
@@ -58,6 +58,7 @@ static void handleSignal(int signal)
     }
 }
 
+#if !defined(NO_UI_APPLICATION)
 static void getScreenResolution()
 {
     qreal screenWidth = QGuiApplication::primaryScreen()->geometry().width();
@@ -73,6 +74,7 @@ static void getScreenResolution()
     //qCritical() << "QApplication Screen Resolution:" << screenWidth2 << "x" << screenHeight2;
     DBG_INFO("QApplication Screen  resolution: %d X %d...\n", screenWidth2, screenHeight2);
 }
+#endif
 
 int main(int argc, char *argv[])
 {
@@ -101,10 +103,12 @@ int main(int argc, char *argv[])
     pthread_sigmask(SIG_UNBLOCK, &signal_set, nullptr);
 #endif
 
+#if !defined(NO_UI_APPLICATION)
     w.setWindowFlags(w.windowFlags() & ~Qt::WindowMaximizeButtonHint & ~Qt::WindowMinimizeButtonHint);
     //w.setStyleSheet("QMainWindow::title { font-family: Arial; font-size: 21pt; }");
     w.show();
     getScreenResolution();
+#endif
 
     result = a.exec();
     DBG_INFO("Application exited with code:: %d", result);

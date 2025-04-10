@@ -1,3 +1,19 @@
+X. @2025/04/22 -- version update to 2.3.0_LM20250422A
+    redmine #2264: SpadisQT 增加置信度bitmap图，增加单点深度显示，界面上增加工作模式选择等
+    http://gerrit.adaps.corp/c/SpadisQT/+/4698
+
+    patch set 1-2: add build switch NO_UI_APPLICATION to build into a console application for performance optimaze and test;
+    patch set 3: add confidence map display for debug;
+    patch set 4: add informat(depth/rgb) display for a specific watch point;
+    patch set 9: If no work mode is specified via cmd-line parameters, enter UI to wait user to select a work mode & environment type;
+    patch set 10: enable start/stop repeatly, and adjust UI layout;
+    patch set 11: add cmd line parameters etype and mtype to specify the environment and measurement type;
+    patch set 13: sync CHIP_TEMPERATURE_MAX_THRESHOLD to 90 with swfit algo lib, add md5 check for FHR raw data when test pattern enabled;
+
+    已知问题：
+      FHR模式，首次按START按钮出图正常，STOP后再次START深度图偏红，confidence图偏蓝。
+      已核对寄存器正常，test pattern使能时RAW data输出未变，但是深度图显示还是异常，初步判断可能算法库有变量未复位到初始值。
+
 X. @2025/03/26 -- version update to 2.2.0_LM20250326A
     redmine #2222: SpadisQT: 更新EEPROM数据结构到最新64K版本，增加misc device提高软件灵活性
     http://gerrit.adaps.corp/c/SpadisQT/+/4628

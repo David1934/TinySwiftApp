@@ -32,13 +32,6 @@ ADAPS_DTOF::~ADAPS_DTOF()
     m_v4l2 = NULL;
 }
 
-void ADAPS_DTOF::mode_switch(struct sensor_params params, V4L2 *v4l2)
-{
-    memcpy(&m_sns_param, &params, sizeof(struct sensor_params));
-    m_conversionLibInited = false;
-    m_v4l2 = v4l2;
-}
-
 u8 ADAPS_DTOF::normalizeGreyscale(u16 range) {
     u16 normalized = range - RANGE_MIN;
     // Clamp to min/max
@@ -137,12 +130,12 @@ void ADAPS_DTOF::initParams(WrapperDepthInitInputParams* initInputParams,Wrapper
 #if defined(ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT)
     set_param.expand_pixel = false;
 #else
-    if (true == Utils::is_env_var_true(ENV_VAR_DISABLE_EXPAND_PIXEL))
+    if (true == Utils::is_env_var_true(ENV_VAR_ENABLE_EXPAND_PIXEL))
     {
-        set_param.expand_pixel = false;
+        set_param.expand_pixel = true;
     }
     else {
-        set_param.expand_pixel = true;
+        set_param.expand_pixel = false;
     }
 #endif
 
@@ -261,6 +254,7 @@ void ADAPS_DTOF::adaps_dtof_release()
     if (NULL != m_handlerDepthLib)
     {
         DepthMapWrapperDestroy(m_handlerDepthLib);
+        DBG_INFO("Adaps depth lib destroy okay.");
         m_handlerDepthLib = NULL;
     }
 }
@@ -276,9 +270,14 @@ void ADAPS_DTOF::PrepareFrameParam(WrapperDepthCamConfig *wrapper_depth_map_conf
     }
 
     if (t < CHIP_TEMPERATURE_MIN_THRESHOLD) {// Eg. m_currToFTemperature in camxsensornode.cpp is not set since temperature read failure.
-        DBG_ERROR("Invalid temperature: %f", t);
+        DBG_ERROR("too low temperature: %f", t);
         wrapper_depth_map_config->frame_parameters.laser_realtime_tempe = CHIP_TEMPERATURE_MIN_THRESHOLD;
-    } else {
+    }
+    else if (t > CHIP_TEMPERATURE_MAX_THRESHOLD) {// Eg. m_currToFTemperature in camxsensornode.cpp is not set since temperature read failure.
+        DBG_ERROR("too high temperature: %f", t);
+        wrapper_depth_map_config->frame_parameters.laser_realtime_tempe = CHIP_TEMPERATURE_MAX_THRESHOLD;
+    }
+    else {
         wrapper_depth_map_config->frame_parameters.laser_realtime_tempe = t;
     }
 
@@ -370,7 +369,16 @@ int ADAPS_DTOF::DepthBufferMerge(u16 merged_depth16_buffer[], const u16 to_merge
 }
 #endif
 
-void ADAPS_DTOF::ConvertDepthToColoredMap(u16 depth16_buffer[], u8 depth_colored_map[], int outImgWidth, int outImgHeight)
+void ADAPS_DTOF::GetDepth4watchSpot(const u16 depth16_buffer[], const int outImgWidth, const int outImgHeight, u8 x, u8 y, u16 *distance, u8 *confidence)
+{
+    int rawImgIdx;
+    rawImgIdx = y * outImgWidth + x;
+
+    *distance = depth16_buffer[rawImgIdx] & DEPTH_MASK;
+    *confidence = (depth16_buffer[rawImgIdx] >> DEPTH_BITS) & CONFIDENCE_MASK;
+}
+
+void ADAPS_DTOF::ConvertDepthToColoredMap(const u16 depth16_buffer[], u8 depth_colored_map[], u8 depth_confidence_map[], const int outImgWidth, const int outImgHeight)
 {
     int rawImgIdx;
     struct BGRColor bgrColor;
@@ -378,7 +386,7 @@ void ADAPS_DTOF::ConvertDepthToColoredMap(u16 depth16_buffer[], u8 depth_colored
     u8 confidence;
     float bucketSize;
     int bucketNum;
-    int  i, j, rgb_index = 0;
+    int  i, j;
     int non_zero_depth_count = 0;
 
     for (j = 0; j < outImgHeight; j++) {
@@ -431,16 +439,39 @@ void ADAPS_DTOF::ConvertDepthToColoredMap(u16 depth16_buffer[], u8 depth_colored
             {
                 non_zero_depth_count++;
 
-                if (Utils::is_env_var_true(ENV_VAR_DUMP_SPOT_DEPTH))
+                if (ANDROID_CONF_LOW == confidence)
                 {
-                    DBG_NOTICE("frm_cnt: %d, non_zero_depth_count: %d, Spot(%d, %d) depth16: 0x%x, distance: %d mm, confidence: %d, bucketNum: %d, bucketSize: %f", m_decoded_frame_cnt, non_zero_depth_count, i, j, depth16_buffer[rawImgIdx], distance, confidence, bucketNum, bucketSize);
+                    depth_confidence_map[rawImgIdx * 3 + 0] = 0xFF; //Red;
+                    depth_confidence_map[rawImgIdx * 3 + 1] = 0x00; //Green;
+                    depth_confidence_map[rawImgIdx * 3 + 2] = 0x00; //Blue;
+                }
+                else if (ANDROID_CONF_HIGH == confidence)
+                {
+                    depth_confidence_map[rawImgIdx * 3 + 0] = 0x00; //Red;
+                    depth_confidence_map[rawImgIdx * 3 + 1] = 0xFF; //Green;
+                    depth_confidence_map[rawImgIdx * 3 + 2] = 0x00; //Blue;
+                }
+                else {
+                    if (Utils::is_env_var_true(ENV_VAR_DUMP_MID_CONF_ENABLE))
+                    {
+                        DBG_NOTICE("frm_cnt: %d, non_zero_depth_count: %d, Spot(%d, %d) depth16: 0x%x, distance: %d mm, confidence: %d", 
+                            m_decoded_frame_cnt, non_zero_depth_count, i, j, depth16_buffer[rawImgIdx], distance, confidence);
+                    }
+                    depth_confidence_map[rawImgIdx * 3 + 0] = 0x00; //Red;
+                    depth_confidence_map[rawImgIdx * 3 + 1] = 0x00; //Green;
+                    depth_confidence_map[rawImgIdx * 3 + 2] = 0xFF; //Blue;
                 }
             }
+            else {
+                // show BLACK for those spots whose distance is 0.
+                depth_confidence_map[rawImgIdx * 3 + 0] = 0x00; //Red;
+                depth_confidence_map[rawImgIdx * 3 + 1] = 0x00; //Green;
+                depth_confidence_map[rawImgIdx * 3 + 2] = 0x00; //Blue;
+            }
 
-            depth_colored_map[rgb_index * 3 + 0] = bgrColor.Red;
-            depth_colored_map[rgb_index * 3 + 1] = bgrColor.Green;
-            depth_colored_map[rgb_index * 3 + 2] = bgrColor.Blue;
-            rgb_index++;
+            depth_colored_map[rawImgIdx * 3 + 0] = bgrColor.Red;
+            depth_colored_map[rawImgIdx * 3 + 1] = bgrColor.Green;
+            depth_colored_map[rawImgIdx * 3 + 2] = bgrColor.Blue;
         }
     }
 
@@ -461,17 +492,20 @@ void ADAPS_DTOF::ConvertGreyscaleToColoredMap(u16 depth16_buffer[], u8 depth_col
 {
     int rawImgIdx;
     int  i, j, rgb_index = 0;
+    u16 distance;
+    u8 greyColor;
 
     for (j = 0; j < outImgHeight; j++) {
         for (i = 0; i < outImgWidth; i++) {
             rawImgIdx = j * outImgWidth + i;
-            u16 distance = depth16_buffer[rawImgIdx] & DEPTH_MASK;
-            u8 greyColor = normalizeGreyscale(distance);
+            distance = depth16_buffer[rawImgIdx] & DEPTH_MASK;
+            greyColor = normalizeGreyscale(distance);
 
             depth_colored_map[rgb_index * 3 + 0] = greyColor;
             depth_colored_map[rgb_index * 3 + 1] = greyColor;
             depth_colored_map[rgb_index * 3 + 2] = greyColor;
             rgb_index++;
+
         }
     }
 }
@@ -507,7 +541,7 @@ int ADAPS_DTOF::dtof_frame_decode(unsigned char *frm_rawdata, int frm_rawdata_si
 #endif
 
     depthInput.in_image    = (const int8_t*)frm_rawdata;
-    depthInput.formatParams.bitsPerPixel =8;
+    depthInput.formatParams.bitsPerPixel = 8;
     depthInput.formatParams.strideBytes  = m_sns_param.raw_width;
     depthInput.formatParams.sliceHeight  = m_sns_param.raw_height;
     //DBG_INFO( "raw_width: %d raw_height: %d out_width: %d out_height: %d\n", m_sns_param.raw_width, m_sns_param.raw_height, m_sns_param.out_frm_width, m_sns_param.out_frm_height);

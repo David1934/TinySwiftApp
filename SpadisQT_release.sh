@@ -29,6 +29,7 @@ FILES_LST=(
 #    "Makefile"
     "rk-camera-module.h"
     "SpadisQT.pro"
+    "SpadisQT_console.pro"
     "utils.cpp"
     "utils.h"
     "v4l2.cpp"

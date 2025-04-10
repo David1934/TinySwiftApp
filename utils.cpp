@@ -1,3 +1,11 @@
+#include <stdio.h>
+#include <unistd.h>
+#include <sys/syscall.h>
+#include <pthread.h>
+#include <zlib.h>
+#include <cinttypes>
+#include <openssl/md5.h>
+
 #include "utils.h"
 
 static const unsigned char CRC8Table[] = {
@@ -282,4 +290,70 @@ void Utils::yuyv_2_rgb(unsigned char *yuyv, unsigned char *rgb, int width, int h
     }
 }
 
+void Utils::GetRgb4watchPoint(const u8 rgb_buffer[], const int outImgWidth, const int outImgHeight, u8 x, u8 y, u8 *r, u8 *g, u8 *b)
+{
+    int rawImgIdx;
+    rawImgIdx = y * outImgWidth + x;
+
+    *r = rgb_buffer[rawImgIdx * 3 + 0];
+    *g = rgb_buffer[rawImgIdx * 3 + 1];
+    *b = rgb_buffer[rawImgIdx * 3 + 2];
+}
+
+void Utils::GetPidTid(const char *callfunc, const int callline)
+{
+    pid_t pid = getpid();
+    pid_t tid = syscall(SYS_gettid);
+
+#if 0
+    // 获取 POSIX 线程 ID
+    pthread_t ptid = pthread_self();
+
+    printf("--------PID: %d, TID (kernel): %d, pthread ID: %lu for <%s> Line: %d--------\n",
+           pid, tid, (unsigned long)ptid, callfunc, callline);
+#else
+    printf("--------PID: %d, TID (kernel): %d for <%s> Line: %d--------\n",
+           pid, tid, callfunc, callline);
+#endif
+}
+
+unsigned char Utils::hexCharToValue(char c)
+{
+    if (c >= '0' && c <= '9') {
+        return c - '0';
+    } else if (c >= 'a' && c <= 'f') {
+        return 10 + (c - 'a');
+    } else if (c >= 'A' && c <= 'F') {
+        return 10 + (c - 'A');
+    }
+    return 0; // Invalid hex char
+}
+
+void Utils::hexStringToByteArray(const char* hexString, unsigned char* byteArray, int byteArrayLength)
+{
+    int hexStringLength = strlen(hexString);
+    for (int i = 0; i < hexStringLength && i/2 < byteArrayLength; i += 2) {
+        byteArray[i/2] = hexCharToValue(hexString[i]) * 16 + hexCharToValue(hexString[i + 1]);
+    }
+}
+
+int Utils::MD5Check4Buffer(const unsigned char* buffer, int size, const char *expected_md5_string, const char *call_func, int call_line)
+{
+    int ret = 0;
+    unsigned char calced_md5[MD5_DIGEST_LENGTH];
+    unsigned char expected_md5[MD5_DIGEST_LENGTH];
+
+    MD5(buffer, size, calced_md5);
+    hexStringToByteArray(expected_md5_string, expected_md5, MD5_DIGEST_LENGTH);
+    if (memcmp(expected_md5, calced_md5, MD5_DIGEST_LENGTH))
+    {
+        DBG_ERROR("===md5 mismatched call from <%s> Line: %d===", call_func, call_line);
+        ret = -1;
+    }
+    else {
+        DBG_INFO("===md5 mismatched call from <%s> Line: %d===", call_func, call_line);
+    }
+
+    return ret;
+}
 
