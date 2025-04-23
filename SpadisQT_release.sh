@@ -13,6 +13,8 @@ FILES_LST=(
     "adapsdepthsettings.xml"
     "adaps_dtof.cpp"
     "adaps_dtof.h"
+    "host_comm.cpp"
+    "host_comm.h"
     "adaps_dtof_uapi.h"
     "adaps_types.h"
     "common.h"
@@ -22,12 +24,12 @@ FILES_LST=(
     "globalapplication.cpp"
     "globalapplication.h"
     "libadaps_swift_decode.so"
+    "libAdapsSender.so"
     "main.cpp"
     "mainwindow.cpp"
     "mainwindow.h"
     "mainwindow.ui"
 #    "Makefile"
-    "rk-camera-module.h"
     "SpadisQT.pro"
     "SpadisQT_console.pro"
     "utils.cpp"
@@ -62,10 +64,13 @@ Released by: $CURRENT_USER
     mkdir /vendor/lib64
     mkdir /vendor/etc
     mkdir /vendor/etc/camera
+    mkdir /data
+    mkdir /data/vendor
     mkdir /data/vendor/camera
 
   Step 2A: copy some files to develop board from the build directory if you develop board support ssh login;
     scp Z:\rk_build\app\SpadisQT\libadaps_swift_decode.so root@[fe80::5047:afff:fe7a:1234]:/vendor/lib64/libadaps_swift_decode.so
+    scp Z:\rk_build\app\SpadisQT\libAdapsSender.so root@[fe80::5047:afff:fe7a:1234]:/vendor/lib64/libAdapsSender.so
     scp Z:\rk_build\app\SpadisQT\adapsdepthsettings.xml root@[fe80::5047:afff:fe7a:1234]:/vendor/etc/camera/adapsdepthsettings.xml
     scp Z:\rk_build\app\SpadisQT\SpadisQT root@[fe80::5047:afff:fe7a:1234]:/usr/bin/SpadisQT
 
@@ -74,6 +79,7 @@ Released by: $CURRENT_USER
 
   Step 2B: copy some files to develop board from the build directory if you develop board support adb push;
     adb push Z:\rk_build\app\SpadisQT\libadaps_swift_decode.so /vendor/lib64/.
+    adb push Z:\rk_build\app\SpadisQT\libAdapsSender.so /vendor/lib64/.
     adb push Z:\rk_build\app\SpadisQT\adapsdepthsettings.xml /vendor/etc/camera/.
     adb push Z:\rk_build\app\SpadisQT\SpadisQT /usr/bin/.
 

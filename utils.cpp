@@ -77,6 +77,22 @@ unsigned char Utils::CRC8Calculate(const unsigned char buffer[], int len)
     return crc8;
 }
 
+bool Utils::save_binary_file(const char *filename, const void *buffer, size_t size, const char *call_func, unsigned int call_line)
+{
+    FILE *fp = fopen(filename, "wb");
+
+    if (fp == NULL_POINTER) {
+        DBG_ERROR("Fail to create file %s , errno: %s (%d) call from <%s> Line: %d...", 
+            filename, strerror(errno), errno, call_func, call_line);
+        return false;
+    }
+
+    fwrite(buffer, size, 1, fp);
+    fclose(fp);
+
+    return true;
+}
+
 // 加载指定目录下特定后缀名的文件到文件列表
 void Utils::loadFiles(const QString &directoryPath, const QString &fileExtension) {
     QDir dir(directoryPath);
@@ -163,7 +179,7 @@ void Utils::test_pattern_generate(unsigned char *write_buf, int len, int ptn_idx
     }
 }
 
-bool Utils::IsASCII(const char c)
+bool Utils::IsASCII(const unsigned char c)
 {
     bool ret = false;
 
@@ -180,12 +196,12 @@ void Utils::hexdump(const unsigned char * buf, int buf_len, const char * title)
     char            line_buf[100];
     int             line_len;
 
-    if (NULL == buf) {
+    if (NULL_POINTER == buf) {
         DBG_ERROR("Null pointer");
         return;
     }
 
-    if (NULL != title) {
+    if (NULL_POINTER != title) {
         DBG_PRINTK("-------%s--------\n", title);
     }
 
@@ -202,7 +218,7 @@ void Utils::hexdump(const unsigned char * buf, int buf_len, const char * title)
             line_len += sprintf(line_buf + line_len, "%02x,", buf[k]);
         }
 
-        line_len += sprintf(line_buf + line_len, "%s", "---");
+        line_len += sprintf(line_buf + line_len, "%s", "    ");
 
         for (j = 0; j < NoPerLine; j++) {
             k = i * NoPerLine + j;
@@ -290,10 +306,10 @@ void Utils::yuyv_2_rgb(unsigned char *yuyv, unsigned char *rgb, int width, int h
     }
 }
 
-void Utils::GetRgb4watchPoint(const u8 rgb_buffer[], const int outImgWidth, const int outImgHeight, u8 x, u8 y, u8 *r, u8 *g, u8 *b)
+void Utils::GetRgb4watchPoint(const u8 rgb_buffer[], const int out_frm_width, u8 x, u8 y, u8 *r, u8 *g, u8 *b)
 {
     int rawImgIdx;
-    rawImgIdx = y * outImgWidth + x;
+    rawImgIdx = y * out_frm_width + x;
 
     *r = rgb_buffer[rawImgIdx * 3 + 0];
     *g = rgb_buffer[rawImgIdx * 3 + 1];
@@ -337,6 +353,16 @@ void Utils::hexStringToByteArray(const char* hexString, unsigned char* byteArray
     }
 }
 
+void Utils::byteArray2HexString(const unsigned char byteArray[], int byteArrayLength, char* outputHexString)
+{
+    int j;
+    int output_len = 0;
+
+    for (j = 0; j < byteArrayLength; j++) {
+        output_len += sprintf(outputHexString + output_len, "%02x", byteArray[j]);
+    }
+}
+
 int Utils::MD5Check4Buffer(const unsigned char* buffer, int size, const char *expected_md5_string, const char *call_func, int call_line)
 {
     int ret = 0;
@@ -356,4 +382,62 @@ int Utils::MD5Check4Buffer(const unsigned char* buffer, int size, const char *ex
 
     return ret;
 }
+
+#if 0
+int Utils::MD5Calculate(const unsigned char* buffer, int size, const char *call_func, unsigned int call_line)
+{
+    int ret = 0;
+    unsigned char calced_md5[MD5_DIGEST_LENGTH];
+    char calced_md5_string[MD5_DIGEST_LENGTH*2+1];
+
+    MD5(buffer, size, calced_md5);
+    byteArray2HexString(calced_md5, MD5_DIGEST_LENGTH, calced_md5_string);
+    DBG_NOTICE("===md5 is <%s> call from <%s> Line: %d, MD5_DIGEST_LENGTH: %d===", calced_md5_string, call_func, call_line, MD5_DIGEST_LENGTH);
+
+    return ret;
+}
+
+#else
+int Utils::MD5Calculate(const unsigned char* buffer, int size, const char *call_func, unsigned int frm_sequence)
+{
+    int ret = 0;
+    bool matched = false;
+    unsigned char calced_md5[MD5_DIGEST_LENGTH];
+    char calced_md5_string[MD5_DIGEST_LENGTH*2+1];
+    char md5_4_first_3_subframe[] = "d1758809104f766aca66731345ab8a9f";
+    char md5_4_forth_subframe[] = "97bd91b9e01d9f6a92bb551e27987a5f"; //518c6143ff199c498f6708619f01774f";
+
+    MD5(buffer, size, calced_md5);
+    byteArray2HexString(calced_md5, MD5_DIGEST_LENGTH, calced_md5_string);
+    if (memcmp(calced_md5_string, md5_4_first_3_subframe, MD5_DIGEST_LENGTH*2))
+    {
+        if (memcmp(calced_md5_string, md5_4_forth_subframe, MD5_DIGEST_LENGTH*2))
+        {
+        }
+        else {
+            matched = true;
+        }
+    }
+    else {
+        matched = true;
+    }
+
+    if (matched)
+    {
+//        DBG_NOTICE("===md5 is <%s> call from <%s> Line: %d, matched===", calced_md5_string, call_func, call_line);
+    }
+    else {
+        DBG_ERROR("===md5 is <%s> call from <%s> frm_sequence: %d, MISMATCHED===", calced_md5_string, call_func, frm_sequence);
+        if (frm_sequence < 4)
+        {
+            char filename[50];
+            
+            sprintf(filename, "%s%s.depth16", DATA_SAVE_PATH, calced_md5_string);
+            save_binary_file(filename, buffer, size, __FUNCTION__, __LINE__);
+        }
+    }
+
+    return ret;
+}
+#endif
 

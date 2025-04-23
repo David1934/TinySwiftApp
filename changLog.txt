@@ -1,4 +1,59 @@
-X. @2025/04/22 -- version update to 2.3.0_LM20250422A
+7. @2025/05/29 -- version update to 3.0.0_LM20250529A
+    redmine #2334: swift下位机应用SpadisQT接入sender与PC端SpadisApp通讯
+    http://gerrit.adaps.corp/c/SpadisQT/+/4759
+
+    patch set 2: implement Host_Communication class (Singleton mode);
+    patch set 4: remove the dependent for rk-camera-module.h for better portability in the future;
+    patch set 5-6: start to implement start_capture/stop_capture/send_frame_raw_data functions;
+    patch set 7: parse the input parameter for CMD_TYPE_CLIENT_START_CAPTURE command;
+    patch set 8: change ~Host_Communication() to public to be able to delete Host_Communication class and sender_destroy() when exit;
+    patch set 10: change build switch RUN_ON_ROCKCHIP to RUN_ON_EMBEDDED_LINUX;
+    patch set 11: set the framerate type from GUI or host request, 30 fps by default;
+    patch set 12: Only when host is connected, and the capture request is from host, SpadisQT send eeprom/raw data to PC host side;
+    patch set 15: add Host_Communication::dump_buffer_data() to debug host-device communication;
+    patch set 16-17: improve code to debug host-device communication;
+    patch set 18: work mode can be passed from PC side to device side;
+    patch set 19: add eeprom_calib_param_t to report eeprom capacity and module type at the same time;
+    patch set 20: update frame_buffer_param_t data structure to pass more info;
+    patch set 21: improve code to debug depth16 output abnormal issue;
+    patch set 22: bugfix: setparam->calibrationInfo should use device info,which include calibrate version info;
+    patch set 23-25: add register read/write command for host;
+    patch set 26-28: add config script load mode from PC SpadisApp;
+    patch set 30: bugfix: When the last line of the script file does not have a newline character, an error occurs while reading the last line;
+         (Original text: "I2C_Write, 31, 5D, 20"; misread as "I2C_Write, 31, 5D,2C")
+                  set frame_parameters.focusRoi parameter values to fix depth display missing some columns at the right side;
+    patch set 31: add host_comm::report_error_msg(), and report error if execute ADTOF_SET_EXTERNAL_CONFIG_SCRIPT failure;
+    patch set 33: rename ADTOF_SET_SENSOR_REGISTER/ADTOF_GET_SENSOR_REGISTER to ADTOF_SET_DEVICE_REGISTER/ADTOF_GET_DEVICE_REGISTER to support multiple i2c address with the unified REGISTER read/write ioctl commands;
+    patch set 34: add ptm_fine_exposure_value and exposure_period for frame_buffer_param_t;
+    patch set 35: start add Delay and Block_Write command support for script_load mode;
+    patch set 36: start to modify code to add some member variables for report_module_calibrate_data() and swift_start_capture();
+    patch set 37: separate the v4l2 class from the misc_device class to allow for some preparatory work to be done before starting capture;
+    patch set 42: debug ran wild (or went out of control) bug in the function report_module_static_data();`
+    patch set 43: add dump parameters function with some environment variables;
+    patch set 44-45: start to add scipt load support for ads6401 flood module;
+    patch set 46: fix all build warning and errors on rk3568 and PC deepin Linux;
+    patch set 47: check '(false == connected || false == sender_is_working())' before sending a buffer to PC side;
+    patch set 48, add environment variable 'skip_frame_decode', the origianl 'skip_frame_process' is used for whole frame process skip;
+    patch set 50: script load mode: Delay command parse & add, handle empty line in the middle of the script files correctly;
+    patch set 51: send decoded frame depth16 data to PC side if req_out_data_type include these frame data types;
+    patch set 53: sync color map conversion from depth to color with PC SpadisApp, add CMD_HOST_SIDE_SET_COLORMAP_RANGE_PARAM cmd to update device side's setting from the PC side;
+    patch set 55: when capture req from host side, pass some parameters to algo decode lib in adaps_dtof.cpp;
+
+    1. 去除对rk-camer-module.h文件的引用，修改编译开关RUN_ON_ROCKCHIP to RUN_ON_EMBEDDED_LINUX，使SpadisQT更容易适配到其他SoC平台；
+    2. 增加Host_Communication类，用来实现与上位机SpadisApp通讯;
+    3. 增加misc_device类，以便在SpadisQT一启动，就从Linux驱动ads6401.c里读取eeprom等常量数据，做好准备；
+    4. 实现CMD_DEVICE_SIDE_REPORT_MODULE_STATIC_DATA/CMD_DEVICE_SIDE_REPORT_FRAME_RAW_DATA/CMD_DEVICE_SIDE_REPORT_FRAME_DEPTH16_DATA等命令，
+       根据CMD_HOST_SIDE_START_CAPTURE命令的请求参数req_out_data_type的值，上报期望的各种frame data(raw, depth16);
+    5. 实现CMD_DEVICE_SIDE_REPORT_ERROR错误报告，以便上位机获悉和显示下位机的错误；
+    6. 实现读写模组寄存器功能的功能；
+    7. 实现PC端脚本加载功能：在响应CMD_HOST_SIDE_START_CAPTURE命令时，可解析可能携带的寄存器脚本并下发到ads6401.c驱动去配置swift模
+       组(sensor + vcsel driver, 散点+小面阵模组)，脚本文件支持Unix/Dos/Mac格式行尾符，支持末行没有行尾符，中间包含换行符等；
+    8. 同步上位机SpadisApp里depth转换为rgb image算法，同时实现CMD_HOST_SIDE_SET_COLORMAP_RANGE_PARAM命令，以便将SpadisApp的colormap用户调整值
+       实时传给下位机，更新距离显示范围；
+    9. 在上位机SpadisApp未打开或未链接时，下位机可独立运行和显示；
+    10. 实现从用户层加载ROI数据(因为上位机SpadisApp尚未实现，该功能尚未测试验证）
+
+6. @2025/04/22 -- version update to 2.3.0_LM20250422A
     redmine #2264: SpadisQT 增加置信度bitmap图，增加单点深度显示，界面上增加工作模式选择等
     http://gerrit.adaps.corp/c/SpadisQT/+/4698
 
@@ -14,7 +69,7 @@ X. @2025/04/22 -- version update to 2.3.0_LM20250422A
       FHR模式，首次按START按钮出图正常，STOP后再次START深度图偏红，confidence图偏蓝。
       已核对寄存器正常，test pattern使能时RAW data输出未变，但是深度图显示还是异常，初步判断可能算法库有变量未复位到初始值。
 
-X. @2025/03/26 -- version update to 2.2.0_LM20250326A
+5. @2025/03/26 -- version update to 2.2.0_LM20250326A
     redmine #2222: SpadisQT: 更新EEPROM数据结构到最新64K版本，增加misc device提高软件灵活性
     http://gerrit.adaps.corp/c/SpadisQT/+/4628
 
@@ -60,14 +115,14 @@ X. @2025/03/26 -- version update to 2.2.0_LM20250326A
        d. 算法库卷积使用neom
        e. 384 bins改成192 bins (XML里TimeBinInterval从250改成500)
 
-X. @2025/03/20 -- version update to 2.1.0_LM20250124A
+4. @2025/03/20 -- version update to 2.1.0_LM20250124A
     redmine #2242: [宇树科技需求] swift 60FPS支持的验证
     http://gerrit.adaps.corp/c/SpadisQT/+/4500
     
     1. 在FrameProcessThread::run()中，QThread::msleep(1)替换为QThread::usleep(10),减少delay,提高帧率；
     2. 增加SpadisQT_release.sh脚本
 
-X. @2025/01/24 -- version update to 2.1.0_LM20250124A
+3. @2025/01/24 -- version update to 2.1.0_LM20250124A
     redmine #1863: swift ROI动态修改速度验证
     http://gerrit.adaps.corp/c/SpadisQT/+/4408
 
@@ -78,7 +133,7 @@ X. @2025/01/24 -- version update to 2.1.0_LM20250124A
 #    DEFINES += CONFIG_ADAPS_SWIFT_FLOOD
 #    DEFINES += ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT
 
-X. @2025/01/14 -- version update to 2.1.0_LM20250114A
+2. @2025/01/14 -- version update to 2.1.0_LM20250114A
     redmine #2058: 散点swift模组在rk3568 Linux开发板上的适配
     http://gerrit.adaps.corp/c/SpadisQT/+/4380
 
@@ -86,7 +141,7 @@ X. @2025/01/14 -- version update to 2.1.0_LM20250114A
     patch set 3: rename the ioctl commands's names and the related structs' names to improve the code readability;
     patch set 5: rename some functions to improve the code readability;
 
-X. @2025/01/08 -- version update to 2.0.1_LM20250108A
+1. @2025/01/08 -- version update to 2.0.1_LM20250108A
     redmine #1863: swift ROI动态修改速度验证1(由于swift算法库尚未修改，ROI sram测试尚不完整)
     http://gerrit.adaps.corp/c/SpadisQT/+/4314
 

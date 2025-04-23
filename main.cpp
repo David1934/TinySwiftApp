@@ -8,7 +8,6 @@
 #include <csignal>
 #include <unistd.h>
 
-static GlobalApplication* app = nullptr;
 static MainWindow* mainWindow = nullptr;
 
 static void dump_stack()
@@ -35,12 +34,13 @@ static void dump_stack()
 
 static void handleSignal(int signal)
 {
-    if (app && mainWindow) {
+    if (mainWindow) {
         switch (signal) {
             case SIGTSTP:
             case SIGUSR1:
             case SIGUSR2:
             case SIGINT:
+            case SIGABRT:
                 //DBG_NOTICE("Catch Unix signal %d...", signal);
                 std::cout << "Received Linux signal: " << signal << std::endl;
                 // 将信号编号发送给 MainWindow
@@ -82,7 +82,6 @@ int main(int argc, char *argv[])
     GlobalApplication a(argc, argv);
 
     MainWindow w;
-    app = &a;
     mainWindow = &w;
 
     // 注册信号处理函数
@@ -94,14 +93,7 @@ int main(int argc, char *argv[])
     std::signal(SIGUSR1, handleSignal);
     std::signal(SIGUSR2, handleSignal);
     std::signal(SIGTSTP, handleSignal);
-
-#if 0
-    sigset_t signal_set;
-    sigemptyset(&signal_set);
-    sigaddset(&signal_set, SIGUSR1);
-    sigaddset(&signal_set, SIGUSR2);
-    pthread_sigmask(SIG_UNBLOCK, &signal_set, nullptr);
-#endif
+    DBG_INFO("sizeof(BOOL): %ld, sizeof(float): %ld, sizeof(double): %ld, sizeof(long): %ld, sizeof(long long): %ld", sizeof(BOOL), sizeof(float), sizeof(double), sizeof(long), sizeof(long long));
 
 #if !defined(NO_UI_APPLICATION)
     w.setWindowFlags(w.windowFlags() & ~Qt::WindowMaximizeButtonHint & ~Qt::WindowMinimizeButtonHint);

@@ -14,9 +14,9 @@ EQ            = =
 
 CC            = /home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/bin/aarch64-buildroot-linux-gnu-gcc
 CXX           = /home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/bin/aarch64-buildroot-linux-gnu-g++
-DEFINES       = -DRUN_ON_ROCKCHIP -DRUN_ON_RK3568 -DCONFIG_VIDEO_ADS6401 -DQT_WIDGETS_LIB -DQT_GUI_LIB -DQT_CORE_LIB
+DEFINES       = -DRUN_ON_EMBEDDED_LINUX -DRUN_ON_RK3568 -DCONFIG_VIDEO_ADS6401 -DQT_NO_DEBUG -DQT_WIDGETS_LIB -DQT_GUI_LIB -DQT_CORE_LIB
 CFLAGS        = -pipe -D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -Os -g0 -D_FORTIFY_SOURCE=1 -DUSE_UPDATEENGINE=ON -DSUCCESSFUL_BOOT=ON --sysroot=/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot -Wall -Wextra -D_REENTRANT -fPIC $(DEFINES)
-CXXFLAGS      = -pipe -D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -Os -g0 -D_FORTIFY_SOURCE=1 --sysroot=/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot -g -Wall -Wextra -D_REENTRANT -fPIC $(DEFINES)
+CXXFLAGS      = -pipe -D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -Os -g0 -D_FORTIFY_SOURCE=1 --sysroot=/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot -O3 -flto -fno-exceptions -Wall -Wextra -D_REENTRANT -fPIC $(DEFINES)
 INCPATH       = -I. -I../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5 -I../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets -I../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui -I../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore -I. -I../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/libdrm -I. -I../../buildroot/output/rockchip_rk3568_swift/host/mkspecs/devices/linux-buildroot-g++
 QMAKE         = /home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/bin/qmake
 DEL_FILE      = rm -f
@@ -37,10 +37,10 @@ MOVE          = mv -f
 TAR           = tar -cf
 COMPRESS      = gzip -9f
 DISTNAME      = SpadisQT1.0.0
-DISTDIR = /home/david/rk_build2025/app/SpadisQT/.tmp/SpadisQT1.0.0
+DISTDIR = /home/david/rk_build2025/app/SpadisQT_hostComm/.tmp/SpadisQT1.0.0
 LINK          = /home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/bin/aarch64-buildroot-linux-gnu-g++
-LFLAGS        = --sysroot=/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot -rdynamic -Wl,-rpath,/vendor/lib64/
-LIBS          = $(SUBLIBS) -L/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/lib -latomic -L/home/david/rk_build2025/app/SpadisQT -ladaps_swift_decode /home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/lib/libQt5Widgets.so /home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/lib/libQt5Gui.so /home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/lib/libQt5Core.so -lmali_hook -lmali_hook_injector -lmali -ldrm -lwayland-client -lwayland-server -lpthread  -lrt -lpthread -ldl 
+LFLAGS        = --sysroot=/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot -Wl,-rpath,/vendor/lib64/ -Wl,-O1 -flto -Wl,--gc-sections
+LIBS          = $(SUBLIBS) -L/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/lib -latomic -lssl -lcrypto -lz -L/home/david/rk_build2025/app/SpadisQT_hostComm -ladaps_swift_decode -lAdapsSender /home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/lib/libQt5Widgets.so /home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/lib/libQt5Gui.so /home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/lib/libQt5Core.so -lmali_hook -lmali_hook_injector -lmali -ldrm -lwayland-client -lwayland-server -lpthread  -lrt -lpthread -ldl 
 AR            = /home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/bin/aarch64-buildroot-linux-gnu-ar cqs
 RANLIB        = 
 SED           = sed
@@ -58,11 +58,12 @@ SOURCES       = globalapplication.cpp \
 		FrameProcessThread.cpp \
 		utils.cpp \
 		v4l2.cpp \
-		adaps_dtof.cpp moc_mainwindow.cpp \
+		adaps_dtof.cpp \
+		host_comm.cpp moc_mainwindow.cpp \
 		moc_globalapplication.cpp \
 		moc_FrameProcessThread.cpp \
 		moc_v4l2.cpp \
-		moc_adaps_dtof.cpp
+		moc_host_comm.cpp
 OBJECTS       = globalapplication.o \
 		main.o \
 		mainwindow.o \
@@ -70,11 +71,12 @@ OBJECTS       = globalapplication.o \
 		utils.o \
 		v4l2.o \
 		adaps_dtof.o \
+		host_comm.o \
 		moc_mainwindow.o \
 		moc_globalapplication.o \
 		moc_FrameProcessThread.o \
 		moc_v4l2.o \
-		moc_adaps_dtof.o
+		moc_host_comm.o
 DIST          = ../../buildroot/output/rockchip_rk3568_swift/host/mkspecs/features/spec_pre.prf \
 		../../buildroot/output/rockchip_rk3568_swift/host/mkspecs/common/unix.conf \
 		../../buildroot/output/rockchip_rk3568_swift/host/mkspecs/common/linux.conf \
@@ -165,6 +167,7 @@ DIST          = ../../buildroot/output/rockchip_rk3568_swift/host/mkspecs/featur
 		../../buildroot/output/rockchip_rk3568_swift/host/mkspecs/features/qt_config.prf \
 		../../buildroot/output/rockchip_rk3568_swift/host/mkspecs/devices/linux-buildroot-g++/qmake.conf \
 		../../buildroot/output/rockchip_rk3568_swift/host/mkspecs/features/spec_post.prf \
+		.qmake.stash \
 		../../buildroot/output/rockchip_rk3568_swift/host/mkspecs/features/exclusive_builds.prf \
 		../../buildroot/output/rockchip_rk3568_swift/host/mkspecs/features/toolchain.prf \
 		../../buildroot/output/rockchip_rk3568_swift/host/mkspecs/features/default_pre.prf \
@@ -191,14 +194,16 @@ DIST          = ../../buildroot/output/rockchip_rk3568_swift/host/mkspecs/featur
 		FrameProcessThread.h \
 		utils.h \
 		v4l2.h \
+		host_comm.h \
 		adaps_dtof.h \
-		rk-camera-module.h globalapplication.cpp \
+		adaps_dtof_uapi.h globalapplication.cpp \
 		main.cpp \
 		mainwindow.cpp \
 		FrameProcessThread.cpp \
 		utils.cpp \
 		v4l2.cpp \
-		adaps_dtof.cpp
+		adaps_dtof.cpp \
+		host_comm.cpp
 QMAKE_TARGET  = SpadisQT
 DESTDIR       = 
 TARGET        = SpadisQT
@@ -300,6 +305,7 @@ Makefile: SpadisQT.pro ../../buildroot/output/rockchip_rk3568_swift/host/mkspecs
 		../../buildroot/output/rockchip_rk3568_swift/host/mkspecs/features/qt_config.prf \
 		../../buildroot/output/rockchip_rk3568_swift/host/mkspecs/devices/linux-buildroot-g++/qmake.conf \
 		../../buildroot/output/rockchip_rk3568_swift/host/mkspecs/features/spec_post.prf \
+		.qmake.stash \
 		../../buildroot/output/rockchip_rk3568_swift/host/mkspecs/features/exclusive_builds.prf \
 		../../buildroot/output/rockchip_rk3568_swift/host/mkspecs/features/toolchain.prf \
 		../../buildroot/output/rockchip_rk3568_swift/host/mkspecs/features/default_pre.prf \
@@ -411,6 +417,7 @@ Makefile: SpadisQT.pro ../../buildroot/output/rockchip_rk3568_swift/host/mkspecs
 ../../buildroot/output/rockchip_rk3568_swift/host/mkspecs/features/qt_config.prf:
 ../../buildroot/output/rockchip_rk3568_swift/host/mkspecs/devices/linux-buildroot-g++/qmake.conf:
 ../../buildroot/output/rockchip_rk3568_swift/host/mkspecs/features/spec_post.prf:
+.qmake.stash:
 ../../buildroot/output/rockchip_rk3568_swift/host/mkspecs/features/exclusive_builds.prf:
 ../../buildroot/output/rockchip_rk3568_swift/host/mkspecs/features/toolchain.prf:
 ../../buildroot/output/rockchip_rk3568_swift/host/mkspecs/features/default_pre.prf:
@@ -446,8 +453,8 @@ distdir: FORCE
 	@test -d $(DISTDIR) || mkdir -p $(DISTDIR)
 	$(COPY_FILE) --parents $(DIST) $(DISTDIR)/
 	$(COPY_FILE) --parents ../../buildroot/output/rockchip_rk3568_swift/host/mkspecs/features/data/dummy.cpp $(DISTDIR)/
-	$(COPY_FILE) --parents mainwindow.h common.h depthmapwrapper.h globalapplication.h FrameProcessThread.h utils.h v4l2.h adaps_dtof.h rk-camera-module.h $(DISTDIR)/
-	$(COPY_FILE) --parents globalapplication.cpp main.cpp mainwindow.cpp FrameProcessThread.cpp utils.cpp v4l2.cpp adaps_dtof.cpp $(DISTDIR)/
+	$(COPY_FILE) --parents mainwindow.h common.h depthmapwrapper.h globalapplication.h FrameProcessThread.h utils.h v4l2.h host_comm.h adaps_dtof.h adaps_dtof_uapi.h $(DISTDIR)/
+	$(COPY_FILE) --parents globalapplication.cpp main.cpp mainwindow.cpp FrameProcessThread.cpp utils.cpp v4l2.cpp adaps_dtof.cpp host_comm.cpp $(DISTDIR)/
 	$(COPY_FILE) --parents mainwindow.ui $(DISTDIR)/
 
 
@@ -478,11 +485,11 @@ compiler_moc_predefs_make_all: moc_predefs.h
 compiler_moc_predefs_clean:
 	-$(DEL_FILE) moc_predefs.h
 moc_predefs.h: ../../buildroot/output/rockchip_rk3568_swift/host/mkspecs/features/data/dummy.cpp
-	/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/bin/aarch64-buildroot-linux-gnu-g++ -pipe -D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -Os -g0 -D_FORTIFY_SOURCE=1 --sysroot=/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot -g -Wall -Wextra -dM -E -o moc_predefs.h ../../buildroot/output/rockchip_rk3568_swift/host/mkspecs/features/data/dummy.cpp
+	/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/bin/aarch64-buildroot-linux-gnu-g++ -pipe -D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -Os -g0 -D_FORTIFY_SOURCE=1 --sysroot=/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot -O3 -flto -fno-exceptions -Wall -Wextra -dM -E -o moc_predefs.h ../../buildroot/output/rockchip_rk3568_swift/host/mkspecs/features/data/dummy.cpp
 
-compiler_moc_header_make_all: moc_mainwindow.cpp moc_globalapplication.cpp moc_FrameProcessThread.cpp moc_v4l2.cpp moc_adaps_dtof.cpp
+compiler_moc_header_make_all: moc_mainwindow.cpp moc_globalapplication.cpp moc_FrameProcessThread.cpp moc_v4l2.cpp moc_host_comm.cpp
 compiler_moc_header_clean:
-	-$(DEL_FILE) moc_mainwindow.cpp moc_globalapplication.cpp moc_FrameProcessThread.cpp moc_v4l2.cpp moc_adaps_dtof.cpp
+	-$(DEL_FILE) moc_mainwindow.cpp moc_globalapplication.cpp moc_FrameProcessThread.cpp moc_v4l2.cpp moc_host_comm.cpp
 moc_mainwindow.cpp: mainwindow.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets/QMainWindow \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets/qmainwindow.h \
@@ -601,12 +608,14 @@ moc_mainwindow.cpp: mainwindow.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QDateTime \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qdatetime.h \
 		common.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QMetaType \
+		adaps_types.h \
+		adaps_dtof_uapi.h \
+		host_comm.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QObject \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QString \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QMetaType \
-		rk-camera-module.h \
-		adaps_dtof_uapi.h \
-		adaps_types.h \
+		adaps_sender.h \
+		host_device_comm_types.h \
 		adaps_dtof.h \
 		depthmapwrapper.h \
 		utils.h \
@@ -617,7 +626,7 @@ moc_mainwindow.cpp: mainwindow.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QByteArray \
 		moc_predefs.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/bin/moc
-	/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/bin/moc $(DEFINES) --include /home/david/rk_build2025/app/SpadisQT/moc_predefs.h -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/mkspecs/devices/linux-buildroot-g++ -I/home/david/rk_build2025/app/SpadisQT -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5 -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0 -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0/aarch64-buildroot-linux-gnu -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0/backward -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/lib/gcc/aarch64-buildroot-linux-gnu/11.3.0/include -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/lib/gcc/aarch64-buildroot-linux-gnu/11.3.0/include-fixed -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/include -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include mainwindow.h -o moc_mainwindow.cpp
+	/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/bin/moc $(DEFINES) --include /home/david/rk_build2025/app/SpadisQT_hostComm/moc_predefs.h -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/mkspecs/devices/linux-buildroot-g++ -I/home/david/rk_build2025/app/SpadisQT_hostComm -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5 -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0 -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0/aarch64-buildroot-linux-gnu -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0/backward -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/lib/gcc/aarch64-buildroot-linux-gnu/11.3.0/include -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/lib/gcc/aarch64-buildroot-linux-gnu/11.3.0/include-fixed -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/include -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include mainwindow.h -o moc_mainwindow.cpp
 
 moc_globalapplication.cpp: globalapplication.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QObject \
@@ -732,14 +741,12 @@ moc_globalapplication.cpp: globalapplication.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qinputmethod.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QCoreApplication \
 		common.h \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QString \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QMetaType \
-		rk-camera-module.h \
-		adaps_dtof_uapi.h \
 		adaps_types.h \
+		adaps_dtof_uapi.h \
 		moc_predefs.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/bin/moc
-	/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/bin/moc $(DEFINES) --include /home/david/rk_build2025/app/SpadisQT/moc_predefs.h -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/mkspecs/devices/linux-buildroot-g++ -I/home/david/rk_build2025/app/SpadisQT -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5 -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0 -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0/aarch64-buildroot-linux-gnu -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0/backward -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/lib/gcc/aarch64-buildroot-linux-gnu/11.3.0/include -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/lib/gcc/aarch64-buildroot-linux-gnu/11.3.0/include-fixed -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/include -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include globalapplication.h -o moc_globalapplication.cpp
+	/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/bin/moc $(DEFINES) --include /home/david/rk_build2025/app/SpadisQT_hostComm/moc_predefs.h -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/mkspecs/devices/linux-buildroot-g++ -I/home/david/rk_build2025/app/SpadisQT_hostComm -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5 -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0 -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0/aarch64-buildroot-linux-gnu -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0/backward -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/lib/gcc/aarch64-buildroot-linux-gnu/11.3.0/include -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/lib/gcc/aarch64-buildroot-linux-gnu/11.3.0/include-fixed -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/include -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include globalapplication.h -o moc_globalapplication.cpp
 
 moc_FrameProcessThread.cpp: FrameProcessThread.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QThread \
@@ -835,12 +842,14 @@ moc_FrameProcessThread.cpp: FrameProcessThread.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QDateTime \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qdatetime.h \
 		common.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QMetaType \
+		adaps_types.h \
+		adaps_dtof_uapi.h \
+		host_comm.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QObject \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QString \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QMetaType \
-		rk-camera-module.h \
-		adaps_dtof_uapi.h \
-		adaps_types.h \
+		adaps_sender.h \
+		host_device_comm_types.h \
 		adaps_dtof.h \
 		depthmapwrapper.h \
 		utils.h \
@@ -853,7 +862,7 @@ moc_FrameProcessThread.cpp: FrameProcessThread.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QByteArray \
 		moc_predefs.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/bin/moc
-	/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/bin/moc $(DEFINES) --include /home/david/rk_build2025/app/SpadisQT/moc_predefs.h -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/mkspecs/devices/linux-buildroot-g++ -I/home/david/rk_build2025/app/SpadisQT -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5 -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0 -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0/aarch64-buildroot-linux-gnu -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0/backward -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/lib/gcc/aarch64-buildroot-linux-gnu/11.3.0/include -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/lib/gcc/aarch64-buildroot-linux-gnu/11.3.0/include-fixed -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/include -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include FrameProcessThread.h -o moc_FrameProcessThread.cpp
+	/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/bin/moc $(DEFINES) --include /home/david/rk_build2025/app/SpadisQT_hostComm/moc_predefs.h -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/mkspecs/devices/linux-buildroot-g++ -I/home/david/rk_build2025/app/SpadisQT_hostComm -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5 -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0 -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0/aarch64-buildroot-linux-gnu -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0/backward -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/lib/gcc/aarch64-buildroot-linux-gnu/11.3.0/include -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/lib/gcc/aarch64-buildroot-linux-gnu/11.3.0/include-fixed -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/include -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include FrameProcessThread.h -o moc_FrameProcessThread.cpp
 
 moc_v4l2.cpp: v4l2.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QDebug \
@@ -924,20 +933,23 @@ moc_v4l2.cpp: v4l2.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QDateTime \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qdatetime.h \
 		common.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QMetaType \
+		adaps_types.h \
+		adaps_dtof_uapi.h \
+		host_comm.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QObject \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QString \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QMetaType \
-		rk-camera-module.h \
-		adaps_dtof_uapi.h \
-		adaps_types.h \
+		adaps_sender.h \
+		host_device_comm_types.h \
 		moc_predefs.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/bin/moc
-	/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/bin/moc $(DEFINES) --include /home/david/rk_build2025/app/SpadisQT/moc_predefs.h -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/mkspecs/devices/linux-buildroot-g++ -I/home/david/rk_build2025/app/SpadisQT -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5 -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0 -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0/aarch64-buildroot-linux-gnu -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0/backward -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/lib/gcc/aarch64-buildroot-linux-gnu/11.3.0/include -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/lib/gcc/aarch64-buildroot-linux-gnu/11.3.0/include-fixed -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/include -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include v4l2.h -o moc_v4l2.cpp
+	/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/bin/moc $(DEFINES) --include /home/david/rk_build2025/app/SpadisQT_hostComm/moc_predefs.h -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/mkspecs/devices/linux-buildroot-g++ -I/home/david/rk_build2025/app/SpadisQT_hostComm -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5 -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0 -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0/aarch64-buildroot-linux-gnu -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0/backward -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/lib/gcc/aarch64-buildroot-linux-gnu/11.3.0/include -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/lib/gcc/aarch64-buildroot-linux-gnu/11.3.0/include-fixed -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/include -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include v4l2.h -o moc_v4l2.cpp
 
-moc_adaps_dtof.cpp: adaps_dtof.h \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QDebug \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qdebug.h \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qalgorithms.h \
+moc_host_comm.cpp: host_comm.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QObject \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qobject.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qobjectdefs.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qnamespace.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qglobal.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qconfig-bootstrapped.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qconfig.h \
@@ -959,20 +971,20 @@ moc_adaps_dtof.cpp: adaps_dtof.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qmutex.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qnumeric.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qversiontagging.h \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qhash.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qobjectdefs_impl.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qstring.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qchar.h \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qiterator.h \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qlist.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qbytearray.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qrefcount.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qarraydata.h \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qhashfunctions.h \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qstring.h \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qbytearray.h \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qnamespace.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qstringliteral.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qstringalgorithms.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qstringview.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qstringbuilder.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qlist.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qalgorithms.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qiterator.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qhashfunctions.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qpair.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qvector.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qcontainertools_impl.h \
@@ -981,39 +993,20 @@ moc_adaps_dtof.cpp: adaps_dtof.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qstringlist.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qregexp.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qstringmatcher.h \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qmap.h \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qtextstream.h \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qiodevice.h \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qobject.h \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qobjectdefs.h \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qobjectdefs_impl.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qcoreevent.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qscopedpointer.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qmetatype.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qvarlengtharray.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qcontainerfwd.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qobject_impl.h \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qlocale.h \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qvariant.h \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qshareddata.h \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qset.h \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qcontiguouscache.h \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qsharedpointer.h \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qsharedpointer_impl.h \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QDateTime \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qdatetime.h \
-		v4l2.h \
-		common.h \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QObject \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QString \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QMetaType \
-		rk-camera-module.h \
-		adaps_dtof_uapi.h \
 		adaps_types.h \
-		depthmapwrapper.h \
+		adaps_sender.h \
+		host_device_comm_types.h \
 		moc_predefs.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/bin/moc
-	/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/bin/moc $(DEFINES) --include /home/david/rk_build2025/app/SpadisQT/moc_predefs.h -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/mkspecs/devices/linux-buildroot-g++ -I/home/david/rk_build2025/app/SpadisQT -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5 -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0 -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0/aarch64-buildroot-linux-gnu -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0/backward -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/lib/gcc/aarch64-buildroot-linux-gnu/11.3.0/include -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/lib/gcc/aarch64-buildroot-linux-gnu/11.3.0/include-fixed -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/include -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include adaps_dtof.h -o moc_adaps_dtof.cpp
+	/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/bin/moc $(DEFINES) --include /home/david/rk_build2025/app/SpadisQT_hostComm/moc_predefs.h -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/mkspecs/devices/linux-buildroot-g++ -I/home/david/rk_build2025/app/SpadisQT_hostComm -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5 -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0 -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0/aarch64-buildroot-linux-gnu -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/include/c++/11.3.0/backward -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/lib/gcc/aarch64-buildroot-linux-gnu/11.3.0/include -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/lib/gcc/aarch64-buildroot-linux-gnu/11.3.0/include-fixed -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/include -I/home/david/rk_build2025/buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include host_comm.h -o moc_host_comm.cpp
 
 compiler_moc_objc_header_make_all:
 compiler_moc_objc_header_clean:
@@ -1149,11 +1142,9 @@ globalapplication.o: globalapplication.cpp globalapplication.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qinputmethod.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QCoreApplication \
 		common.h \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QString \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QMetaType \
-		rk-camera-module.h \
-		adaps_dtof_uapi.h \
 		adaps_types.h \
+		adaps_dtof_uapi.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QDebug \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QCommandLineParser \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qcommandlineparser.h \
@@ -1288,11 +1279,13 @@ main.o: main.cpp ../../buildroot/output/rockchip_rk3568_swift/host/aarch64-build
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QDateTime \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qdatetime.h \
 		common.h \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QString \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QMetaType \
-		rk-camera-module.h \
-		adaps_dtof_uapi.h \
 		adaps_types.h \
+		adaps_dtof_uapi.h \
+		host_comm.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QString \
+		adaps_sender.h \
+		host_device_comm_types.h \
 		adaps_dtof.h \
 		depthmapwrapper.h \
 		utils.h \
@@ -1311,10 +1304,10 @@ main.o: main.cpp ../../buildroot/output/rockchip_rk3568_swift/host/aarch64-build
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QCoreApplication
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o main.o main.cpp
 
-mainwindow.o: mainwindow.cpp ../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets/QLCDNumber \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets/qlcdnumber.h \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets/qtwidgetsglobal.h \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qtguiglobal.h \
+mainwindow.o: mainwindow.cpp ../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QTime \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qdatetime.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qstring.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qchar.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qglobal.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qconfig-bootstrapped.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qconfig.h \
@@ -1336,28 +1329,19 @@ mainwindow.o: mainwindow.cpp ../../buildroot/output/rockchip_rk3568_swift/host/a
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qmutex.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qnumeric.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qversiontagging.h \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qtgui-config.h \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets/qtwidgets-config.h \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets/qframe.h \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets/qwidget.h \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qwindowdefs.h \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qobjectdefs.h \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qnamespace.h \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qobjectdefs_impl.h \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qwindowdefs_win.h \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qobject.h \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qstring.h \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qchar.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qbytearray.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qrefcount.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qnamespace.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qarraydata.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qstringliteral.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qstringalgorithms.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qstringview.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qstringbuilder.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qshareddata.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qhash.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qiterator.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qlist.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qalgorithms.h \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qiterator.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qhashfunctions.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qpair.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qvector.h \
@@ -1367,12 +1351,27 @@ mainwindow.o: mainwindow.cpp ../../buildroot/output/rockchip_rk3568_swift/host/a
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qstringlist.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qregexp.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qstringmatcher.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QTimer \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qtimer.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qbasictimer.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qobject.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qobjectdefs.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qobjectdefs_impl.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qcoreevent.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qscopedpointer.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qmetatype.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qvarlengtharray.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qcontainerfwd.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qobject_impl.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets/QShortcut \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets/qshortcut.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets/qtwidgetsglobal.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qtguiglobal.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qtgui-config.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets/qtwidgets-config.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets/qwidget.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qwindowdefs.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qwindowdefs_win.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qmargins.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qpaintdevice.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qrect.h \
@@ -1393,8 +1392,6 @@ mainwindow.o: mainwindow.cpp ../../buildroot/output/rockchip_rk3568_swift/host/a
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qpixelformat.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qpixmap.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qsharedpointer.h \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qshareddata.h \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qhash.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qsharedpointer_impl.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qfont.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qfontmetrics.h \
@@ -1416,13 +1413,20 @@ mainwindow.o: mainwindow.cpp ../../buildroot/output/rockchip_rk3568_swift/host/a
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qfiledevice.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qvector2d.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qtouchdevice.h \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QTimer \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qtimer.h \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qbasictimer.h \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QTime \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qdatetime.h \
-		globalapplication.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/QCloseEvent \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets/QLCDNumber \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets/qlcdnumber.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets/qframe.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/QScreen \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qscreen.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QList \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QObject \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QRect \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QSize \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QSizeF \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/QTransform \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/QMouseEvent \
+		globalapplication.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets/QApplication \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets/qapplication.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qcoreapplication.h \
@@ -1432,21 +1436,9 @@ mainwindow.o: mainwindow.cpp ../../buildroot/output/rockchip_rk3568_swift/host/a
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qinputmethod.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QCoreApplication \
 		common.h \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QString \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QMetaType \
-		rk-camera-module.h \
-		adaps_dtof_uapi.h \
 		adaps_types.h \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets/QShortcut \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets/qshortcut.h \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/QCloseEvent \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/QScreen \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qscreen.h \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QList \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QRect \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QSize \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QSizeF \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/QTransform \
+		adaps_dtof_uapi.h \
 		mainwindow.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets/QMainWindow \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets/qmainwindow.h \
@@ -1461,6 +1453,10 @@ mainwindow.o: mainwindow.cpp ../../buildroot/output/rockchip_rk3568_swift/host/a
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QDebug \
 		v4l2.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QDateTime \
+		host_comm.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QString \
+		adaps_sender.h \
+		host_device_comm_types.h \
 		adaps_dtof.h \
 		depthmapwrapper.h \
 		utils.h \
@@ -1590,12 +1586,14 @@ FrameProcessThread.o: FrameProcessThread.cpp mainwindow.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QDateTime \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qdatetime.h \
 		common.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QMetaType \
+		adaps_types.h \
+		adaps_dtof_uapi.h \
+		host_comm.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QObject \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QString \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QMetaType \
-		rk-camera-module.h \
-		adaps_dtof_uapi.h \
-		adaps_types.h \
+		adaps_sender.h \
+		host_device_comm_types.h \
 		adaps_dtof.h \
 		depthmapwrapper.h \
 		utils.h \
@@ -1679,12 +1677,9 @@ utils.o: utils.cpp utils.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QFile \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QByteArray \
 		common.h \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QObject \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QString \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QMetaType \
-		rk-camera-module.h \
-		adaps_dtof_uapi.h \
-		adaps_types.h
+		adaps_types.h \
+		adaps_dtof_uapi.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o utils.o utils.cpp
 
 v4l2.o: v4l2.cpp v4l2.h \
@@ -1756,12 +1751,14 @@ v4l2.o: v4l2.cpp v4l2.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QDateTime \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qdatetime.h \
 		common.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QMetaType \
+		adaps_types.h \
+		adaps_dtof_uapi.h \
+		host_comm.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QObject \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QString \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QMetaType \
-		rk-camera-module.h \
-		adaps_dtof_uapi.h \
-		adaps_types.h \
+		adaps_sender.h \
+		host_device_comm_types.h \
 		utils.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QDir \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qdir.h \
@@ -1773,6 +1770,7 @@ v4l2.o: v4l2.cpp v4l2.h \
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o v4l2.o v4l2.cpp
 
 adaps_dtof.o: adaps_dtof.cpp adaps_dtof.h \
+		v4l2.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QDebug \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qdebug.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qalgorithms.h \
@@ -1840,14 +1838,15 @@ adaps_dtof.o: adaps_dtof.cpp adaps_dtof.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qsharedpointer_impl.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QDateTime \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qdatetime.h \
-		v4l2.h \
 		common.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QMetaType \
+		adaps_types.h \
+		adaps_dtof_uapi.h \
+		host_comm.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QObject \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QString \
-		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QMetaType \
-		rk-camera-module.h \
-		adaps_dtof_uapi.h \
-		adaps_types.h \
+		adaps_sender.h \
+		host_device_comm_types.h \
 		depthmapwrapper.h \
 		utils.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QDir \
@@ -1859,6 +1858,134 @@ adaps_dtof.o: adaps_dtof.cpp adaps_dtof.h \
 		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QByteArray \
 		ads6401_roi_sram_test_data.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o adaps_dtof.o adaps_dtof.cpp
+
+host_comm.o: host_comm.cpp common.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QMetaType \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qmetatype.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qglobal.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qconfig-bootstrapped.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qconfig.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qtcore-config.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qsystemdetection.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qprocessordetection.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qcompilerdetection.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qtypeinfo.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qsysinfo.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qlogging.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qflags.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qatomic.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qbasicatomic.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qatomic_bootstrap.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qgenericatomic.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qatomic_cxx11.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qatomic_msvc.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qglobalstatic.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qmutex.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qnumeric.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qversiontagging.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qbytearray.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qrefcount.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qnamespace.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qarraydata.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qvarlengtharray.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qcontainerfwd.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qalgorithms.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qcontainertools_impl.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qhashfunctions.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qstring.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qchar.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qstringliteral.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qstringalgorithms.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qstringview.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qstringbuilder.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qpair.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qobjectdefs.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qobjectdefs_impl.h \
+		adaps_types.h \
+		adaps_dtof_uapi.h \
+		utils.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QDir \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qdir.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qfileinfo.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qfile.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qfiledevice.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qiodevice.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qobject.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qlist.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qiterator.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qvector.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qpoint.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qbytearraylist.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qstringlist.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qregexp.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qstringmatcher.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qcoreevent.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qscopedpointer.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qobject_impl.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qshareddata.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qhash.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QFile \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QByteArray \
+		globalapplication.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QObject \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets/QApplication \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets/qapplication.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets/qtwidgetsglobal.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qtguiglobal.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qtgui-config.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets/qtwidgets-config.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qcoreapplication.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qeventloop.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qwindowdefs.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qwindowdefs_win.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qsize.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qmargins.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qcursor.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets/qdesktopwidget.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets/qwidget.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qpaintdevice.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qrect.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qpalette.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qcolor.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qrgb.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qrgba64.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qbrush.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qmatrix.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qpolygon.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qregion.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qdatastream.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qline.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qtransform.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qimage.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qpixelformat.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qpixmap.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qsharedpointer.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qsharedpointer_impl.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qfont.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qfontmetrics.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qfontinfo.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets/qsizepolicy.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qkeysequence.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qevent.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qvariant.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qmap.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qdebug.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qtextstream.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qlocale.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qset.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qcontiguouscache.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qurl.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qurlquery.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qvector2d.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qtouchdevice.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qguiapplication.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qinputmethod.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QCoreApplication \
+		host_comm.h \
+		../../buildroot/output/rockchip_rk3568_swift/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QString \
+		adaps_sender.h \
+		host_device_comm_types.h
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o host_comm.o host_comm.cpp
 
 moc_mainwindow.o: moc_mainwindow.cpp 
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o moc_mainwindow.o moc_mainwindow.cpp
@@ -1872,8 +1999,8 @@ moc_FrameProcessThread.o: moc_FrameProcessThread.cpp
 moc_v4l2.o: moc_v4l2.cpp 
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o moc_v4l2.o moc_v4l2.cpp
 
-moc_adaps_dtof.o: moc_adaps_dtof.cpp 
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o moc_adaps_dtof.o moc_adaps_dtof.cpp
+moc_host_comm.o: moc_host_comm.cpp 
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o moc_host_comm.o moc_host_comm.cpp
 
 ####### Install
 

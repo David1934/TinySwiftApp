@@ -13,10 +13,9 @@
 #include <sys/types.h>
 #include <sys/ioctl.h>
 #include <errno.h>
-#include <QDebug>
-#include <QDateTime>
 
-#include "v4l2.h"
+//#include "v4l2.h"
+#include "misc_device.h"
 #include "depthmapwrapper.h"
 
 /* https://developer.android.com/reference/android/graphics/ImageFormat#DEPTH16
@@ -77,16 +76,15 @@ typedef bool(*PROCESSFRAME)(
       WrapperDepthOutput     outputs[]);
 #endif
 
-class ADAPS_DTOF : public QObject
+class ADAPS_DTOF
 {
-Q_OBJECT
 
 public:
-    ADAPS_DTOF(struct sensor_params params, V4L2 *v4l2);
+    ADAPS_DTOF(struct sensor_params params);
     ~ADAPS_DTOF();
 
     int adaps_dtof_initilize();
-    void GetDepth4watchSpot(const u16 depth16_buffer[], const int outImgWidth, const int outImgHeight, u8 x, u8 y, u16 *distance, u8 *confidence);
+    void GetDepth4watchSpot(const u16 depth16_buffer[], const int outImgWidth, u8 x, u8 y, u16 *distance, u8 *confidence);
     void ConvertDepthToColoredMap(const u16 depth16_buffer[], u8 depth_colored_map[], u8 depth_confidence_map[], const int outImgWidth, const int outImgHeight);
     void ConvertGreyscaleToColoredMap(u16 depth16_buffer[], u8 depth_colored_map[], int outImgWidth, int outImgHeight);
     int dtof_frame_decode(unsigned char *frm_rawdata, int buf_len, u16 depth16_buffer[], enum sensor_workmode swk);
@@ -96,7 +94,8 @@ public:
 #endif
 
 private:
-    V4L2 *m_v4l2;
+//    V4L2 *m_v4l2;
+    Misc_Device *p_misc_device;
     struct sensor_params m_sns_param;
     uint64_t m_exposure_time;
     int32_t  m_sensitivity;
@@ -131,6 +130,7 @@ private:
     void PrepareFrameParam(WrapperDepthCamConfig *wrapper_depth_map_config);
     u8 normalizeGreyscale(u16 range);
     void Distance_2_BGRColor(int bucketNum, float bucketSize, u16 distance, struct BGRColor *destColor);
+    int hexdump_param(void* param_ptr, int param_size, const char *param_name, int callline);
 };
 
 #endif // ADAPS_DTOF_H

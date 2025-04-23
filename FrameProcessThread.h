@@ -7,7 +7,7 @@
 #endif
 #include <QDebug>
 #include"v4l2.h"
-#if defined(RUN_ON_ROCKCHIP)
+#if defined(RUN_ON_EMBEDDED_LINUX)
 #include "adaps_dtof.h"
 #endif
 #include"utils.h"
@@ -22,9 +22,9 @@ public:
     void stop(int stop_request_code);
     int init(int index);
     bool isSleeping();
-#if !defined(NO_UI_APPLICATION)
-    void setWatchSpot(QSize img_widget_size, QPoint point);
-#endif
+    #if !defined(NO_UI_APPLICATION)
+        void setWatchSpot(QSize img_widget_size, QPoint point);
+    #endif
 
 protected:
     void run();
@@ -33,39 +33,41 @@ private:
     volatile int majorindex;
     volatile bool stopped;
     volatile bool sleeping;
-    volatile bool skip_frame_process;
+    volatile bool skip_frame_decode;
     struct sensor_params sns_param;
     char *expected_md5_string;
 
-#if defined(RUN_ON_ROCKCHIP)
-    ADAPS_DTOF *adaps_dtof;
-#endif
+    #if defined(RUN_ON_EMBEDDED_LINUX)
+        ADAPS_DTOF *adaps_dtof;
+        //Host_Communication *host_comm;
+    #endif
     Utils *utils;
     V4L2 *v4l2;
     u16 *depth_buffer;
-#if defined(ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT)
-    u16 *merged_depth_buffer;
-#endif
+    u32 depth_buffer_size;
+    #if defined(ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT)
+        u16 *merged_depth_buffer;
+    #endif
     unsigned char *rgb_buffer;
     unsigned char *confidence_map_buffer;
     int stop_req_code;
-#if !defined(NO_UI_APPLICATION)
-    QPoint watchSpot;
-#endif
+    #if !defined(NO_UI_APPLICATION)
+        QPoint watchSpot;
+    #endif
     bool save_frame(unsigned int frm_sequence, void *frm_buf, int buf_size, int frm_w, int frm_h, struct timeval frm_timestamp, enum frame_data_type);
     void save_depth_txt_file(void *frm_buf,unsigned int frm_sequence,int frm_len);
 
 private slots:
-    bool new_frame_handle(unsigned int frm_sequence, void *frm_buf, int buf_len, struct timeval frm_timestamp, enum frame_data_type, int total_bytes_per_line);
+    bool new_frame_handle(unsigned int frm_sequence, void *frm_buf, int buf_len, struct timeval frm_timestamp, enum frame_data_type, int total_bytes_per_line, frame_buffer_param_t frmBufParam);
     bool info_update(status_params1 param1);
     void onThreadLoopExit();
 
 signals:
 
-#if !defined(NO_UI_APPLICATION)
-    void newFrameReady4Display(QImage image, QImage img4confidence);
-    void updateWatchSpotInfo(QPoint spot, enum frame_data_type ftype, watchPointInfo_t wpi);
-#endif
+    #if !defined(NO_UI_APPLICATION)
+        void newFrameReady4Display(QImage image, QImage img4confidence);
+        void updateWatchSpotInfo(QPoint spot, enum frame_data_type ftype, watchPointInfo_t wpi);
+    #endif
     bool update_runtime_display(status_params2 param2);
     void threadLoopExit();
     void threadEnd(int exit_request_code);

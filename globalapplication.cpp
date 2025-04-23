@@ -27,9 +27,9 @@ GlobalApplication::GlobalApplication(int argc, char *argv[]):QCoreApplication(ar
     QCommandLineOption save_frame_cnt_opt(QStringList() << "s" << "save", "Number of frames to save (>=0)", "count");
     QCommandLineOption timer_test_times_opt(QStringList() << "times", "times to be tested by timer (>=0)", "count");
     QCommandLineOption qt_ui_test_opt(QStringList() << "qttest", "a simple UI display test with QT");
-#if defined(RUN_ON_ROCKCHIP)
+#if defined(RUN_ON_EMBEDDED_LINUX)
     QCommandLineOption environment_type_opt(QStringList() << "e" << "etype", "Type of the environment (Indoor Outdoor)", "etype");
-    QCommandLineOption measurement_type_opt(QStringList() << "m" << "mtype", "Type of the measurement (Normal Short Full)", "mtype");
+    QCommandLineOption measurement_type_opt(QStringList() << "M" << "mtype", "Type of the measurement (Normal Short Full)", "mtype");
     //QCommandLineOption no_host_comm_opt(QStringList() << "nohostcomm", "local run mode without host communication");
     //QCommandLineOption output_data_type_opt(QStringList() << "o" << "otype", "Type of the output data type (Raw Grayscale Depth16 Depth16XY PointCloud) to host", "otype");
 #endif
@@ -39,7 +39,7 @@ GlobalApplication::GlobalApplication(int argc, char *argv[]):QCoreApplication(ar
     parser.addOption(save_frame_cnt_opt);
     parser.addOption(timer_test_times_opt);
     parser.addOption(qt_ui_test_opt);
-#if defined(RUN_ON_ROCKCHIP)
+#if defined(RUN_ON_EMBEDDED_LINUX)
     parser.addOption(environment_type_opt);
     parser.addOption(measurement_type_opt);
     //parser.addOption(no_host_comm_opt);
@@ -55,9 +55,17 @@ GlobalApplication::GlobalApplication(int argc, char *argv[]):QCoreApplication(ar
     save_frame_cnt = DEFAULT_SAVE_FRAME_CNT;
     timer_test_times = DEFAULT_TIMER_TEST_TIMES;
     qt_ui_test = false;
-#if defined(RUN_ON_ROCKCHIP)
+    v4l2_instance = nullptr;
+
+#if defined(RUN_ON_EMBEDDED_LINUX)
+    GrayScaleMinMappedRange = 50;
+    GrayScaleMaxMappedRange = 2000;
+    RealDistanceMinMappedRange = 0.0f;
+    RealDistanceMaxMappedRange = 4.0f;
     selected_e_type = DEFAULT_ENVIRONMENT_TYPE;
     selected_m_type = DEFAULT_MEASUREMENT_TYPE;
+    selected_framerate_type = DEFAULT_DTOF_FRAMERATE;
+    capture_req_from_host = false;
 #endif
 
     //DBG_INFO( "---------------");
@@ -72,7 +80,7 @@ GlobalApplication::GlobalApplication(int argc, char *argv[]):QCoreApplication(ar
         selected_sensor_type = string_2_sensortype(option2Value);
     }
 
-#if defined(RUN_ON_ROCKCHIP)
+#if defined(RUN_ON_EMBEDDED_LINUX)
     if (parser.isSet(environment_type_opt)) {
         option2Value = parser.value(environment_type_opt);
         selected_e_type = string_2_environmenttype(option2Value);
@@ -146,7 +154,69 @@ int GlobalApplication::set_wk_mode(int wk_mode)
     return ret;
 }
 
-#if defined(RUN_ON_ROCKCHIP)
+V4L2* GlobalApplication::get_v4l2_instance()
+{
+    return v4l2_instance;
+}
+
+int GlobalApplication::register_v4l2_instance(V4L2* new_instance)
+{
+    int ret = 0;
+
+    v4l2_instance = new_instance;
+
+    return ret;
+}
+
+#if defined(RUN_ON_EMBEDDED_LINUX)
+Misc_Device* GlobalApplication::get_misc_dev_instance()
+{
+    return misc_dev_instance;
+}
+
+int GlobalApplication::register_misc_dev_instance(Misc_Device* new_instance)
+{
+    int ret = 0;
+
+    misc_dev_instance = new_instance;
+
+    return ret;
+}
+
+bool GlobalApplication::is_capture_req_from_host()
+{
+    return capture_req_from_host;
+}
+
+int GlobalApplication::set_capture_req_from_host(bool val)
+{
+    int ret = 0;
+
+    capture_req_from_host = val;
+
+    return ret;
+}
+
+AdapsFramerateType GlobalApplication::get_framerate_type()
+{
+    return selected_framerate_type;
+}
+
+int GlobalApplication::set_framerate_type(int framerate_type)
+{
+    int ret = 0;
+
+    if (framerate_type >= AdapsFramerateType15FPS && framerate_type <= AdapsFramerateType60FPS)
+    {
+        selected_framerate_type = (AdapsFramerateType) framerate_type;
+    }
+    else {
+        ret = -1;
+    }
+
+    return ret;
+}
+
 AdapsEnvironmentType GlobalApplication::get_environment_type()
 {
     return selected_e_type;
@@ -186,6 +256,63 @@ int GlobalApplication::set_measurement_type(int mtype)
 
     return ret;
 }
+
+int GlobalApplication::get_GrayScaleMinMappedRange()
+{
+    return GrayScaleMinMappedRange;
+}
+
+int GlobalApplication::set_GrayScaleMinMappedRange(int value)
+{
+    int ret = 0;
+
+    GrayScaleMinMappedRange = value;
+
+    return ret;
+}
+
+int GlobalApplication::get_GrayScaleMaxMappedRange()
+{
+    return GrayScaleMaxMappedRange;
+}
+
+int GlobalApplication::set_GrayScaleMaxMappedRange(int value)
+{
+    int ret = 0;
+
+    GrayScaleMaxMappedRange = value;
+
+    return ret;
+}
+
+float GlobalApplication::get_RealDistanceMinMappedRange()
+{
+    return RealDistanceMinMappedRange;
+}
+
+int GlobalApplication::set_RealDistanceMinMappedRange(float value)
+{
+    int ret = 0;
+
+    RealDistanceMinMappedRange = value;
+
+    return ret;
+}
+
+float GlobalApplication::get_RealDistanceMaxMappedRange()
+{
+    return RealDistanceMaxMappedRange;
+}
+
+int GlobalApplication::set_RealDistanceMaxMappedRange(float value)
+{
+    int ret = 0;
+
+    RealDistanceMaxMappedRange = value;
+
+    return ret;
+}
+
 #endif
 
 sensortype GlobalApplication::get_sensor_type()
@@ -231,7 +358,7 @@ sensortype GlobalApplication::string_2_sensortype(QString& str)
         return SENSOR_TYPE_DTOF;
 }
 
-#if defined(RUN_ON_ROCKCHIP)
+#if defined(RUN_ON_EMBEDDED_LINUX)
 AdapsEnvironmentType GlobalApplication::string_2_environmenttype(QString& str)
 {
     if (!str.compare("Outdoor"))

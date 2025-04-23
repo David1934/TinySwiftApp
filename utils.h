@@ -39,18 +39,20 @@ public:
     bool is_replay_data_exist();
     void test_pattern_generate(unsigned char *write_buf, int len, int ptn_idx);
     void hexdump(const unsigned char * buf, int buf_len, const char * title);
+    bool save_binary_file(const char *filename, const void *buffer, size_t size, const char *call_func, unsigned int call_line);
     void nv12_2_rgb(unsigned char *nv12, unsigned char *rgb, int width, int height);
     void yuyv_2_rgb(unsigned char *yuyv, unsigned char *rgb, int width, int height);
-    bool IsASCII(const char c);
-    void GetRgb4watchPoint(const u8 rgb_buffer[], const int outImgWidth, const int outImgHeight, u8 x, u8 y, u8 *r, u8 *g, u8 *b);
+    bool IsASCII(const unsigned char c);
+    void GetRgb4watchPoint(const u8 rgb_buffer[], const int out_frm_width, u8 x, u8 y, u8 *r, u8 *g, u8 *b);
     void GetPidTid(const char *callfunc, const int callline);
     int MD5Check4Buffer(const unsigned char* buffer, int size, const char *expected_md5_string, const char *call_func, int call_line);
+    int MD5Calculate(const unsigned char* buffer, int size, const char *call_func, unsigned int call_line);
 
     static bool is_env_var_true(const char *var_name)
     {
         const char *env_var_value = getenv(var_name);
     
-        if (env_var_value != NULL && strcmp(env_var_value, "true") == 0) {
+        if (env_var_value != NULL_POINTER && strcmp(env_var_value, "true") == 0) {
             return true;
         }
         return false;
@@ -61,7 +63,7 @@ public:
         int ret = 0;
         const char *env_var_value = getenv(var_name);
     
-        if (env_var_value != NULL) {
+        if (env_var_value != NULL_POINTER) {
             ret = atoi(env_var_value);
         }
     
@@ -82,6 +84,7 @@ private:
     void loadFiles(const QString &directoryPath, const QString &fileExtension);
     unsigned char hexCharToValue(char c);
     void hexStringToByteArray(const char* hexString, unsigned char* byteArray, int byteArrayLength);
+    void byteArray2HexString(const unsigned char byteArray[], int byteArrayLength, char* outputHexString);
 };
 
 #endif // UTILS_H

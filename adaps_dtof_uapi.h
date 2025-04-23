@@ -5,9 +5,7 @@
 #ifndef _ADAPS_DTOF_UAPI_H
 #define _ADAPS_DTOF_UAPI_H
 
-#if defined(RUN_ON_ROCKCHIP)
 #include <linux/types.h>
-#endif
 
 #define ADAPS_DTOF_PRIVATE              0x1000
 
@@ -30,8 +28,53 @@
 #define BIT(n)                  (1 << n)
 #endif
 
+typedef enum {
+    MIPI_TWO_DT_MODE = 0,
+    MIPI_ONE_DT_MODE,
+
+    MIPI_DT_MODE_COUNT
+} mipi_datatype_mode_t;
+
+typedef enum {
+    SYS_CLOCK_330M_HZ = 330,
+    SYS_CLOCK_250M_HZ = 250,
+    SYS_CLOCK_200M_HZ = 200,
+}sys_clock_freq_t;
+
+typedef enum {
+    MIPI_CLOCK_CONTINUOUS = 0,
+    MIPI_CLOCK_NON_CONTINUOUS,
+}mipi_clock_t;
+
+typedef enum {
+    MIPI_DATA_LANES_4 = 4,             // data lane 0 -- 3
+    MIPI_DATA_LANES_2 = 2,             // data lane 0 -- 1
+}mipi_data_lane_t;
+
+typedef enum {
+    MIPI_SPEED_1G_BPS       = 1000, // default value, available for ads6311 and ads6401
+    MIPI_SPEED_1G5_BPS      = 1500, // available for ads6311 and ads6401
+    MIPI_SPEED_1G2_BPS      = 1200, // available for ads6311 and ads6401
+    MIPI_SPEED_800M_BPS     = 800,  // available for ads6311 only now
+    MIPI_SPEED_720M_BPS     = 720,  // available for ads6401 only now
+    MIPI_SPEED_600M_BPS     = 600,  // NOT availabe now
+    MIPI_SPEED_500M_BPS     = 500,  // available for ads6401 only now
+    MIPI_SPEED_200M_BPS     = 200,  // available for ads6401 only now
+    MIPI_SPEED_166M64_BPS   = 166,  // NOT availabe now
+}mipi_speed_per_lane_t;
+
+struct sys_perf_param {
+    sys_clock_freq_t           sys_clk_freq;
+    mipi_clock_t               mipi_clk_type;
+    mipi_speed_per_lane_t      mipi_speed_per_lane;
+    mipi_data_lane_t           mipi_data_lane_cnt;
+}__attribute__ ((packed));
+
+
 #if 1 //def __KERNEL__
 #if defined(CONFIG_VIDEO_ADS6311)  // FOR ADAPS_HAWK
+
+#define SENSOR_OTP_DATA_SIZE    0x20 // unit is word (16-bits)
 
 struct rkmodule_sensor_mode {
     char modename[RKMODULE_MODE_NAME_MAX];
@@ -113,7 +156,7 @@ typedef enum hawk_vcsel_op_code {
     HAWK_VCSEL_OP_STOP = 2,
 }hawk_vcsel_op_code_t;
 
-enum hawk_rx_error_type_t {
+enum hawk_rx_error_type_e {
     HAWK_RX_FSM_ALARM               = BIT(0),  // internal state-machine mismatch alarm
     HAWK_RX_WDT_ALARM               = BIT(1),  // watch-dog timer overflow alarm
     HAWK_RX_DV11_ALARM              = BIT(2),  // DV11 voltage abnormal alarm
@@ -137,6 +180,13 @@ enum hawk_rx_error_type_t {
     HAWK_RX_HIGH_OTP_DATA_ERR       = BIT(18),  // High temperature otp parameter has some error
 };
 
+typedef enum hawk_pvdd_switch_strategy_e {
+    HAWK_PVDD_SWITCH_AUTO               = 0,    // strong <-> weak PVDD switch cycle if two ROI sram data are available, otherwize use strong PVDD if only the first ROI sram is available.
+    HAWK_PVDD_SWITCH_FORCE_TO_STRONG    = 1,    // use strong PVDD although the second ROI sram is available.
+    HAWK_PVDD_SWITCH_FORCE_TO_WEAK      = 2,    // use weak PVDD if the second ROI sram is available.
+    HAWK_PVDD_SWITCH_STRATEGY_CNT
+} pvdd_swt_strategy_t;
+
 enum {
     HAWK_OTP_TEMPERATURE_PARAM_LOW,
     HAWK_OTP_TEMPERATURE_PARAM_ROOM,
@@ -145,7 +195,7 @@ enum {
 };
 
 enum hawk_otp_checksum_state{
-    HAWK_OTP_CHECKSUM_UNSAVED,     // the value is full 0
+    HAWK_OTP_CHECKSUM_UNSAVED,     // only for these BLANK chip without CP test
     HAWK_OTP_CHECKSUM_MATCHED,
     HAWK_OTP_CHECKSUM_MISMATCHED,
 };
@@ -169,6 +219,13 @@ struct hawk_otp_ref_voltage
     bool otp_blank;
     bool otp_read;   // whether read the otp data or not?
     u16 adc_reference_voltage;      // unit is mV
+}__attribute__ ((packed));
+
+struct hawk_otp_raw_data
+{
+    bool otp_blank;
+    bool otp_read;   // whether read the otp data or not?
+    u16 raw_data[SENSOR_OTP_DATA_SIZE];
 }__attribute__ ((packed));
 
 struct hawk_norflash_op_param
@@ -284,6 +341,30 @@ struct hawk_norflash_op_param
 #define ADTOF_SET_PVDD_VOLTAGE_4_WEAK_LASER      \
     _IOW('T', ADAPS_DTOF_PRIVATE + 36, __u16 *)             // 0x24
 
+#define ADTOF_SET_MIPI_DATATYPE_MODE      \
+    _IOW('T', ADAPS_DTOF_PRIVATE + 37, __u8 *)              // 0x25
+
+#define ADTOF_GET_MIPI_DATATYPE_MODE       \
+    _IOR('T', ADAPS_DTOF_PRIVATE + 38, __u8 *)          // 0x26
+
+#define ADTOF_SET_SYS_PERF_PARAMETERS      \
+    _IOW('T', ADAPS_DTOF_PRIVATE + 39, struct sys_perf_param *)              // 0x27
+
+#define ADTOF_GET_SYS_PERF_PARAMETERS       \
+    _IOR('T', ADAPS_DTOF_PRIVATE + 40, struct sys_perf_param *)          // 0x28
+
+#define ADTOF_SET_EXPO_PBRS_ENABLE      \
+    _IOW('T', ADAPS_DTOF_PRIVATE + 41, bool *)              // 0x29
+
+#define ADTOF_SET_ASC_ENABLE_CFG      \
+    _IOW('T', ADAPS_DTOF_PRIVATE + 42, __u8 *)              // 0x2A
+
+#define ADTOF_SET_PVDD_SWITCH_STRATEGY      \
+    _IOW('T', ADAPS_DTOF_PRIVATE + 43, __u8 *)              // 0x2B   see also pvdd_swt_strategy_t
+
+#define ADTOF_GET_HAWK_OTP_RAW_DATA       \
+    _IOR('T', ADAPS_DTOF_PRIVATE + 44, struct hawk_otp_raw_data *)          // 0x2C
+
 #endif // FOR ADAPS_HAWK
 
 
@@ -294,20 +375,13 @@ struct hawk_norflash_op_param
 //==========================================================================
 #if defined(CONFIG_VIDEO_ADS6401)  // FOR ADAPS_SWIFT
 
-// built-in EEPROM P24C64E-C4H-MIR, VcselDriver OPN7020, and external VOP chip ADS5142
-#define ADS6401_MODDULE_SPOT                0x6401A
-
-// built-in EEPROM P24C256F-D4H-MIR, VcselDriver PhotonIC 5015, MCU HC32L110B6YA, 
-// and external PWM based VOP chip TPS61170DRVR
-#define ADS6401_MODDULE_FLOOD               0x6401B
+#include "adaps_types.h"
 
 #if defined(CONFIG_ADAPS_SWIFT_FLOOD)
-    #define SWIFT_MODULE_TYPE               ADS6401_MODDULE_FLOOD
+    #define SWIFT_MODULE_TYPE               ADS6401_MODULE_FLOOD
 #else
-    #define SWIFT_MODULE_TYPE               ADS6401_MODDULE_SPOT
+    #define SWIFT_MODULE_TYPE               ADS6401_MODULE_SPOT
 #endif
-
-#include "adaps_types.h"
 
 // There are two group Calibration SRAM for spod address, every group has 4 calibration registers.
 #define CALIB_SRAM_REG_BASE0                0xFB
@@ -327,11 +401,12 @@ struct hawk_norflash_op_param
 #define SWIFT_MAX_SPOT_COUNT                (PER_ZONE_MAX_SPOT_COUNT * ZONE_COUNT_PER_SRAM_GROUP * CALIB_SRAM_GROUP_COUNT)
 
 #define SWIFT_DEVICE_NAME_LENGTH            64
+#define SENSOR_SN_LENGTH                    12
 
 #define OFFSET(structure, member)           ((uintptr_t)&((structure*)0)->member)
 #define MEMBER_SIZE(structure, member)      sizeof(((structure*)0)->member)
 
-#if (ADS6401_MODDULE_SPOT == SWIFT_MODULE_TYPE)
+#if (ADS6401_MODULE_SPOT == SWIFT_MODULE_TYPE)
 enum {
     CALIBRATION_INFO,
     SRAM_DATA,
@@ -362,12 +437,16 @@ enum {
 #define MODULE_INFO_RESERVED_SIZE           176
 #define WALKERROR_RESERVED_SIZE             5760
 
+#define EEPROM_CALIB_DATA_MAX_SIZE          (64*1024)  // 64*1024, unit is bytes
+#define ROI_SRAM_BUF_MAX_SIZE               (2*1024)   // 2x1024, unit is bytes
+#define REG_SETTING_BUF_MAX_SIZE_PER_SEG    2048       // unit is bytes, there may be 2 segments
+
 #pragma pack(4)
 typedef struct SwiftEepromData
 {
     // In Swift EEPROM, one page has 64 bytes.
     // Page 1
-    char            deviceName[SWIFT_DEVICE_NAME_LENGTH];
+    char            deviceName[SWIFT_DEVICE_NAME_LENGTH]; // Calibration version infomation
     // Page 2 - 65
     unsigned char   sramData[ALL_ROISRAM_GROUP_SIZE];
     // Page 66
@@ -477,6 +556,10 @@ typedef struct SwiftEepromData
 
 //offset
 #define OFFSET_VALID_DATA_LENGTH                            960
+
+#define EEPROM_CALIB_DATA_MAX_SIZE                          (32*1024)  // 32*1024, unit is bytes
+#define ROI_SRAM_BUF_MAX_SIZE                               (2*1024)   // 2x1024, unit is bytes
+#define REG_SETTING_BUF_MAX_SIZE_PER_SEG                    2048       // unit is bytes, there may be 2 segments
 
 // from SpadisPC\SpadisLib\eepromSettings.h
 enum SwiftFloodEEPROMSizeInfo
@@ -598,19 +681,35 @@ struct adaps_dtof_runtime_param{
 };
 
 struct adaps_dtof_exposure_param{
-    __u8 laser_exposure_period;
-    __u8 fine_exposure_time;
+    __u8 ptm_coarse_exposure_value;//ptm_coarse_exposure_value, register configure value
+    __u8 ptm_fine_exposure_value;// ptm_fine_exposure_value, register configure value
+    __u8 pcm_gray_exposure_value;// pcm_gray_exposure_value, register configure value
+    __u8 exposure_period;  // laser_exposure_period, register configure value
 };
 
 struct adaps_dtof_runtime_status_param {
+    bool test_pattern_enabled;
     __u32 inside_temperature_x100; //since kernel doesn't use float type, this is a expanded integer value (x100), Eg 4515 means 45.15 degree
     __u32 expected_vop_abs_x100;
     __u32 expected_pvdd_x100;
 };
 
-struct adaps_dtof_eeprom_data_state{
-    __u8 state;
+struct adaps_dtof_module_static_data{
+    __u32 module_type;            // refer to ADS6401_MODULE_SPOT and ADS6401_MODULE_FLOOD of adaps_types.h file
+    __u32 eeprom_capacity;       // unit is byte
+    __u16 otp_vbe25;
+    __u16 otp_vbd;        // unit is 10mv, or the related V X 100
+    __u16 otp_adc_vref;
+    __u8 serialNumber[SENSOR_SN_LENGTH];
+    __u8 ready;
 };
+
+typedef struct {
+    __u8 work_mode;
+    __u16 sensor_reg_setting_cnt;
+    __u16 vcsel_reg_setting_cnt;
+    __u16 roi_sram_size[ZONE_COUNT_PER_SRAM_GROUP * CALIB_SRAM_GROUP_COUNT];
+} external_config_script_param_t;
 
 #define ADAPS_SET_DTOF_INITIAL_PARAM       \
     _IOW('T', ADAPS_DTOF_PRIVATE + 0, struct adaps_dtof_intial_param)
@@ -621,11 +720,20 @@ struct adaps_dtof_eeprom_data_state{
 #define ADAPS_GET_DTOF_RUNTIME_STATUS_PARAM       \
     _IOR('T', ADAPS_DTOF_PRIVATE + 2, struct adaps_dtof_runtime_status_param)
 
-#define ADAPS_GET_DTOF_EEPROM_DATA_STATE       \
-    _IOR('T', ADAPS_DTOF_PRIVATE + 3, struct adaps_dtof_eeprom_data_state)
+#define ADAPS_GET_DTOF_MODULE_STATIC_DATA       \
+    _IOR('T', ADAPS_DTOF_PRIVATE + 3, struct adaps_dtof_module_static_data)
 
 #define ADAPS_GET_DTOF_EXPOSURE_PARAM       \
     _IOR('T', ADAPS_DTOF_PRIVATE + 4, struct adaps_dtof_exposure_param)
+
+#define ADTOF_SET_DEVICE_REGISTER       \
+    _IOW('T', ADAPS_DTOF_PRIVATE + 5, register_op_data_t *)
+
+#define ADTOF_GET_DEVICE_REGISTER       \
+    _IOR('T', ADAPS_DTOF_PRIVATE + 6, register_op_data_t *)
+
+#define ADTOF_SET_EXTERNAL_CONFIG_SCRIPT      \
+    _IOW('T', ADAPS_DTOF_PRIVATE + 7, external_config_script_param_t *)
 
 
 #endif // FOR ADAPS_SWIFT

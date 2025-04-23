@@ -1,26 +1,19 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#include <QObject>
-#include <QString>
 #include <QMetaType>
-
-#if defined(RUN_ON_ROCKCHIP)
-//#define IGNORE_REAL_COMMUNICATION
-#include "rk-camera-module.h"
-
-#define MAX_CALIB_SRAM_DATA_GROUP_CNT                   9
-
-#else
 
 #include "adaps_types.h"
 #include "adaps_dtof_uapi.h"
+
+#if defined(RUN_ON_EMBEDDED_LINUX)
+#define MAX_CALIB_SRAM_DATA_GROUP_CNT           9
 #endif
 
-#define VERSION_MAJOR                           2
-#define VERSION_MINOR                           3
+#define VERSION_MAJOR                           3
+#define VERSION_MINOR                           0
 #define VERSION_REVISION                        0
-#define LAST_MODIFIED_TIME                      "20250422A"
+#define LAST_MODIFIED_TIME                      "202500529A"
 
 #define DEFAULT_DTOF_FRAMERATE                  AdapsFramerateType30FPS // AdapsFramerateType60FPS
 
@@ -50,21 +43,22 @@
     #define MEDIA_DEVNAME_4_DTOF_SENSOR             "/dev/media2"
     #define VIDEO_DEV_4_DTOF_SENSOR                 "/dev/video22"
     #define ENTITY_NAME_4_DTOF_SENSOR               "m00_b_ads6401 7-005e"
-    #define VIDIOC_S_FMT_INCLUDE_VIDIOC_SUBDEV_S_FMT    // On rk3568 Linux platform, when call ioctl(fd, VIDIOC_S_FMT, &fmt), it will set format for sensor too.
+    #define VIDIOC_S_FMT_INCLUDE_VIDIOC_SUBDEV_S_FMT    // On rk3588 Linux platform, when call ioctl(fd, VIDIOC_S_FMT, &fmt), it will set format for sensor too.
 #endif
 
 #define DEFAULT_TIMER_TEST_TIMES                0
 #define TIMER_TEST_INTERVAL                     5   // unit is second
+#define FRAME_INTERVAL_4_PROGRESS_REPORT        500   // every X frames, report a progress
 
 #define WAIT_TIME_4_THREAD_EXIT                 10  // unit is  milliseconds
 
-#if defined(RUN_ON_ROCKCHIP)
+#if defined(RUN_ON_EMBEDDED_LINUX)
     #define DEFAULT_CFG_4_COWORK_WITH_HOST      true
     #define DEFAULT_SENSOR_TYPE                 SENSOR_TYPE_DTOF
     #define DEFAULT_ENVIRONMENT_TYPE            AdapsEnvTypeIndoor
     #define DEFAULT_MEASUREMENT_TYPE            AdapsMeasurementTypeFull
 
-    #if (ADS6401_MODDULE_SPOT == SWIFT_MODULE_TYPE)
+    #if (ADS6401_MODULE_SPOT == SWIFT_MODULE_TYPE)
         #define SWIFT_MODULE_TYPE_NAME          "Spot"
     #else
         #define SWIFT_MODULE_TYPE_NAME          "Flood"
@@ -82,6 +76,7 @@
 #define ENV_VAR_SAVE_DEPTH_TXT_ENABLE           "save_depth_txt_enable"
 #define ENV_VAR_SAVE_FRAME_ENABLE               "save_frame_enable"
 #define ENV_VAR_DBGINFO_ENABLE                  "debug_info_enable"
+#define ENV_VAR_SKIP_FRAME_DECODE               "skip_frame_decode"
 #define ENV_VAR_SKIP_FRAME_PROCESS              "skip_frame_process"
 #define ENV_VAR_SKIP_EEPROM_CRC_CHK             "skip_eeprom_crc_check"
 #define ENV_VAR_DUMP_LENS_INTRINSIC             "dump_lens_intrinsic"
@@ -95,6 +90,14 @@
 #define ENV_VAR_DISABLE_WALK_ERROR              "disable_walk_error"      // processed in adaps decode algo lib
 #define ENV_VAR_DUMP_MID_CONF_ENABLE            "log_medium_confidence_spot"
 #define ENV_VAR_EXPECTED_FRAME_MD5SUM           "expected_frame_md5sum"
+#define ENV_VAR_DEVELOP_DEBUGGING               "develop_debugging"
+#define ENV_VAR_DUMP_COMM_BUFFER_SIZE           "dump_comm_buf_size"
+#define ENV_VAR_TEST_PATTERN_TYPE               "test_pattern_type"
+#define ENV_VAR_DUMP_ALGO_LIB_IO_PARAM          "dump_algo_lib_io_param"
+#define ENV_VAR_DUMP_CAPTURE_REQ_PARAM          "dump_capture_req_param"
+#define ENV_VAR_DUMP_FRAME_PARAM_TIMES          "dump_frame_param_times"
+#define ENV_VAR_DUMP_MODULE_STATIC_DATA         "dump_module_static_data"
+#define ENV_VAR_DUMP_PARSING_SCRIPT_ITEMS       "dump_parsing_script_items"
 
 #define __tostr(x)                          #x
 #define __stringify(x)                      __tostr(x)
@@ -106,11 +109,13 @@
 #define APP_NAME                          "SpadisQT"
 #define APP_VERSION_CODE                 (VERSION_MAJOR << 16 | VERSION_MINOR << 8 | VERSION_REVISION)
 
-#if defined(RUN_ON_ROCKCHIP)
+#if defined(RUN_ON_EMBEDDED_LINUX)
 #define APP_VERSION                      VERSION_STRING "_LM" LAST_MODIFIED_TIME "_For_" SWIFT_MODULE_TYPE_NAME "_Module"
 #else
 #define APP_VERSION                      VERSION_STRING "_LM" LAST_MODIFIED_TIME
 #endif
+
+#define NULL_POINTER                            nullptr
 
 inline const char* get_filename(const char* path) {
     const char* file = strrchr(path, '/');
@@ -120,31 +125,14 @@ inline const char* get_filename(const char* path) {
     return file ? file + 1 : path;
 }
 
-inline bool is_env_var_true(const char *var_name)
+inline bool env_var_is_true(const char *var_name)
 {
     const char *env_var_value = getenv(var_name);
 
-    if (env_var_value != NULL && strcmp(env_var_value, "true") == 0) {
+    if (env_var_value != NULL_POINTER && strcmp(env_var_value, "true") == 0) {
         return true;
     }
     return false;
-}
-
-inline int get_env_var_intvalue(const char *var_name)
-{
-    int ret = 0;
-    const char *env_var_value = getenv(var_name);
-
-    if (env_var_value != NULL) {
-        ret = atoi(env_var_value);
-    }
-
-    return ret;
-}
-
-inline char *get_env_var_stringvalue(const char *var_name)
-{
-    return getenv(var_name);
 }
 
 #if defined(TRACE_IOCTL)
@@ -191,7 +179,7 @@ inline char *get_env_var_stringvalue(const char *var_name)
     }while(0)
 
 #define DBG_INFO(fmt, args ...)                                                                 \
-    if (is_env_var_true(ENV_VAR_DBGINFO_ENABLE)) {                                                \
+    if (env_var_is_true(ENV_VAR_DBGINFO_ENABLE)) {                                                \
         struct timespec ts;                                                                     \
         clock_gettime(CLOCK_REALTIME, &ts);                                                     \
         struct tm tm = *localtime(&ts.tv_sec);                                                  \
@@ -208,8 +196,7 @@ inline char *get_env_var_stringvalue(const char *var_name)
 #define DBG_INFO        printf
 #endif
 
-#define LOG_ERROR                DBG_ERROR
-#define LOG_INFO                DBG_INFO
+#define errno_debug(fmt)            DBG_ERROR("%s error %d, %s\n", (fmt), errno, strerror(errno))
 
 typedef unsigned char u8;
 typedef unsigned short u16;
@@ -279,9 +266,10 @@ struct sensor_params
     int         out_frm_height;
     AdapsEnvironmentType env_type;
     AdapsMeasurementType measure_type;
+    AdapsFramerateType framerate_type;
     AdapsEnvironmentType advisedEnvType;
     AdapsMeasurementType advisedMeasureType;
-#if defined(RUN_ON_ROCKCHIP)
+#if defined(RUN_ON_EMBEDDED_LINUX)
     struct adaps_dtof_exposure_param exposureParam;
 #endif
 };
@@ -290,7 +278,7 @@ struct status_params1
 {
     int mipi_rx_fps;
     unsigned long streamed_time_us;
-#if defined(RUN_ON_ROCKCHIP)
+#if defined(RUN_ON_EMBEDDED_LINUX)
     unsigned int curr_temperature;
     unsigned int curr_exp_vop_abs;
     unsigned int curr_exp_pvdd;
@@ -303,7 +291,7 @@ struct status_params2
     unsigned long streamed_time_us;
     unsigned int sensor_type;
     unsigned int work_mode;
-#if defined(RUN_ON_ROCKCHIP)
+#if defined(RUN_ON_EMBEDDED_LINUX)
     unsigned int curr_temperature;
     unsigned int curr_exp_vop_abs;
     unsigned int curr_exp_pvdd;

@@ -32,13 +32,15 @@ MainWindow::MainWindow()
 #endif
 {
     char AppNameVersion[128];
+#if !defined(NO_UI_APPLICATION)
     int w;
     int h;
+#endif
 
     firstDisplayFrameTimeUsec = 0;
     displayedFrameCnt = 0;
     displayed_fps = 0;
-    frame_process_thread = NULL;
+    frame_process_thread = NULL_POINTER;
 #if !defined(NO_UI_APPLICATION)
     ui->setupUi(this);
 #endif
@@ -74,13 +76,29 @@ MainWindow::MainWindow()
 
     ui->startStopButton->setText("Start");
 
-#if defined(RUN_ON_ROCKCHIP)
+#if defined(RUN_ON_EMBEDDED_LINUX)
     ui->groupBox_rgb_wkmode->setEnabled(false);
+    ui->groupBox_rgb_wkmode->setVisible(false);
 #else
     ui->groupBox_dtof_wkmode->setEnabled(false);
     ui->groupBox_dtof_environment->setEnabled(false);
+    ui->groupBox_dtof_wkmode->setVisible(false);
+    ui->groupBox_dtof_environment->setVisible(false);
+    ui->groupBox_dtof_framerate->setVisible(false);
     ui->confidence_bitmap->setVisible(false);
 #endif
+#endif
+
+#if defined(RUN_ON_EMBEDDED_LINUX)
+    m_misc_dev = new Misc_Device();
+    qApp->register_misc_dev_instance(m_misc_dev);
+    host_comm = Host_Communication::getInstance();
+
+    connect(host_comm, &Host_Communication::start_capture, this, &MainWindow::on_startCapture);
+    connect(host_comm, &Host_Communication::stop_capture, this, &MainWindow::on_stopCapture);
+
+    qRegisterMetaType<capture_req_param_t*>("capture_req_param_t*");
+    connect(host_comm, &Host_Communication::set_capture_options, this, &MainWindow::on_capture_options_set);
 #endif
 
     startFrameProcessThread();
@@ -90,7 +108,7 @@ MainWindow::~MainWindow()
 {
     DBG_INFO("frame_process_thread:%p...", frame_process_thread);
 
-    if (NULL != frame_process_thread)
+    if (NULL_POINTER != frame_process_thread)
     {
         bool isRunning = frame_process_thread->isRunning();
         bool isFinished = frame_process_thread->isFinished();
@@ -108,15 +126,24 @@ MainWindow::~MainWindow()
         }
         delete frame_process_thread;
     }
+
 #if !defined(NO_UI_APPLICATION)
     delete ui;
+#endif
+#if defined(RUN_ON_EMBEDDED_LINUX)
+    delete host_comm;
+    delete m_misc_dev;
+    m_misc_dev = NULL_POINTER;
+    qApp->register_misc_dev_instance(m_misc_dev);
 #endif
 }
 
 void MainWindow::startFrameProcessThread(void)
 {
     int ret = 0;
+#if !defined(NO_UI_APPLICATION)
     char auto_test_times_string[32];
+#endif
     sensortype sensor_type = qApp->get_sensor_type();
     sensor_workmode wk_mode = qApp->get_wk_mode();
 
@@ -156,7 +183,7 @@ void MainWindow::startFrameProcessThread(void)
         ui->mainlabel->setText("Fail to frame_process_thread init(),\nPlease check camera is ready or not?");
 #endif
         delete frame_process_thread;
-        frame_process_thread = NULL;
+        frame_process_thread = NULL_POINTER;
         //QMessageBox::information(nullptr, "Warning Prompt", "No camera is detected, please double check!");
         return;
     }
@@ -181,7 +208,7 @@ void MainWindow::startFrameProcessThread(void)
     QShortcut *shortcut_ctrlS = new QShortcut(QKeySequence(Qt::CTRL + Qt::Key_S), this);
     connect(shortcut_ctrlS, &QShortcut::activated, this, &MainWindow::onCtrl_S_Pressed);
 
-    ui->mainlabel->installEventFilter(this);
+    ui->mainlabel->installEventFilter(this); // for eventFilter()
 
     tested_times = 0;
     to_test_times = qApp->get_timer_test_times();
@@ -228,8 +255,9 @@ void MainWindow::onThreadEnd(int stop_request_code)
 
         case STOP_REQUEST_STOP:
             delete frame_process_thread;
-            frame_process_thread = NULL;
+            frame_process_thread = NULL_POINTER;
             ui->mainlabel->setText("Device is stopped");
+            ui->confidence_bitmap->setText("Confidence bitmap is NA");
         break;
 
         default:
@@ -248,7 +276,7 @@ void MainWindow::Quit(void)
         qApp->exit(0);
     }
     else {
-        if (NULL != frame_process_thread)
+        if (NULL_POINTER != frame_process_thread)
         {
             bool isRunning = frame_process_thread->isRunning();
             bool isFinished = frame_process_thread->isFinished();
@@ -296,7 +324,7 @@ void MainWindow::unixSignalHandler(int signal)
 #if !defined(NO_UI_APPLICATION)
             ui->mainlabel->setText("User Signal 1 recieved\nPls check kernel log for detailed info!");
 #endif
-            if (NULL != frame_process_thread)
+            if (NULL_POINTER != frame_process_thread)
             {
                 frame_process_thread->stop(STOP_REQUEST_STOP);
             }
@@ -307,7 +335,7 @@ void MainWindow::unixSignalHandler(int signal)
 #if !defined(NO_UI_APPLICATION)
             ui->mainlabel->setText("User Signal 2 recieved\nPls check kernel log for detailed info!");
 #endif
-            if (NULL != frame_process_thread)
+            if (NULL_POINTER != frame_process_thread)
             {
                 frame_process_thread->stop(STOP_REQUEST_STOP);
             }
@@ -318,15 +346,12 @@ void MainWindow::unixSignalHandler(int signal)
             Quit();
             break;
 
-#if 0 // handled in main.cpp
         case SIGSEGV:
-        case SIGABRT:
         case SIGBUS:
         case SIGTERM:
             DBG_ERROR("graceful close() is executed!");
             Quit();
             break;
-#endif
 
         default:
             break;
@@ -334,6 +359,167 @@ void MainWindow::unixSignalHandler(int signal)
 
     return;
 }
+
+void MainWindow::on_stopCapture()
+{
+    if (NULL_POINTER != frame_process_thread)
+    {
+        frame_process_thread->stop(STOP_REQUEST_STOP);
+#if !defined(NO_UI_APPLICATION)
+        ui->startStopButton->setText("Start");
+#endif
+    }
+}
+
+#if defined(RUN_ON_EMBEDDED_LINUX)
+void MainWindow::on_capture_options_set(capture_req_param_t* param)
+{
+    switch (param->work_mode) 
+    {
+#if !defined(NO_UI_APPLICATION)
+        case ADAPS_PCM_MODE:
+            ui->radioButton_pcm->setChecked(true);
+            break;
+
+        case ADAPS_PTM_PHR_MODE:
+            ui->radioButton_phr->setChecked(true);
+            break;
+
+        default:
+            ui->radioButton_fhr->setChecked(true);
+            break;
+#else
+        case ADAPS_PCM_MODE:
+            qApp->set_wk_mode(WK_DTOF_PCM);
+            break;
+
+        case ADAPS_PTM_PHR_MODE:
+            qApp->set_wk_mode(WK_DTOF_PHR);
+            break;
+
+        default:
+            qApp->set_wk_mode(WK_DTOF_FHR);
+            break;
+#endif
+    }
+
+    switch (param->env_type) 
+    {
+#if !defined(NO_UI_APPLICATION)
+        case AdapsEnvTypeOutdoor:
+            ui->radioButton_outdoor->setChecked(true);
+            break;
+
+        default:
+            ui->radioButton_indoor->setChecked(true);
+            break;
+#else
+        case AdapsEnvTypeOutdoor:
+            qApp->set_environment_type(AdapsEnvTypeOutdoor);
+            break;
+
+        default:
+            qApp->set_environment_type(AdapsEnvTypeIndoor);
+            break;
+#endif
+    }
+
+    switch (param->framerate_type) 
+    {
+#if !defined(NO_UI_APPLICATION)
+        case AdapsFramerateType15FPS:
+            ui->radioButton_15fps->setChecked(true);
+            break;
+
+        case AdapsFramerateType25FPS:
+            ui->radioButton_25fps->setChecked(true);
+            break;
+
+        case AdapsFramerateType60FPS:
+            ui->radioButton_60fps->setChecked(true);
+            break;
+
+        case AdapsFramerateType30FPS:
+        default:
+            ui->radioButton_30fps->setChecked(true);
+            break;
+#else
+        case AdapsFramerateType15FPS:
+            qApp->set_framerate_type(AdapsFramerateType15FPS);
+            break;
+
+        case AdapsFramerateType25FPS:
+            qApp->set_framerate_type(AdapsFramerateType25FPS);
+            break;
+
+        case AdapsFramerateType60FPS:
+            qApp->set_framerate_type(AdapsFramerateType60FPS);
+            break;
+
+        case AdapsFramerateType30FPS:
+        default:
+            qApp->set_framerate_type(AdapsFramerateType30FPS);
+            break;
+#endif
+    }
+}
+#endif
+
+void MainWindow::on_startCapture()
+{
+    if (NULL_POINTER == frame_process_thread)
+    {
+        sensortype sensor_type = qApp->get_sensor_type();
+
+#if !defined(NO_UI_APPLICATION)
+#if defined(RUN_ON_EMBEDDED_LINUX)
+        if (SENSOR_TYPE_DTOF == sensor_type)
+        {
+            if(ui->radioButton_fhr->isChecked()) {
+                qApp->set_wk_mode(WK_DTOF_FHR);
+            } else if(ui->radioButton_pcm->isChecked()) {
+                qApp->set_wk_mode(WK_DTOF_PCM);
+            } else {
+                qApp->set_wk_mode(WK_DTOF_PHR);
+            }
+
+            if(ui->radioButton_outdoor->isChecked()) {
+                qApp->set_environment_type(AdapsEnvTypeOutdoor);
+            } else {
+                qApp->set_environment_type(AdapsEnvTypeIndoor);
+            }
+
+            if(ui->radioButton_15fps->isChecked()) {
+                qApp->set_framerate_type(AdapsFramerateType15FPS);
+            } else if(ui->radioButton_25fps->isChecked()) {
+                qApp->set_framerate_type(AdapsFramerateType25FPS);
+            } else if(ui->radioButton_60fps->isChecked()) {
+                qApp->set_framerate_type(AdapsFramerateType60FPS);
+            } else {
+                qApp->set_framerate_type(AdapsFramerateType30FPS);
+            }
+        }
+        else 
+#endif
+        if (SENSOR_TYPE_RGB == sensor_type)
+        {
+            if(ui->radioButton_yuyv->isChecked()) {
+                qApp->set_wk_mode(WK_RGB_YUYV);
+            } else {
+                qApp->set_wk_mode(WK_RGB_NV12);
+            }
+        }
+        else {
+            // No correct sensor type is selected, exit.
+            return;
+        }
+#endif
+
+        //qApp->set_wk_mode(WK_DTOF_FHR);
+        startFrameProcessThread();
+    }
+}
+
 
 #if !defined(NO_UI_APPLICATION)
 void MainWindow::watchSpotInfoUpdate(  QPoint spot, enum frame_data_type ftype, watchPointInfo_t wpi)
@@ -418,6 +604,7 @@ bool MainWindow::update_status_info(status_params2 param2)
         "RGB-YUYV",
     };
 
+#if defined(RUN_ON_EMBEDDED_LINUX)
     const char *environment_type_name[]={
         "Unknown",
         "Indoor",
@@ -431,12 +618,15 @@ bool MainWindow::update_status_info(status_params2 param2)
         "Full",
     };
 
+#if 0
     const char *power_mode_names[] =
     {
         "Unknown",
         "Div1",
         "Div3",
     };
+#endif
+#endif
 
     unsigned int streamed_time_seconds = param2.streamed_time_us / 1000000;
 
@@ -444,8 +634,7 @@ bool MainWindow::update_status_info(status_params2 param2)
     ui->framerate_value->setText(temp_string);
 
     sprintf(temp_string, "%02d:%02d:%02d", streamed_time_seconds/3600, streamed_time_seconds/60, streamed_time_seconds%60);
-    //ui->strmTime_value->setText(temp_string);
-    ui->strmTime_value->display(temp_string);
+    ui->strmTime_value->setText(temp_string);
 
     if (param2.work_mode >= WK_DTOF_PHR && param2.work_mode < WK_COUNT)
     {
@@ -455,7 +644,7 @@ bool MainWindow::update_status_info(status_params2 param2)
         ui->cur_work_mode_value->setText("Unknown");
     }
 
-#if defined(RUN_ON_ROCKCHIP)
+#if defined(RUN_ON_EMBEDDED_LINUX)
     if (SENSOR_TYPE_RGB == param2.sensor_type)
     {
         ui->cur_module_type_value->setText("RGB");
@@ -550,7 +739,7 @@ bool MainWindow::new_frame_display(QImage image, QImage img4confidence)
             ui->confidence_bitmap->setPixmap(pix);
         }
         else {
-            ui->confidence_bitmap->setText("NO CONFIDENCE TO BE DISPLAYED!");
+            ui->confidence_bitmap->setText("Confidence bitmap is NA");
         }
 
         gettimeofday(&tv,NULL);
@@ -571,38 +760,12 @@ bool MainWindow::new_frame_display(QImage image, QImage img4confidence)
 
 void MainWindow::on_startStopButton_clicked()
 {
-    if (NULL != frame_process_thread)
+    if (NULL_POINTER != frame_process_thread)
     {
-        frame_process_thread->stop(STOP_REQUEST_STOP);
-        ui->startStopButton->setText("Start");
+        on_stopCapture();
     }
     else {
-        sensortype sensor_type = qApp->get_sensor_type();
-
-        if (SENSOR_TYPE_DTOF == sensor_type)
-        {
-            if(ui->radioButton_fhr->isChecked()) {
-                qApp->set_wk_mode(WK_DTOF_FHR);
-            } else if(ui->radioButton_pcm->isChecked()) {
-                qApp->set_wk_mode(WK_DTOF_PCM);
-            } else {
-                qApp->set_wk_mode(WK_DTOF_PHR);
-            }
-        }
-        else if (SENSOR_TYPE_RGB == sensor_type)
-        {
-            if(ui->radioButton_yuyv->isChecked()) {
-                qApp->set_wk_mode(WK_RGB_YUYV);
-            } else {
-                qApp->set_wk_mode(WK_RGB_NV12);
-            }
-        }
-        else {
-            // No correct sensor type is selected, exit.
-            return;
-        }
-
-        startFrameProcessThread();
+        on_startCapture();
     }
 }
 
@@ -619,14 +782,14 @@ void MainWindow::simulateButtonClick()
     }
 
     DBG_NOTICE("\n------Timer testing------test times: %d/%d, isRunning: %d---\n", tested_times, to_test_times, frame_process_thread->isRunning());
-    if (NULL != frame_process_thread)
+    if (NULL_POINTER != frame_process_thread)
     {
         if(frame_process_thread->isRunning())
         {
             tested_times++;
             sprintf(auto_test_times_string, "%d/%d", tested_times, to_test_times);
             ui->AutoTestTimes_value->setText(auto_test_times_string);
-            
+
             on_startStopButton_clicked();
         }
         else {
@@ -659,13 +822,13 @@ void MainWindow::captureAndSaveScreenshot()
     QString timeStr = currentDateTime.toString("HHmmss");
 
     // 构建保存路径
-    QString savePath = QString(DATA_SAVE_PATH "Screenshot_4_process%1_%2_%3.png")
+    QString savePath = QString(DATA_SAVE_PATH "Screenshot_4_process%1_%2_%3." CAPTURED_PICTURE_FMT)
                            .arg(processId)
                            .arg(dateStr)
                            .arg(timeStr);
 
     // 保存截图到文件
-    if (screenshot.save(savePath, "PNG")) {
+    if (screenshot.save(savePath, CAPTURED_PICTURE_FMT)) {
         DBG_NOTICE("Save screenshot to %s successfully.", QStringToCharPtr(savePath));
     } else {
         DBG_ERROR("Failed to save screenshot to %s.", QStringToCharPtr(savePath));

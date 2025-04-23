@@ -16,6 +16,21 @@ adb push Z:\for_docker\david\rk_build\app\SpadisQT\SpadisQT /usr/bin/.
 
 chmod +x /usr/bin/SpadisQT
 
+
+4. 因为rk3568的屏是类似于手机屏，原本是纵向显示的，SpadisQT界面显示好小，秦宇建议旋转90度，通过下列命令
+   可将屏幕旋转270度，同时调整mainwindow.ui的布局大小，大部分控件调大后，比原来更好看一些；
+     rk3568开发板屏幕桌面如何旋转90度？
+        cat /sys/kernel/debug/dri/0/summary
+        查看Connector名字，旋转如：
+        echo "output:DSI-1:rotate270" > /tmp/.weston_drm.conf
+        等待界面刷新
+
+FHR test pattern的raw data一致性验证：
+
+export expected_frame_md5sum="85f24805d05ed40d63426bc193094e84"
+echo 0x8 > /sys/kernel/debug/adaps/dbg_ctrl
+
+
 adb push Z:\for_docker\david\rk_build.QT_swift\buildroot/output/rockchip_rk3568/target/usr/lib/libstdc++.so.6.0.29 /usr/lib/.
 
 root@ok3588:/usr/lib# ls -l libstdc++.so*
@@ -28,4 +43,5 @@ root@ok3588:/usr/lib# rm libstdc++.so.6
 root@ok3588:/usr/lib# ln -s libstdc++.so.6.0.29 libstdc++.so.6
 root@ok3588:/usr/lib# rm libstdc++.so
 root@ok3588:/usr/lib# ln -s libstdc++.so.6.0.29 libstdc++.so
+
 

@@ -293,7 +293,7 @@
       <string>Cur measurement:</string>
      </property>
     </widget>
-    <widget class="QLCDNumber" name="strmTime_value">
+    <widget class="QLabel" name="strmTime_value">
      <property name="geometry">
       <rect>
        <x>350</x>
@@ -302,19 +302,15 @@
        <height>35</height>
       </rect>
      </property>
-     <property name="minimumSize">
-      <size>
-       <width>170</width>
-       <height>35</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>22</pointsize>
+       <weight>50</weight>
+       <bold>false</bold>
       </font>
      </property>
-     <property name="lineWidth">
-      <number>0</number>
+     <property name="text">
+      <string>12:34:56</string>
      </property>
     </widget>
     <widget class="QLabel" name="cur_work_mode_label">
@@ -420,7 +416,7 @@
     <property name="geometry">
      <rect>
       <x>50</x>
-      <y>100</y>
+      <y>60</y>
       <width>840</width>
       <height>640</height>
      </rect>
@@ -595,6 +591,71 @@
       </widget>
      </item>
      <item>
+      <widget class="QGroupBox" name="groupBox_dtof_framerate">
+       <property name="font">
+        <font>
+         <pointsize>12</pointsize>
+        </font>
+       </property>
+       <property name="title">
+        <string>Frame rate (fps):</string>
+       </property>
+       <layout class="QHBoxLayout" name="horizontalLayout_dtof_framerate">
+        <item>
+         <widget class="QRadioButton" name="radioButton_15fps">
+          <property name="font">
+           <font>
+            <pointsize>16</pointsize>
+           </font>
+          </property>
+          <property name="text">
+           <string>15</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="radioButton_25fps">
+          <property name="font">
+           <font>
+            <pointsize>16</pointsize>
+           </font>
+          </property>
+          <property name="text">
+           <string>25</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="radioButton_30fps">
+          <property name="font">
+           <font>
+            <pointsize>16</pointsize>
+           </font>
+          </property>
+          <property name="text">
+           <string>30</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="radioButton_60fps">
+          <property name="font">
+           <font>
+            <pointsize>16</pointsize>
+           </font>
+          </property>
+          <property name="text">
+           <string>60</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
       <widget class="QGroupBox" name="groupBox_push_button">
        <property name="title">
         <string/>
@@ -641,25 +702,16 @@
          <height>320</height>
         </size>
        </property>
-       <property name="text">
-        <string>Confidence Bitmap</string>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignCenter</set>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QLabel" name="spot_depth">
        <property name="font">
         <font>
-         <pointsize>22</pointsize>
-         <weight>75</weight>
-         <bold>true</bold>
+         <pointsize>28</pointsize>
         </font>
        </property>
        <property name="text">
-        <string>P(xxx,yyy):YYYY mm (High)</string>
+        <string>Confidence Bitmap is NA</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
        </property>
       </widget>
      </item>
@@ -668,8 +720,8 @@
    <widget class="QLCDNumber" name="rtcTime">
     <property name="geometry">
      <rect>
-      <x>650</x>
-      <y>25</y>
+      <x>660</x>
+      <y>0</y>
       <width>240</width>
       <height>50</height>
      </rect>
@@ -684,6 +736,29 @@
      <font>
       <pointsize>19</pointsize>
      </font>
+    </property>
+   </widget>
+   <widget class="QLabel" name="spot_depth">
+    <property name="geometry">
+     <rect>
+      <x>350</x>
+      <y>710</y>
+      <width>568</width>
+      <height>50</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>22</pointsize>
+      <weight>75</weight>
+      <bold>true</bold>
+     </font>
+    </property>
+    <property name="text">
+     <string>P(xxx,yyy):YYYY mm (High)</string>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
     </property>
    </widget>
   </widget>
