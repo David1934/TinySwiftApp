@@ -70,8 +70,9 @@ public:
     int read_device_register(register_op_data_t *reg);
     int read_dtof_exposure_param(void);
     int write_dtof_initial_param(struct adaps_dtof_intial_param *param);
-    int get_dtof_module_static_data(void **pp_module_static_data, void **pp_calib_data_buffer, uint32_t *calib_data_size);
-    int parse_script_from_buffer(UINT8 workMode, const uint32_t script_buf_size, const uint8_t* script_buf, const uint32_t blkwrite_reg_count, const uint8_t* blkwrite_reg_data);
+    int get_dtof_module_static_data(void **pp_module_static_data, void **pp_eeprom_data_buffer, uint32_t *eeprom_data_size);
+    int send_down_external_config(const UINT8 workMode, const uint32_t script_buf_size, const uint8_t* script_buf, const uint32_t roi_sram_size, const uint8_t* roi_sram_data, const bool roi_sram_rotate);
+    int get_loaded_roi_sram_data_info(void **pp_roisram_data_buffer, uint32_t *roisram_data_size);
 
 private:
 
@@ -95,8 +96,9 @@ private:
 #else
     u8* mapped_script_vcsel_PhotonIC5015_settings;
 #endif
-    u8* mapped_roi_sram_data[ZONE_COUNT_PER_SRAM_GROUP * CALIB_SRAM_GROUP_COUNT];
-    uint16_t roi_sram_size[ZONE_COUNT_PER_SRAM_GROUP * CALIB_SRAM_GROUP_COUNT];
+    u8* mapped_roi_sram_data;
+    u32 loaded_roi_sram_size;
+    bool loaded_roi_sram_rotate;
 
     int read_dtof_module_static_data(void);
     int check_crc32_4_dtof_calib_eeprom_param(void);
@@ -104,9 +106,8 @@ private:
     bool check_crc_4_eeprom_item(uint8_t *pEEPROMData, uint32_t offset, uint32_t length, uint8_t savedCRC, const char *tag);
     int get_next_line(const uint8_t *buffer, size_t buffer_len, size_t *pos, char *line, size_t line_len);
     int LoadItemsFromBuffer(const uint32_t ulBufferLen, const uint8_t* pucBuffer, ScriptItem* items, uint32_t* number);
-    int parse_items(const uint32_t ulItemsCount, const ScriptItem *pstrItems, const uint32_t blkwrite_reg_count, const uint8_t* blkwrite_reg_data);
+    int parse_items(const uint32_t ulItemsCount, const ScriptItem *pstrItems);
     int write_external_config_script(external_config_script_param_t *param);
-    int copy_roisram_data(const u8 roi_reg_addr, const u8 roi_reg_size, const uint32_t blkwrite_reg_count, const uint8_t* blkwrite_reg_data);
 
 };
 

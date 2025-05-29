@@ -8,12 +8,14 @@
 
 #if defined(RUN_ON_EMBEDDED_LINUX)
 #define MAX_CALIB_SRAM_DATA_GROUP_CNT           9
+
+#define ROI_SRAM_DATA_INJECTION_4_ROISRAM_ROTATE_TEST
 #endif
 
 #define VERSION_MAJOR                           3
 #define VERSION_MINOR                           0
 #define VERSION_REVISION                        0
-#define LAST_MODIFIED_TIME                      "202500529A"
+#define LAST_MODIFIED_TIME                      "202500614A"
 
 #define DEFAULT_DTOF_FRAMERATE                  AdapsFramerateType30FPS // AdapsFramerateType60FPS
 
@@ -75,29 +77,35 @@
 #define ENV_VAR_SAVE_EEPROM_ENABLE              "save_eeprom_enable"
 #define ENV_VAR_SAVE_DEPTH_TXT_ENABLE           "save_depth_txt_enable"
 #define ENV_VAR_SAVE_FRAME_ENABLE               "save_frame_enable"
-#define ENV_VAR_DBGINFO_ENABLE                  "debug_info_enable"
 #define ENV_VAR_SKIP_FRAME_DECODE               "skip_frame_decode"
 #define ENV_VAR_SKIP_FRAME_PROCESS              "skip_frame_process"
 #define ENV_VAR_SKIP_EEPROM_CRC_CHK             "skip_eeprom_crc_check"
-#define ENV_VAR_DUMP_LENS_INTRINSIC             "dump_lens_intrinsic"
 #define ENV_VAR_ENABLE_EXPAND_PIXEL             "enable_expand_pixel"      // processed in adaps decode algo lib
 #define ENV_VAR_DISABLE_COMPOSE_SUBFRAME        "disable_compose_subframe"  // processed in adaps decode algo lib
-#define ENV_VAR_DUMP_ROI_SRAM_SIZE              "dump_roi_sram_size"
-#define ENV_VAR_TRACE_ROI_SRAM_SWITCH           "trace_roi_sram_switch"
-#define ENV_VAR_DUMP_SPOT_DEPTH                 "dump_spot_depth"
 #define ENV_VAR_MIRROR_X_ENABLE                 "mirror_x_enable"
 #define ENV_VAR_MIRROR_Y_ENABLE                 "mirror_y_enable"
 #define ENV_VAR_DISABLE_WALK_ERROR              "disable_walk_error"      // processed in adaps decode algo lib
-#define ENV_VAR_DUMP_MID_CONF_ENABLE            "log_medium_confidence_spot"
 #define ENV_VAR_EXPECTED_FRAME_MD5SUM           "expected_frame_md5sum"
 #define ENV_VAR_DEVELOP_DEBUGGING               "develop_debugging"
-#define ENV_VAR_DUMP_COMM_BUFFER_SIZE           "dump_comm_buf_size"
 #define ENV_VAR_TEST_PATTERN_TYPE               "test_pattern_type"
+#define ENV_VAR_ROI_SRAM_COORDINATES_CHECK      "roi_sram_coordinates_check"
+#define ENV_VAR_ROI_SRAM_DATA_INJECTION         "roi_sram_data_injection"
+
+#define ENV_VAR_DBGINFO_ENABLE                  "debug_info_enable"
+#define ENV_VAR_TRACE_ROI_SRAM_SWITCH           "trace_roi_sram_switch"
+
+#define ENV_VAR_DUMP_LENS_INTRINSIC             "dump_lens_intrinsic"
+#define ENV_VAR_DUMP_ROI_SRAM_SIZE              "dump_roi_sram_size"
+#define ENV_VAR_DUMP_DEPTH_MAP_FRAME_ITVL       "dump_depth_map_frame_interval"
+#define ENV_VAR_DUMP_COMM_BUFFER_SIZE           "dump_comm_buf_size"
 #define ENV_VAR_DUMP_ALGO_LIB_IO_PARAM          "dump_algo_lib_io_param"
 #define ENV_VAR_DUMP_CAPTURE_REQ_PARAM          "dump_capture_req_param"
 #define ENV_VAR_DUMP_FRAME_PARAM_TIMES          "dump_frame_param_times"
+#define ENV_VAR_DUMP_MID_CONF_ENABLE            "dump_medium_confidence_spot"
 #define ENV_VAR_DUMP_MODULE_STATIC_DATA         "dump_module_static_data"
 #define ENV_VAR_DUMP_PARSING_SCRIPT_ITEMS       "dump_parsing_script_items"
+#define ENV_VAR_DUMP_SPOTS_ITVL_BY_CONFIDENCE   "dump_spots_interval_by_confidence" // every X frame print once, 0 means no print
+#define ENV_VAR_DUMP_SPOT_STATISTICS_TIMES      "dump_spot_statistics_times"
 
 #define __tostr(x)                          #x
 #define __stringify(x)                      __tostr(x)

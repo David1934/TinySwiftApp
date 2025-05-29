@@ -26,8 +26,8 @@ public:
 
     int report_frame_raw_data(void* pFrameData, uint32_t frameData_size, frame_buffer_param_t *pFrmBufParam);
     int report_frame_depth16_data(void* pFrameData, uint32_t frameData_size, frame_buffer_param_t *pFrmBufParam);
-    void get_backuped_script_buffer_info(UINT8 *workmode, UINT8 ** script_buffer, uint32_t *script_buffer_size, UINT8 ** blkwrite_reg_data, uint32_t *blkwrite_reg_count);
-    int report_error_msg(UINT16 responsed_cmd, UINT16 err_code, char *err_msg, int err_msg_length);
+    void get_backuped_external_config_info(UINT8 *workmode, UINT8 ** script_buffer, uint32_t *script_buffer_size, UINT8 ** roisram_data, uint32_t *roisram_data_size, bool *roi_sram_rotate);
+    int report_status(UINT16 responsed_cmd, UINT16 status_code, char *msg, int msg_length);
     UINT8 get_req_out_data_type();
     UINT8 get_req_walkerror_version();
     BOOLEAN get_req_compose_subframe();
@@ -50,10 +50,11 @@ private:
     static Host_Communication* instance; // 静态成员变量声明
     bool connected;
     UINT32 backuped_script_buffer_size;
-    UINT8 *backuped_script_buffer;     // script buffer backup from CMD_HOST_SIDE_START_CAPTURE
+    UINT8 *backuped_script_buffer;     // script buffer backuped from CMD_HOST_SIDE_START_CAPTURE
     UINT8 backuped_wkmode;
-    UINT32 backuped_blkwrite_reg_count;
-    UINT8 *backuped_blkwrite_reg_data;     // blkwrite_reg_data backup from CMD_HOST_SIDE_START_CAPTURE
+    UINT32 backuped_roisram_data_size;
+    UINT8 *backuped_roisram_data;     // roisram_data backuped from CMD_HOST_SIDE_START_CAPTURE
+    bool backuped_roi_sram_rotate;
     capture_req_param_t backuped_capture_req_param;
     Misc_Device *p_misc_device;
 
@@ -71,6 +72,7 @@ private:
     void read_device_register(UINT16 cmdType, CommandData_t* pCmdData, uint32_t rxDataLen);
     void write_device_register(UINT16 cmdType, CommandData_t* pCmdData, uint32_t rxDataLen);
     int report_module_static_data();
+    void swift_load_roi_sram(CommandData_t* pCmdData, uint32_t rxDataLen);
 
     void swift_event_process(void* pRXData, uint32_t rxDataLen);
     void swift_sender_disconnected(void);
@@ -80,6 +82,10 @@ private:
     int dump_capture_req_param(capture_req_param_t* pCaptureReqParam);
     int dump_frame_param(frame_buffer_param_t *pDataBufferParam);
     int dump_module_static_data(module_static_data_t *pStaticDataParam);
+    void backup_roi_sram_data(roisram_data_param_t* pRoiSramParam);
+#if defined(ROI_SRAM_DATA_INJECTION_4_ROISRAM_ROTATE_TEST)
+    int roi_sram_rotate_data_injection();
+#endif
 
 };
 

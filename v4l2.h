@@ -55,7 +55,9 @@ struct sensor_data
     enum frame_data_type ftype;
 };
 
+#if defined(RUN_ON_EMBEDDED_LINUX)
 Q_DECLARE_METATYPE(frame_buffer_param_t);
+#endif
 
 class V4L2 : public QObject
 {
@@ -86,7 +88,6 @@ private:
     unsigned long streamed_timeUs;
     bool            power_on;
     bool            stream_on;
-    bool            script_loaded;
 
     struct v4l2_requestbuffers	req_bufs;
     enum	v4l2_buf_type	buf_type;
@@ -104,6 +105,9 @@ private:
     struct sensor_data *sensordata;
 
 #if defined(RUN_ON_EMBEDDED_LINUX)
+    bool            script_loaded;
+    bool            roi_sram_loaded;
+    bool            roi_sram_rotate;
     char        sd_devnode_4_dtof[DEV_NODE_LEN];
     int         fd_4_dtof;
     Host_Communication *host_comm;
@@ -121,7 +125,12 @@ private:
     UINT64 timestamp_convert_from_timeval_to_us(struct timeval timestamp);
 
 signals:
+
+#if defined(RUN_ON_EMBEDDED_LINUX)
     void rx_new_frame(unsigned int frm_sequence, void *frm_buf, int frm_len, struct timeval frm_timestamp, enum frame_data_type ftype, int total_bytes_per_line, frame_buffer_param_t frmBufParam);
+#else
+    void rx_new_frame(unsigned int frm_sequence, void *frm_buf, int frm_len, struct timeval frm_timestamp, enum frame_data_type ftype, int total_bytes_per_line);
+#endif
     void update_info(status_params1 param1);
 };
 

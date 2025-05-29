@@ -11,14 +11,17 @@ FrameProcessThread::FrameProcessThread()
     rgb_buffer = NULL_POINTER;
     confidence_map_buffer = NULL_POINTER;
     depth_buffer = NULL_POINTER;
-#if defined(ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT)
+#if 0 //defined(ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT)
     merged_depth_buffer = NULL_POINTER;
+    merged_frame_cnt = 0;
 #endif
+    outputed_frame_cnt = 0;
     v4l2 = NULL_POINTER;
     utils = NULL_POINTER;
     sns_param.sensor_type = qApp->get_sensor_type();
     sns_param.save_frame_cnt = qApp->get_save_cnt();
     skip_frame_decode = Utils::is_env_var_true(ENV_VAR_SKIP_FRAME_DECODE);
+    dump_spot_statistics_times = Utils::get_env_var_intvalue(ENV_VAR_DUMP_SPOT_STATISTICS_TIMES);
 
 #if defined(RUN_ON_EMBEDDED_LINUX)
     if (SENSOR_TYPE_DTOF == sns_param.sensor_type)
@@ -57,9 +60,14 @@ FrameProcessThread::FrameProcessThread()
         v4l2->Get_frame_size_4_curr_wkmode(&sns_param.raw_width, &sns_param.raw_height, &sns_param.out_frm_width, &sns_param.out_frm_height);
     }
     qApp->register_v4l2_instance(v4l2);
+#if defined(RUN_ON_EMBEDDED_LINUX)
     qRegisterMetaType<frame_buffer_param_t>("frame_buffer_param_t");
     connect(v4l2, SIGNAL(rx_new_frame(unsigned int, void *, int, struct timeval, enum frame_data_type, int, frame_buffer_param_t)),
             this, SLOT(new_frame_handle(unsigned int, void *, int, struct timeval, enum frame_data_type, int, frame_buffer_param_t)), Qt::DirectConnection);
+#else
+    connect(v4l2, SIGNAL(rx_new_frame(unsigned int, void *, int, struct timeval, enum frame_data_type)),
+            this, SLOT(new_frame_handle(unsigned int, void *, int, struct timeval, enum frame_data_type, int)), Qt::DirectConnection);
+#endif
 
     qRegisterMetaType<status_params1>("status_params1");
     connect(v4l2, SIGNAL(update_info(status_params1)),  this, SLOT(info_update(status_params1)));
@@ -82,7 +90,7 @@ FrameProcessThread::~FrameProcessThread()
         depth_buffer = NULL_POINTER;
     }
 
-#if defined(ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT)
+#if 0 //defined(ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT)
     if (NULL_POINTER != merged_depth_buffer)
     {
         free(merged_depth_buffer);
@@ -198,7 +206,17 @@ bool FrameProcessThread::info_update(status_params1 param1)
     return true;
 }
 
-bool FrameProcessThread::new_frame_handle(unsigned int frm_sequence, void *frm_rawdata, int buf_len, struct timeval frm_timestamp, enum frame_data_type ftype, int total_bytes_per_line, frame_buffer_param_t frmBufParam)
+bool FrameProcessThread::new_frame_handle(
+    unsigned int frm_sequence, 
+    void *frm_rawdata, 
+    int buf_len, 
+    struct timeval frm_timestamp, 
+    enum frame_data_type ftype, 
+    int total_bytes_per_line
+#if defined(RUN_ON_EMBEDDED_LINUX)
+    , frame_buffer_param_t frmBufParam
+#endif
+    )
 {
     int decodeRet = 0;
 #if defined(RUN_ON_EMBEDDED_LINUX)
@@ -343,6 +361,7 @@ bool FrameProcessThread::new_frame_handle(unsigned int frm_sequence, void *frm_r
                 else {
                     decodeRet = adaps_dtof->dtof_frame_decode((unsigned char *)frm_rawdata, buf_len, depth_buffer, sns_param.work_mode);
 
+#if 0 // Don't check md5 for the decoded sub-frame buffer.
                     if (NULL_POINTER != expected_md5_string)
                     {
                         utils->MD5Calculate((const unsigned char *) depth_buffer, 
@@ -351,12 +370,37 @@ bool FrameProcessThread::new_frame_handle(unsigned int frm_sequence, void *frm_r
                             frm_sequence
                             );
                     }
+#endif
 
-#if defined(ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT)
+#if 0 //defined(ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT)
+                    if (frm_sequence < 80 && frm_sequence > 34)
+                    {
+                        adaps_dtof->dumpSpotCount(depth_buffer, sns_param.out_frm_width, sns_param.out_frm_height, frm_sequence, merged_frame_cnt, decodeRet, __LINE__);
+                    }
+
                     int new_added_spot_count = adaps_dtof->DepthBufferMerge(merged_depth_buffer, depth_buffer, sns_param.out_frm_width, sns_param.out_frm_height);
+                    if (frm_sequence < 80 && frm_sequence > 34)
+                    {
+                        adaps_dtof->dumpSpotCount(merged_depth_buffer, sns_param.out_frm_width, sns_param.out_frm_height, frm_sequence, merged_frame_cnt, decodeRet, __LINE__);
+                    }
 
                     if (0 == decodeRet)
                     {
+                        Host_Communication *host_comm = Host_Communication::getInstance();
+
+                        merged_frame_cnt++;
+                        adaps_dtof->depthMapDump(merged_depth_buffer, sns_param.out_frm_width, sns_param.out_frm_height, merged_frame_cnt, __LINE__);
+
+                        if (host_comm)
+                        {
+                            frmBufParam.data_type = FRAME_DECODED_DEPTH16;
+                            frmBufParam.frm_width = sns_param.out_frm_width;
+                            frmBufParam.frm_height = sns_param.out_frm_height;
+                            frmBufParam.padding_bytes_per_line = 0;
+
+                            host_comm->report_frame_depth16_data(merged_depth_buffer, depth_buffer_size, &frmBufParam);
+                        }
+
                         if (sns_param.save_frame_cnt > 0)
                         {
                             if (true == Utils::is_env_var_true(ENV_VAR_SAVE_FRAME_ENABLE))
@@ -391,6 +435,14 @@ bool FrameProcessThread::new_frame_handle(unsigned int frm_sequence, void *frm_r
                     if (0 == decodeRet)
                     {
                         Host_Communication *host_comm = Host_Communication::getInstance();
+
+                        outputed_frame_cnt++;
+                        if (frm_sequence < dump_spot_statistics_times && 0 != dump_spot_statistics_times)
+                        {
+                            adaps_dtof->dumpSpotCount(depth_buffer, sns_param.out_frm_width, sns_param.out_frm_height, frm_sequence, outputed_frame_cnt, decodeRet, __LINE__);
+                        }
+                        adaps_dtof->depthMapDump(depth_buffer, sns_param.out_frm_width, sns_param.out_frm_height, outputed_frame_cnt, __LINE__);
+
                         if (host_comm)
                         {
                             frmBufParam.data_type = FRAME_DECODED_DEPTH16;
@@ -507,7 +559,7 @@ bool FrameProcessThread::new_frame_handle(unsigned int frm_sequence, void *frm_r
     }
     if (0 == decodeRet)
     {
-#if defined(ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT)
+#if 0 //defined(ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT)
         if (NULL_POINTER != merged_depth_buffer)
         {
             memset(merged_depth_buffer, 0, depth_buffer_size);
@@ -558,7 +610,7 @@ void FrameProcessThread::onThreadLoopExit()
             free(depth_buffer);
             depth_buffer = NULL_POINTER;
         }
-#if defined(ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT)
+#if 0 //defined(ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT)
         if (NULL_POINTER != merged_depth_buffer)
         {
             free(merged_depth_buffer);
@@ -651,7 +703,7 @@ int FrameProcessThread::init(int index)
                     memset(depth_buffer, 0, depth_buffer_size);
                 }
 
-#if defined(ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT)
+#if 0 //defined(ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT)
                 merged_depth_buffer = (u16 *)malloc(depth_buffer_size);
                 if (NULL_POINTER != merged_depth_buffer)
                 {

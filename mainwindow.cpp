@@ -178,6 +178,14 @@ void MainWindow::startFrameProcessThread(void)
     ret = frame_process_thread->init(0);
     if (ret < 0)
     {
+#if defined(RUN_ON_EMBEDDED_LINUX)
+        if (host_comm)
+        {
+            char err_msg[] = "Fail to frame_process_thread init\nPls check device side log for detailed info!";
+            host_comm->report_status(CMD_HOST_SIDE_START_CAPTURE, CMD_DEVICE_SIDE_ERROR_FAIL_TO_START_CAPTURE, err_msg, strlen(err_msg));
+        }
+#endif
+
         DBG_ERROR("Fail to frame_process_thread init()...");
 #if !defined(NO_UI_APPLICATION)
         ui->mainlabel->setText("Fail to frame_process_thread init(),\nPlease check camera is ready or not?");
@@ -320,29 +328,50 @@ void MainWindow::unixSignalHandler(int signal)
             break;
 
         case SIGUSR1:
-            DBG_ERROR("User Signal 1 recieved\nPls check kernel log for detailed info!");
+            DBG_ERROR("User Signal 1 recieved, some error happened\nPls check kernel log for detailed info!");
 #if !defined(NO_UI_APPLICATION)
-            ui->mainlabel->setText("User Signal 1 recieved\nPls check kernel log for detailed info!");
+            ui->mainlabel->setText("User Signal 1 recieved, some error happened\nPls check kernel log for detailed info!");
 #endif
             if (NULL_POINTER != frame_process_thread)
             {
                 frame_process_thread->stop(STOP_REQUEST_STOP);
             }
+#if defined(RUN_ON_EMBEDDED_LINUX)
+            if (host_comm)
+            {
+                char err_msg[] = "User Signal 1 recieved, some error happened\nPls check kernel log for detailed info!";
+                host_comm->report_status(CMD_HOST_SIDE_START_CAPTURE, CMD_DEVICE_SIDE_ERROR_CAPTURE_ABORT, err_msg, strlen(err_msg));
+            }
+#endif
             break;
 
         case SIGUSR2:
-            DBG_ERROR("User Signal 2 recieved\nPls check kernel log for detailed info!");
+            DBG_ERROR("User Signal 2 recieved, some error happened\nPls check kernel log for detailed info!");
 #if !defined(NO_UI_APPLICATION)
-            ui->mainlabel->setText("User Signal 2 recieved\nPls check kernel log for detailed info!");
+            ui->mainlabel->setText("User Signal 2 recieved, some error happened\nPls check kernel log for detailed info!");
 #endif
             if (NULL_POINTER != frame_process_thread)
             {
                 frame_process_thread->stop(STOP_REQUEST_STOP);
             }
+#if defined(RUN_ON_EMBEDDED_LINUX)
+            if (host_comm)
+            {
+                char err_msg[] = "User Signal 2 recieved, some error happened\nPls check kernel log for detailed info!";
+                host_comm->report_status(CMD_HOST_SIDE_START_CAPTURE, CMD_DEVICE_SIDE_ERROR_CAPTURE_ABORT, err_msg, strlen(err_msg));
+            }
+#endif
             break;
 
         case SIGINT:
             DBG_NOTICE("CTRL-C recieved, graceful close() is executed!");
+#if defined(RUN_ON_EMBEDDED_LINUX)
+            if (host_comm)
+            {
+                char err_msg[] = "The device-side application was terminated by the user.\nStream capture is aborted!";
+                host_comm->report_status(CMD_HOST_SIDE_START_CAPTURE, CMD_DEVICE_SIDE_ERROR_CAPTURE_ABORT, err_msg, strlen(err_msg));
+            }
+#endif
             Quit();
             break;
 
@@ -350,6 +379,13 @@ void MainWindow::unixSignalHandler(int signal)
         case SIGBUS:
         case SIGTERM:
             DBG_ERROR("graceful close() is executed!");
+#if defined(RUN_ON_EMBEDDED_LINUX)
+            if (host_comm)
+            {
+                char err_msg[] = "some crytical error happened\nStream capture is aborted!";
+                host_comm->report_status(CMD_HOST_SIDE_START_CAPTURE, CMD_DEVICE_SIDE_ERROR_CAPTURE_ABORT, err_msg, strlen(err_msg));
+            }
+#endif
             Quit();
             break;
 
@@ -469,9 +505,9 @@ void MainWindow::on_startCapture()
 {
     if (NULL_POINTER == frame_process_thread)
     {
+#if !defined(NO_UI_APPLICATION)
         sensortype sensor_type = qApp->get_sensor_type();
 
-#if !defined(NO_UI_APPLICATION)
 #if defined(RUN_ON_EMBEDDED_LINUX)
         if (SENSOR_TYPE_DTOF == sensor_type)
         {

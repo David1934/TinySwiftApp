@@ -34,6 +34,7 @@ private:
     volatile bool stopped;
     volatile bool sleeping;
     volatile bool skip_frame_decode;
+    volatile uint32_t dump_spot_statistics_times;
     struct sensor_params sns_param;
     char *expected_md5_string;
 
@@ -45,11 +46,13 @@ private:
     V4L2 *v4l2;
     u16 *depth_buffer;
     u32 depth_buffer_size;
-    #if defined(ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT)
+    #if 0 //defined(ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT)
         u16 *merged_depth_buffer;
+        uint32_t merged_frame_cnt;
     #endif
     unsigned char *rgb_buffer;
     unsigned char *confidence_map_buffer;
+    uint32_t outputed_frame_cnt;
     int stop_req_code;
     #if !defined(NO_UI_APPLICATION)
         QPoint watchSpot;
@@ -58,7 +61,12 @@ private:
     void save_depth_txt_file(void *frm_buf,unsigned int frm_sequence,int frm_len);
 
 private slots:
+
+#if defined(RUN_ON_EMBEDDED_LINUX)
     bool new_frame_handle(unsigned int frm_sequence, void *frm_buf, int buf_len, struct timeval frm_timestamp, enum frame_data_type, int total_bytes_per_line, frame_buffer_param_t frmBufParam);
+#else
+    bool new_frame_handle(unsigned int frm_sequence, void *frm_buf, int buf_len, struct timeval frm_timestamp, enum frame_data_type, int total_bytes_per_line);
+#endif
     bool info_update(status_params1 param1);
     void onThreadLoopExit();
 

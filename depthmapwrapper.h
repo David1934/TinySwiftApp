@@ -97,9 +97,6 @@ typedef struct {
     int32_t focutPoint[2];// 0 is x,1 is y
     WrapperDepthSramSpodposDataInfo strSpodPosData;
     FocusRoi             focusRoi;
-#if defined(ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT)
-    int calib_sram_data_group_idx;
-#endif
 } AdapsParamAndOutForProcessEveryFrame;
 //end: add by hzt 2021-12-6 for adaps control
 
@@ -156,13 +153,11 @@ typedef struct {
     uint8_t work_mode;
     bool compose_subframe;
     bool expand_pixel;
-    // set walkerror algo version, values:{ 0, 1, 2 } 
-    // 0: not apply walkerror , now latest version is 2
-    bool walkerror;
+    bool walkerror; // 0: not apply walkerror , 1:apply walkerror
     AdapsMirrorFrameSet mirror_frame;
     float* adapsLensIntrinsicData;          // 9xsizeof(float)
     float* adapsSpodOffsetData;             // 4x240xsizeof(float)
-    float* accurateSpotPosData;             // 4x240xsizeof(float)x2
+    float* accurateSpotPosData;             // 4x240xsizeof(float)x2 delete
     uint8_t ptm_fine_exposure_value;        // fine exposure value, 0 - 255
     uint8_t exposure_period;                // exposure_period, 0 - 255
     float cali_ref_tempe[2];  //[0] for indoor, [1] for outdoor
@@ -174,7 +169,7 @@ typedef struct {
     // TODO - after v1.2.0
     uint8_t *OutAlgoVersion;  // OutAlgoVersion[AdapsAlgoVersionLength];
     uint8_t zone_cnt;
-    uint8_t peak_index;
+    uint8_t peak_index; // 0: double peaks   1: select first peak 
     uint8_t* spot_cali_data;//add 2023-11-7
     //zondID | spotID | X     | Y     | paramD | paramX | paramY | paramZ | param0 | dummy | dummy2
     //1byte  | 1byte  |1byte  |1byte  | 4byte  | 4byte  | 4byte  | 4byte  | 4byte  | 1byte | 1byte
@@ -233,6 +228,7 @@ void DepthMapWrapperDestroy(void * handler);
 CP_DLL_PUBLIC
 void DepthMapWrapperGetVersion(char* version);
 
+CP_DLL_PUBLIC
 void DepthMapWrapperSetCircleMask(void* pDepthMapWrapper, CircleForMask circleForMask);
 
 

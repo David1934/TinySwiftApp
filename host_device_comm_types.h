@@ -2,8 +2,10 @@
 #define HOST_DEVICE_COMM_TYPES_H
 
 #define SCRIPT_FILE_SIZE                        (4 * 1024)  //4K
-#define ERROR_MSG_MAX_LENGTH                    64
-#define PER_ROI_SRAM_MAX_SIZE                   512         // unit is bytes
+#define ERROR_MSG_MAX_LENGTH                    128
+#define PER_ROI_SRAM_MAX_SIZE                   512     //unit is bytes, actual use size is 480 bytes, the remaining 32 bytes is 0
+#define ZONE_COUNT_PER_SRAM_GROUP               4
+#define MAX_CALIB_SRAM_ROTATION_GROUP_CNT       9
 #define SENSOR_SN_LENGTH                        12
 
 #if !defined(BOOLEAN)
@@ -20,21 +22,22 @@ typedef unsigned char                           BOOLEAN;
 typedef enum
 {
     // from PC to device side
-    CMD_HOST_SIDE_GET_MODULE_STATIC_DATA            = 0x0001, // Host PC side sends a command to get the calibration data from the EEPROM and otp
-    CMD_HOST_SIDE_START_CAPTURE                     = 0x0002, // Host PC side sends a command to start data capture on the device side
-    CMD_HOST_SIDE_STOP_CAPTURE                      = 0x0003, // Host PC side sends a command to stop data capture on the device side
-    CMD_HOST_SIDE_SET_SENSOR_REGISTER               = 0x0004,
-    CMD_HOST_SIDE_GET_SENSOR_REGISTER               = 0x0005,
-    CMD_HOST_SIDE_SET_VCSLDRV_OP7020_REGISTER       = 0x0006,
-    CMD_HOST_SIDE_GET_VCSLDRV_OP7020_REGISTER       = 0x0007,
-    CMD_HOST_SIDE_SET_COLORMAP_RANGE_PARAM          = 0x0008,
+    CMD_HOST_SIDE_SET_COLORMAP_RANGE_PARAM          = 0x0001,
+    CMD_HOST_SIDE_GET_MODULE_STATIC_DATA            = 0x0002, // Host PC side sends a command to get the calibration data from the EEPROM and otp
+    CMD_HOST_SIDE_SET_ROI_SRAM_DATA                 = 0x0003,
+    CMD_HOST_SIDE_START_CAPTURE                     = 0x0004, // Host PC side sends a command to start data capture on the device side
+    CMD_HOST_SIDE_STOP_CAPTURE                      = 0x0005, // Host PC side sends a command to stop data capture on the device side
+    CMD_HOST_SIDE_SET_SENSOR_REGISTER               = 0x0006,
+    CMD_HOST_SIDE_GET_SENSOR_REGISTER               = 0x0007,
+    CMD_HOST_SIDE_SET_VCSLDRV_OP7020_REGISTER       = 0x0008,
+    CMD_HOST_SIDE_GET_VCSLDRV_OP7020_REGISTER       = 0x0009,
 
     // from device side to PC side
     CMD_DEVICE_SIDE_REPORT_MODULE_STATIC_DATA       = 0x1000, // Device side sends the static_module data as requested by the client's CMD_HOST_SIDE_GET_MODULE_STATIC_DATA command
     CMD_DEVICE_SIDE_REPORT_FRAME_RAW_DATA           = 0x1001, // Device side sends the raw data as requested by the client's start capture command
     CMD_DEVICE_SIDE_REPORT_SENSOR_REGISTER          = 0x1002,
     CMD_DEVICE_SIDE_REPORT_VCSLDRV_OP7020_REGISTER  = 0x1003,
-    CMD_DEVICE_SIDE_REPORT_ERROR                    = 0x1004,
+    CMD_DEVICE_SIDE_REPORT_STATUS                   = 0x1004,
     CMD_DEVICE_SIDE_REPORT_FRAME_DEPTH16_DATA       = 0x1005, // Device side sends the raw data as requested by the client's start capture command
     CMD_DEVICE_SIDE_REPORT_FRAME_POINTCLOUD_DATA    = 0x1006, // Device side sends the raw data as requested by the client's start capture command
 } cmdType_t;
@@ -42,10 +45,14 @@ typedef enum
 typedef enum
 {
     // from device side to PC side
+    CMD_DEVICE_SIDE_NO_ERROR                        = 0x0000,
     CMD_DEVICE_SIDE_ERROR_INVALID_PARAM             = 0x0001, // if there is some invalid input parameters
     CMD_DEVICE_SIDE_ERROR_MISMATCHED_WORK_MODE      = 0x0002, // when work_mode and the register config in script buffer is mismatched.
     CMD_DEVICE_SIDE_ERROR_WRITE_REGISTER            = 0x0003,
     CMD_DEVICE_SIDE_ERROR_READ_REGISTER             = 0x0004,
+    CMD_DEVICE_SIDE_ERROR_CAPTURE_ABORT             = 0x0005,
+    CMD_DEVICE_SIDE_ERROR_INVALID_ROI_SRAM_SIZE     = 0x0006,
+    CMD_DEVICE_SIDE_ERROR_FAIL_TO_START_CAPTURE     = 0x0007,
 } error_code_t;
 
 #pragma pack(1)
@@ -76,13 +83,6 @@ enum {
     ADS6401_ROI_REG_FE,
 };
 
-typedef struct {
-//    UINT8 i2c_address;
-    UINT8 reg_addr;
-//    UINT16 reg_data_length;
-    UINT8 reg_data[PER_ROI_SRAM_MAX_SIZE];
-} blkwrite_reg_data_t;
-
 typedef struct expose_param_s
 {
     UINT8 grayExposure;
@@ -97,6 +97,14 @@ typedef struct colormap_range_param
     float RealDistanceMinMappedRange;
     float RealDistanceMaxMappedRange;
 } colormap_range_param_t;
+
+typedef struct roisram_data_param
+{
+    BOOLEAN                 roi_sram_rotate;
+    UINT32                  roisram_data_size;      // roi sram buffer size to be loaded, it should be an integer multiple of (PER_ROI_SRAM_MAX_SIZE * ZONE_COUNT_PER_SRAM_GROUP) or 0, 
+                                                    // it shoud <= (PER_ROI_SRAM_MAX_SIZE * ZONE_COUNT_PER_SRAM_GROUP * MAX_CALIB_SRAM_ROTATION_GROUP_CNT) 
+    CHAR                    roisram_data[0];        // loaded roi sram buffer, No this member if roisram_data_size == 0
+} roisram_data_param_t;
 
 typedef struct capture_req_param
 {
@@ -120,8 +128,7 @@ typedef struct capture_req_param
     expose_param_t          expose_param;
     BOOLEAN                 script_loaded;
     UINT32                  script_size;            // set to 0 if script_loaded == false
-    UINT8                   blkwrite_reg_count;     // set to 0 if no block_write register is included in script file
-    CHAR                    script_buffer[0];     // file content from the script file + N copies of blkwrite_reg_data_t (N >= 0), No this member if script_loaded == false
+    CHAR                    script_buffer[0];       // file content from the script file, No this member if script_loaded == false
 } capture_req_param_t;
 
 typedef struct frame_buffer_param_s
@@ -158,9 +165,9 @@ typedef struct module_static_data_s
     UINT16                  otp_vbe25;
     UINT16                  otp_vbd;        // unit is 10mv, or the related V X 100
     UINT16                  otp_adc_vref;
-    CHAR                    serialNumber[SENSOR_SN_LENGTH];
-    UINT32                  calib_data_size;        // unit is byte
-    CHAR                    calib_data[0];
+    CHAR                    serialNumber[SENSOR_SN_LENGTH];  // read out from ads6401 e-fuse data
+    UINT32                  eeprom_data_size;        // unit is byte
+    CHAR                    eeprom_data[0];
 } module_static_data_t;
 
 typedef struct error_report_param_s

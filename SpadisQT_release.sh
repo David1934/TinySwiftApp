@@ -10,13 +10,18 @@ CURRENT_USER=$(whoami)
 # Define the list of files to be copied
 FILES_LST=(
 #    "ads6401_roi_sram_test_data.h"
+#    "Makefile"
     "adapsdepthsettings.xml"
     "adaps_dtof.cpp"
     "adaps_dtof.h"
     "host_comm.cpp"
     "host_comm.h"
+    "host_device_comm_types.h"
+    "misc_device.cpp"
+    "misc_device.h"
     "adaps_dtof_uapi.h"
     "adaps_types.h"
+    "adaps_sender.h"
     "common.h"
     "depthmapwrapper.h"
     "FrameProcessThread.cpp"
@@ -29,7 +34,6 @@ FILES_LST=(
     "mainwindow.cpp"
     "mainwindow.h"
     "mainwindow.ui"
-#    "Makefile"
     "SpadisQT.pro"
     "SpadisQT_console.pro"
     "utils.cpp"
@@ -69,10 +73,11 @@ Released by: $CURRENT_USER
     mkdir /data/vendor/camera
 
   Step 2A: copy some files to develop board from the build directory if you develop board support ssh login;
-    scp Z:\rk_build\app\SpadisQT\libadaps_swift_decode.so root@[fe80::5047:afff:fe7a:1234]:/vendor/lib64/libadaps_swift_decode.so
-    scp Z:\rk_build\app\SpadisQT\libAdapsSender.so root@[fe80::5047:afff:fe7a:1234]:/vendor/lib64/libAdapsSender.so
-    scp Z:\rk_build\app\SpadisQT\adapsdepthsettings.xml root@[fe80::5047:afff:fe7a:1234]:/vendor/etc/camera/adapsdepthsettings.xml
-    scp Z:\rk_build\app\SpadisQT\SpadisQT root@[fe80::5047:afff:fe7a:1234]:/usr/bin/SpadisQT
+    scp Z:\for_docker\david\rk_build2025\app\SpadisQT_hostComm\libadaps_swift_decode.so root@[fe80::5047:afff:fe7a:1234]:/vendor/lib64/libadaps_swift_decode.so
+    scp Z:\for_docker\david\rk_build2025\app\SpadisQT_hostComm\libAdapsSender.so root@[fe80::5047:afff:fe7a:1234]:/vendor/lib64/libAdapsSender.so
+    scp Z:\for_docker\david\rk_build2025\app\SpadisQT_hostComm\adapsdepthsettings.xml root@[fe80::5047:afff:fe7a:1234]:/vendor/etc/camera/adapsdepthsettings.xml
+    scp Z:\for_docker\david\rk_build2025\app\SpadisQT_hostComm\SpadisQT root@[fe80::5047:afff:fe7a:1234]:/usr/bin/SpadisQT
+    scp Z:\for_docker\david\rk_build2025\app\SpadisQT_hostComm\SpadisQT_console root@[fe80::5047:afff:fe7a:1234]:/usr/bin/SpadisQT_console
 
   (Note: Replace 'Z:\rk_build\app\SpadisQT' with your real path, 
       and replace '[fe80::5047:afff:fe7a:1234]' with your real ip address;)
@@ -87,6 +92,7 @@ Released by: $CURRENT_USER
 
   Step 3: add the executable attribute for SpadisQT file
     chmod +x /usr/bin/SpadisQT
+    chmod +x /usr/bin/SpadisQT_console
   
   If you have any questions, please feel free to contact us (https://adapsphotonics.com/).
 "

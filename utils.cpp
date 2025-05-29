@@ -377,7 +377,7 @@ int Utils::MD5Check4Buffer(const unsigned char* buffer, int size, const char *ex
         ret = -1;
     }
     else {
-        DBG_INFO("===md5 mismatched call from <%s> Line: %d===", call_func, call_line);
+        DBG_INFO("===md5 matched call from <%s> Line: %d===", call_func, call_line);
     }
 
     return ret;

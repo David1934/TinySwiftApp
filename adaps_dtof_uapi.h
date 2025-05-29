@@ -383,6 +383,8 @@ struct hawk_norflash_op_param
     #define SWIFT_MODULE_TYPE               ADS6401_MODULE_SPOT
 #endif
 
+#define MAX_CALIB_SRAM_ROTATION_GROUP_CNT   9
+
 // There are two group Calibration SRAM for spod address, every group has 4 calibration registers.
 #define CALIB_SRAM_REG_BASE0                0xFB
 #define CALIB_SRAM_REG_BASE1                0xF7
@@ -708,7 +710,8 @@ typedef struct {
     __u8 work_mode;
     __u16 sensor_reg_setting_cnt;
     __u16 vcsel_reg_setting_cnt;
-    __u16 roi_sram_size[ZONE_COUNT_PER_SRAM_GROUP * CALIB_SRAM_GROUP_COUNT];
+    __u32 roi_sram_size;
+    bool roi_sram_rotate;
 } external_config_script_param_t;
 
 #define ADAPS_SET_DTOF_INITIAL_PARAM       \

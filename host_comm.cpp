@@ -10,6 +10,10 @@
 #include "globalapplication.h"
 #include "host_comm.h"
 
+#if defined(ROI_SRAM_DATA_INJECTION_4_ROISRAM_ROTATE_TEST)
+#include "ads6401_roi_sram_test_data.h"
+#endif
+
 #ifndef SENDER_LOG_FUNC
 #define SENDER_LOG_FUNC         printf
 #endif
@@ -32,23 +36,32 @@ Host_Communication* Host_Communication::getInstance() {
 
 // 私有构造函数
 Host_Communication::Host_Communication() {
-    txRawdataFrameCnt = 0;
     connected = false;
     backuped_script_buffer = NULL_POINTER;
     backuped_script_buffer_size = 0;
-    backuped_blkwrite_reg_data = NULL_POINTER;
-    backuped_blkwrite_reg_count = 0;
+    backuped_roisram_data = NULL_POINTER;
+    backuped_roisram_data_size = 0;
+    backuped_wkmode = 0;
+    backuped_roi_sram_rotate = false;
+    p_misc_device = NULL_POINTER;
+    memset(&backuped_capture_req_param, 0, sizeof(capture_req_param_t));
     txRawdataFrameCnt = 0;
     txDepth16FrameCnt = 0;
     firstRawdataFrameTimeUsec = 0;
     firstDepth16FrameTimeUsec = 0;
     adaps_sender_init();
+
+#if defined(ROI_SRAM_DATA_INJECTION_4_ROISRAM_ROTATE_TEST)
+    if (true == Utils::is_env_var_true(ENV_VAR_ROI_SRAM_DATA_INJECTION))
+    {
+        roi_sram_rotate_data_injection();
+    }
+#endif
 }
 
 Host_Communication::~Host_Communication()
 {
-    LOG_DEBUG("%s() total txRawdataFrameCnt: %ld.\n", __FUNCTION__, txRawdataFrameCnt);
-    sender_destroy();
+    LOG_DEBUG("%s() total txRawdataFrameCnt: %ld, txDepth16FrameCnt: %ld..\n", __FUNCTION__, txRawdataFrameCnt, txDepth16FrameCnt);
     if (NULL_POINTER != backuped_script_buffer)
     {
         free(backuped_script_buffer);
@@ -56,15 +69,14 @@ Host_Communication::~Host_Communication()
         backuped_script_buffer_size = 0;
     }
 
-    if (NULL_POINTER != backuped_blkwrite_reg_data)
+    if (NULL_POINTER != backuped_roisram_data)
     {
-        free(backuped_blkwrite_reg_data);
-        backuped_blkwrite_reg_data = NULL_POINTER;
-        backuped_blkwrite_reg_count = 0;
+        free(backuped_roisram_data);
+        backuped_roisram_data = NULL_POINTER;
+        backuped_roisram_data_size = 0;
     }
 
-    LOG_DEBUG("%s() total txRawdataFrameCnt: %ld..\n", __FUNCTION__, txRawdataFrameCnt);
-
+    sender_destroy();
     delete instance;
     instance = NULL_POINTER;
 }
@@ -117,7 +129,7 @@ int Host_Communication::dump_buffer_data(void* dump_buf, const char *buffer_name
     return 0;
 }
 
-int Host_Communication::report_error_msg(UINT16 responsed_cmd, UINT16 err_code, char *err_msg, int err_msg_length)
+int Host_Communication::report_status(UINT16 responsed_cmd, UINT16 status_code, char *msg, int msg_length)
 {
     void *async_buf;
     CommandData_t* pCmdData = NULL_POINTER;
@@ -134,7 +146,7 @@ int Host_Communication::report_error_msg(UINT16 responsed_cmd, UINT16 err_code, 
         return -1;
     }
 
-    if (err_msg_length > ERROR_MSG_MAX_LENGTH)
+    if (msg_length > ERROR_MSG_MAX_LENGTH)
     {
         LOG_ERROR("Error message is too long.\n");
         return -1;
@@ -148,11 +160,11 @@ int Host_Communication::report_error_msg(UINT16 responsed_cmd, UINT16 err_code, 
 
     pCmdData = (CommandData_t*) async_buf;
 
-    pCmdData->cmd = CMD_DEVICE_SIDE_REPORT_ERROR;
+    pCmdData->cmd = CMD_DEVICE_SIDE_REPORT_STATUS;
     pErrReportParam  = (error_report_param_t *) pCmdData->param;
     pErrReportParam->responsed_cmd = responsed_cmd;
-    pErrReportParam->err_code = err_code;
-    memcpy(pErrReportParam->err_msg, err_msg, err_msg_length);
+    pErrReportParam->err_code = status_code;
+    memcpy(pErrReportParam->err_msg, msg, msg_length);
 
     int result = sender_async_send_msg(async_buf, ulBufSize, 0);
 
@@ -162,7 +174,7 @@ int Host_Communication::report_error_msg(UINT16 responsed_cmd, UINT16 err_code, 
         return result;
     }
 
-    LOG_DEBUG("%s(%s) sucessfully!\n", __FUNCTION__, err_msg);
+    LOG_DEBUG("%s(%s) sucessfully!\n", __FUNCTION__, msg);
 
     return 0;
 }
@@ -368,7 +380,7 @@ int Host_Communication::dump_module_static_data(module_static_data_t *pStaticDat
     LOG_DEBUG("UINT16           otp_vbd = 0x%04x;", pStaticDataParam->otp_vbd);
     LOG_DEBUG("UINT16           otp_adc_vref = 0x%04x;", pStaticDataParam->otp_adc_vref);
     LOG_DEBUG("CHAR             serialNumber = [%s];", serialNumber);
-    LOG_DEBUG("UINT32           calib_data_size = %d;           // unit is byte", pStaticDataParam->calib_data_size);
+    LOG_DEBUG("UINT32           eeprom_data_size = %d;          // unit is byte", pStaticDataParam->eeprom_data_size);
     LOG_DEBUG("sizeof(module_static_data_t) = %ld", sizeof(module_static_data_t));
 
     return 0;
@@ -420,8 +432,8 @@ int Host_Communication::report_module_static_data()
     pStaticDataParam->otp_adc_vref = module_static_data->otp_adc_vref;
     memcpy(pStaticDataParam->serialNumber, module_static_data->serialNumber, SENSOR_SN_LENGTH);
     pStaticDataParam->data_type = MODULE_STATIC_DATA;
-    pStaticDataParam->calib_data_size = EEPROM_size;
-    memcpy(pStaticDataParam->calib_data, pEEPROM_buffer, EEPROM_size);
+    pStaticDataParam->eeprom_data_size = EEPROM_size;
+    memcpy(pStaticDataParam->eeprom_data, pEEPROM_buffer, EEPROM_size);
     //dump_buffer_data(pStaticDataParam->calib_data, "module_static_data", __LINE__);
     if (true == Utils::is_env_var_true(ENV_VAR_DUMP_MODULE_STATIC_DATA))
     {
@@ -463,7 +475,7 @@ int Host_Communication::dump_capture_req_param(capture_req_param_t* pCaptureReqP
             pCaptureReqParam->expose_param.coarseExposure, pCaptureReqParam->expose_param.fineExposure, pCaptureReqParam->expose_param.grayExposure);
     LOG_DEBUG("BOOLEAN          script_loaded = %d;", pCaptureReqParam->script_loaded);
     LOG_DEBUG("UINT32           script_size = %d;           // set to 0 if script_loaded == false", pCaptureReqParam->script_size);
-    LOG_DEBUG("UINT8            blkwrite_reg_count = %d;    // set to 0 if no block_write register is included in script file", pCaptureReqParam->blkwrite_reg_count);
+//    LOG_DEBUG("UINT8            blkwrite_reg_count = %d;    // set to 0 if no block_write register is included in script file", pCaptureReqParam->blkwrite_reg_count);
     LOG_DEBUG("sizeof(capture_req_param_t) = %ld", sizeof(capture_req_param_t));
 
     return 0;
@@ -486,6 +498,55 @@ void Host_Communication::swift_set_colormap_range(CommandData_t* pCmdData, uint3
 
     qApp->set_RealDistanceMinMappedRange(pColormapRangeParam->RealDistanceMinMappedRange);
     qApp->set_RealDistanceMaxMappedRange(pColormapRangeParam->RealDistanceMaxMappedRange);
+}
+
+void Host_Communication::backup_roi_sram_data(roisram_data_param_t* pRoiSramParam)
+{
+    LOG_DEBUG("------roi_sram_rotate: %d, roisram_data_size: %d-----\n", pRoiSramParam->roi_sram_rotate, pRoiSramParam->roisram_data_size);
+
+    backuped_roisram_data_size = pRoiSramParam->roisram_data_size;
+    backuped_roi_sram_rotate = pRoiSramParam->roi_sram_rotate;
+
+    if (NULL_POINTER == backuped_roisram_data)
+    {
+        backuped_roisram_data = (u8 *) malloc(backuped_roisram_data_size);
+        if (NULL_POINTER == backuped_roisram_data) {
+            DBG_ERROR("Fail to malloc for backuped_blkwrite_reg_data.\n");
+            return ;
+        }
+    }
+
+    memcpy(backuped_roisram_data, &pRoiSramParam->roisram_data, backuped_roisram_data_size);
+
+}
+
+void Host_Communication::swift_load_roi_sram(CommandData_t* pCmdData, uint32_t rxDataLen)
+{
+    roisram_data_param_t* pRoiSramParam;
+    char msg[] = "roi sram loaded successfully.";
+
+    if (rxDataLen < (sizeof(CommandData_t) + sizeof(roisram_data_param_t)))
+    {
+        LOG_ERROR("<%s>: rxDataLen %d is too short for CMD_HOST_SIDE_SET_ROI_SRAM_DATA.\n", __FUNCTION__, rxDataLen);
+        return;
+    }
+
+    pRoiSramParam = (roisram_data_param_t*) pCmdData->param;
+    if (pRoiSramParam->roisram_data_size > 0 && 0 == (pRoiSramParam->roisram_data_size % PER_ROISRAM_GROUP_SIZE))
+    {
+        qApp->set_capture_req_from_host(true);
+
+        backup_roi_sram_data(pRoiSramParam);
+    }
+    else {
+        char err_msg[128];
+        sprintf(err_msg, "Invalid roisram_data_size(%d) for CMD_HOST_SIDE_SET_ROI_SRAM_DATA", pRoiSramParam->roisram_data_size);
+        report_status(CMD_HOST_SIDE_SET_ROI_SRAM_DATA, CMD_DEVICE_SIDE_ERROR_INVALID_ROI_SRAM_SIZE, err_msg, strlen(err_msg));
+        return;
+    }
+
+
+    report_status(CMD_HOST_SIDE_SET_ROI_SRAM_DATA, CMD_DEVICE_SIDE_NO_ERROR, msg, strlen(msg));
 }
 
 void Host_Communication::swift_start_capture(CommandData_t* pCmdData, uint32_t rxDataLen)
@@ -528,19 +589,6 @@ void Host_Communication::swift_start_capture(CommandData_t* pCmdData, uint32_t r
         }
 
         memcpy(backuped_script_buffer, pCaptureReqParam->script_buffer, backuped_script_buffer_size);
-
-        backuped_blkwrite_reg_count = pCaptureReqParam->blkwrite_reg_count;
-        
-        if (NULL_POINTER == backuped_blkwrite_reg_data)
-        {
-            backuped_blkwrite_reg_data = (u8 *) malloc(backuped_blkwrite_reg_count * sizeof(blkwrite_reg_data_t));
-            if (NULL_POINTER == backuped_blkwrite_reg_data) {
-                DBG_ERROR("Fail to malloc for backuped_blkwrite_reg_data.\n");
-                return ;
-            }
-        }
-        
-        memcpy(backuped_blkwrite_reg_data, &pCaptureReqParam->script_buffer[backuped_script_buffer_size], backuped_blkwrite_reg_count * sizeof(blkwrite_reg_data_t));
     }
     else {
         backuped_script_buffer_size = 0;
@@ -549,13 +597,14 @@ void Host_Communication::swift_start_capture(CommandData_t* pCmdData, uint32_t r
     emit start_capture();
 }
 
-void Host_Communication::get_backuped_script_buffer_info(UINT8 *workmode, UINT8 ** script_buffer, uint32_t *script_buffer_size, UINT8 ** blkwrite_reg_data, uint32_t *blkwrite_reg_count)
+void Host_Communication::get_backuped_external_config_info(UINT8 *workmode, UINT8 ** script_buffer, uint32_t *script_buffer_size, UINT8 ** roisram_data, uint32_t *roisram_data_size, bool *roi_sram_rotate)
 {
     *workmode = backuped_wkmode;
     *script_buffer_size = backuped_script_buffer_size;
     *script_buffer = backuped_script_buffer;
-    *blkwrite_reg_count = backuped_blkwrite_reg_count;
-    *blkwrite_reg_data = backuped_blkwrite_reg_data;
+    *roisram_data_size = backuped_roisram_data_size;
+    *roisram_data = backuped_roisram_data;
+    *roi_sram_rotate = backuped_roi_sram_rotate;
 }
 
 void Host_Communication::read_device_register(UINT16 cmd, CommandData_t* pCmdData, uint32_t rxDataLen)
@@ -583,7 +632,7 @@ void Host_Communication::read_device_register(UINT16 cmd, CommandData_t* pCmdDat
     if (0 > ret)
     {
         char err_msg[] = "Fail to read register, please check the device side's log for more details.";
-        report_error_msg(cmd, CMD_DEVICE_SIDE_ERROR_READ_REGISTER, err_msg, strlen(err_msg));
+        report_status(cmd, CMD_DEVICE_SIDE_ERROR_READ_REGISTER, err_msg, strlen(err_msg));
         return;
     }
 
@@ -631,7 +680,7 @@ void Host_Communication::write_device_register(UINT16 cmd, CommandData_t* pCmdDa
     if (0 > ret)
     {
         char err_msg[] = "Fail to write register, please check the device side's log for more details.";
-        report_error_msg(cmd, CMD_DEVICE_SIDE_ERROR_WRITE_REGISTER, err_msg, strlen(err_msg));
+        report_status(cmd, CMD_DEVICE_SIDE_ERROR_WRITE_REGISTER, err_msg, strlen(err_msg));
     }
 
     return;
@@ -658,6 +707,10 @@ void Host_Communication::swift_event_process(void* pRXData, uint32_t rxDataLen)
             swift_set_colormap_range(pCmdData, rxDataLen);
             break;
 
+        case CMD_HOST_SIDE_SET_ROI_SRAM_DATA:
+            swift_load_roi_sram(pCmdData, rxDataLen);
+            break;
+
         case CMD_HOST_SIDE_START_CAPTURE:
             swift_start_capture(pCmdData, rxDataLen);
             break;
@@ -665,7 +718,7 @@ void Host_Communication::swift_event_process(void* pRXData, uint32_t rxDataLen)
         case CMD_HOST_SIDE_STOP_CAPTURE:
             if (true != Utils::is_env_var_true(ENV_VAR_DEVELOP_DEBUGGING))
             {
-                //stop_capture_event();
+                qApp->set_capture_req_from_host(false);
                 emit stop_capture();
             }
             break;
@@ -716,8 +769,8 @@ void Host_Communication::swift_sender_disconnected()
 
     if (true != Utils::is_env_var_true(ENV_VAR_DEVELOP_DEBUGGING))
     {
-        emit stop_capture();
         qApp->set_capture_req_from_host(false);
+        emit stop_capture();
         connected = false;
     }
 
@@ -782,4 +835,29 @@ int Host_Communication::adaps_sender_init()
 
     return ret;
 }
+
+#if defined(ROI_SRAM_DATA_INJECTION_4_ROISRAM_ROTATE_TEST)
+int Host_Communication::roi_sram_rotate_data_injection()
+{
+    int ret = 0;
+    int multiple_roi_sram_test_data_size = sizeof(multiple_roi_sram_test_data);
+    roisram_data_param_t* pRoiSramParam;
+
+    pRoiSramParam = (roisram_data_param_t *) malloc(sizeof(roisram_data_param_t) + multiple_roi_sram_test_data_size);
+    if (NULL_POINTER == pRoiSramParam) {
+        DBG_ERROR("Fail to malloc.\n");
+        return 0 - __LINE__;
+    }
+
+    pRoiSramParam->roi_sram_rotate = true;
+    pRoiSramParam->roisram_data_size = multiple_roi_sram_test_data_size;
+    memcpy(pRoiSramParam->roisram_data, multiple_roi_sram_test_data, multiple_roi_sram_test_data_size);
+    backup_roi_sram_data(pRoiSramParam);
+    if (NULL_POINTER != pRoiSramParam) {
+        free(pRoiSramParam);
+    }
+
+    return ret;
+}
+#endif
 

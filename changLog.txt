@@ -1,3 +1,29 @@
+8. @2025/06/14 -- version update to 3.0.0_LM20250614A
+    redmine_2428: SpadisQT 小面阵模组ROI sram轮询功能重新适配 及 优化
+    http://gerrit.adaps.corp/c/SpadisQT/+/4857
+    
+    patch set 1: correct a typo for color map conversion algo from PC SpadisApp;
+    patch set 2: add dumpSpotCount() with environment variable 'dump_spots_interval_by_confidence';
+    patch set 3-5: add roiCoordinatesDumpCheck() and multipleRoiCoordinatesDumpCheck() to valid check and print ROI sram coordinates map;
+    patch set 6: change the return type from void to int for initParams() to return failure if p_eeprom_param is NULL;
+    patch set 7: re-adapt the area algo lib version per dongshuai's update;
+    patch set 8: for flood algo lib, pRawData and rawDataSize are used for ROI sram and its size, add CMD_DEVICE_SIDE_ERROR_CAPTURE_ABORT for device side capture abort;
+    patch set 11: force setparam->walkerror = false since No walk error parameters in eeprom for flood module;
+    patch set 12: add depthMapDump() to debug ROI sram rotation function;
+    patch set 13: improve dumpSpotCount();
+    patch set 14: implement loaded config from SpadisApp => SpadisQT => ads6401.c driver to running-time support ROI SRAM rotation or not?
+    patch set 15: add roi_sram_rotate_data_injection() for self-test before SpadisApp adding ROI SRAM send-down function;
+    patch set 16: bugfix: SpadisQT hung because the member variable sensor_reg_setting_cnt of the class was not initialized to 0 in the constructor, and it was not 0 when unassigned;
+    patch set 18: fix build error in deepin Linux on PC;
+    
+    1. 增加dumpSpotCount()、roiCoordinatesDumpCheck()，以便打印ROI sram的有效点坐标map
+    2. 增加depthMapDump()打印decode后深度图的map(根据置信度显示H/M/L)
+    3. 小面阵模组，通过pRawData 和 rawDataSize告诉算法库完整ROI sram数据的首地址和长度(ROI轮询时可能18K多)
+    4. 小面阵模组，walkerror强制为false,因为它的eeprom里没有walkerror数据
+    5. 实现同一套固件(SpadisQT 和 boot.img), 支持小面阵ROI 轮询和非轮询（下位机根据环境变量，可注入测试数据）
+    6. 完善错误和异常的状态上报给SpadisApp
+
+
 7. @2025/05/29 -- version update to 3.0.0_LM20250529A
     redmine #2334: swift下位机应用SpadisQT接入sender与PC端SpadisApp通讯
     http://gerrit.adaps.corp/c/SpadisQT/+/4759

@@ -14,9 +14,14 @@
 #include <sys/ioctl.h>
 #include <errno.h>
 
-//#include "v4l2.h"
 #include "misc_device.h"
 #include "depthmapwrapper.h"
+
+#define COLOR_MAP_SYNCED_WITH_PC_SPADISAPP
+
+#define BLANK_CHAR                              '.'
+#define OUTPUT_WIDTH_4_DTOF_SENSOR              210
+#define OUTPUT_HEIGHT_4_DTOF_SENSOR             160
 
 /* https://developer.android.com/reference/android/graphics/ImageFormat#DEPTH16
 *
@@ -89,12 +94,13 @@ public:
     void ConvertGreyscaleToColoredMap(u16 depth16_buffer[], u8 depth_colored_map[], int outImgWidth, int outImgHeight);
     int dtof_frame_decode(unsigned char *frm_rawdata, int buf_len, u16 depth16_buffer[], enum sensor_workmode swk);
     void adaps_dtof_release();
-#if defined(ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT)
+#if 0 //defined(ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT)
     int DepthBufferMerge(u16 merged_depth16_buffer[], const u16 to_merge_depth16_buffer[], int outImgWidth, int outImgHeight);
 #endif
+    int dumpSpotCount(const u16 depth16_buffer[], const int outImgWidth, const int outImgHeight, const uint32_t frm_sequence, const uint32_t out_frame_cnt, int decodeRet, int callline);
+    int depthMapDump(const u16 depth16_buffer[], const int outImgWidth, const int outImgHeight, const uint32_t out_frame_cnt, int callline);
 
 private:
-//    V4L2 *m_v4l2;
     Misc_Device *p_misc_device;
     struct sensor_params m_sns_param;
     uint64_t m_exposure_time;
@@ -120,17 +126,19 @@ private:
     bool m_conversionLibInited;
     uint32_t m_decoded_frame_cnt;
 
-#if defined(ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT)
-    uint8_t cur_calib_sram_data_group_idx;
+#if 0 //defined(ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT)
     bool trace_calib_sram_switch;
 #endif
+    u8 CoordinatesMap[CALIB_SRAM_GROUP_COUNT][OUTPUT_HEIGHT_4_DTOF_SENSOR][OUTPUT_WIDTH_4_DTOF_SENSOR];
 
     int FillSetWrapperParamFromEepromInfo(uint8_t* pEEPROMData, SetWrapperParam* setparam);
-    void initParams(WrapperDepthInitInputParams  *     initInputParams,WrapperDepthInitOutputParams      *initOutputParams);
+    int initParams(WrapperDepthInitInputParams* initInputParams, WrapperDepthInitOutputParams* initOutputParams);
     void PrepareFrameParam(WrapperDepthCamConfig *wrapper_depth_map_config);
     u8 normalizeGreyscale(u16 range);
     void Distance_2_BGRColor(int bucketNum, float bucketSize, u16 distance, struct BGRColor *destColor);
     int hexdump_param(void* param_ptr, int param_size, const char *param_name, int callline);
+    int roiCoordinatesDumpCheck(uint8_t* spot_cali_data, int outImgWidth, int outImgHeight);
+    int multipleRoiCoordinatesDumpCheck(uint8_t* multiple_roi_sram_data, u16 length, int outImgWidth, int outImgHeight);
 };
 
 #endif // ADAPS_DTOF_H

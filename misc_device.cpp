@@ -114,8 +114,6 @@ inline void EepromGetSwiftChecksumAddress(uint32_t* offset, uint32_t* length) {
 
 Misc_Device::Misc_Device()
 {
-    int             i;
-
     p_eeprominfo = NULL_POINTER;
     mmap_buffer_base = NULL_POINTER;
     mapped_eeprom_calib_data_buffer = NULL_POINTER;
@@ -125,15 +123,15 @@ Misc_Device::Misc_Device()
 #else
     mapped_script_vcsel_PhotonIC5015_settings = NULL_POINTER;
 #endif
-    for (i = 0; i < ZONE_COUNT_PER_SRAM_GROUP * CALIB_SRAM_GROUP_COUNT; i++)
-    {
-        roi_sram_size[i] = 0;
-    }
+    sensor_reg_setting_cnt = 0;
+    vcsel_reg_setting_cnt = 0;
+    loaded_roi_sram_size = 0;
+    loaded_roi_sram_rotate = false;
     // mmap_buffer_max_size should be a multiple of PAGE_SIZE (4096)
     mmap_buffer_max_size = EEPROM_CALIB_DATA_MAX_SIZE
         + REG_SETTING_BUF_MAX_SIZE_PER_SEG
         + REG_SETTING_BUF_MAX_SIZE_PER_SEG
-        + (PER_CALIB_SRAM_ZONE_SIZE * ZONE_COUNT_PER_SRAM_GROUP * CALIB_SRAM_GROUP_COUNT);
+        + (PER_CALIB_SRAM_ZONE_SIZE * ZONE_COUNT_PER_SRAM_GROUP * MAX_CALIB_SRAM_ROTATION_GROUP_CNT);
     eeprom_data_size = sizeof(swift_eeprom_data_t);
     memset((void *) &last_runtime_status_param, 0, sizeof(struct adaps_dtof_runtime_status_param));
     fd_4_misc = 0;
@@ -160,16 +158,10 @@ Misc_Device::Misc_Device()
         mapped_script_sensor_settings = (u8*)((u8*)mmap_buffer_base + EEPROM_CALIB_DATA_MAX_SIZE);
 #if (ADS6401_MODULE_SPOT == SWIFT_MODULE_TYPE)
         mapped_script_vcsel_opn7020_settings = (u8* ) (mapped_script_sensor_settings + ROI_SRAM_BUF_MAX_SIZE);
-        for (i = 0; i < ZONE_COUNT_PER_SRAM_GROUP * CALIB_SRAM_GROUP_COUNT; i++)
-        {
-            mapped_roi_sram_data[i] = mapped_script_vcsel_opn7020_settings + REG_SETTING_BUF_MAX_SIZE_PER_SEG + PER_CALIB_SRAM_ZONE_SIZE * i;
-        }
+        mapped_roi_sram_data = mapped_script_vcsel_opn7020_settings + REG_SETTING_BUF_MAX_SIZE_PER_SEG;
 #else
         mapped_script_vcsel_PhotonIC5015_settings = (u8* ) (mapped_script_sensor_settings + ROI_SRAM_BUF_MAX_SIZE);
-        for (i = 0; i < ZONE_COUNT_PER_SRAM_GROUP * CALIB_SRAM_GROUP_COUNT; i++)
-        {
-            mapped_roi_sram_data[i] = mapped_script_vcsel_PhotonIC5015_settings + REG_SETTING_BUF_MAX_SIZE_PER_SEG + PER_CALIB_SRAM_ZONE_SIZE * i;
-        }
+        mapped_roi_sram_data = mapped_script_vcsel_PhotonIC5015_settings + REG_SETTING_BUF_MAX_SIZE_PER_SEG;
 #endif
 
         if (0 > read_dtof_module_static_data())
@@ -357,33 +349,7 @@ int Misc_Device::LoadItemsFromBuffer(const uint32_t ulBufferLen, const uint8_t* 
     return 0;
 }
 
-int Misc_Device::copy_roisram_data(const u8 roi_reg_addr, const u8 roi_reg_size, const uint32_t blkwrite_reg_count, const uint8_t* blkwrite_reg_data)
-{
-    uint32_t i;
-    int ret = -1;
-    blkwrite_reg_data_t *Blkwrite_op_data = (blkwrite_reg_data_t *)blkwrite_reg_data;
-
-    if (roi_reg_addr >= CALIB_SRAM_REG_BASE1 && roi_reg_addr <= (CALIB_SRAM_REG_BASE1 + ZONE_COUNT_PER_SRAM_GROUP * CALIB_SRAM_GROUP_COUNT))
-    {
-        for (i = 0; i < blkwrite_reg_count; i++)
-        {
-            if (roi_reg_addr == Blkwrite_op_data[i].reg_addr)
-            {
-                memcpy(mapped_roi_sram_data[roi_reg_addr - CALIB_SRAM_REG_BASE1], Blkwrite_op_data[i].reg_data , roi_reg_size);
-                roi_sram_size[roi_reg_addr - CALIB_SRAM_REG_BASE1] = roi_reg_size;
-                ret = 0;
-                break;
-            }
-        }
-    }
-    else {
-        DBG_ERROR("invalid roi sram register address for ads6401.");
-    }
-
-    return ret;
-}
-
-int Misc_Device::parse_items(const uint32_t ulItemsCount, const ScriptItem *pstrItems, const uint32_t blkwrite_reg_count, const uint8_t* blkwrite_reg_data)
+int Misc_Device::parse_items(const uint32_t ulItemsCount, const ScriptItem *pstrItems)
 {
     uint32_t i;
     struct setting_rvd *sensor_settings = NULL_POINTER;
@@ -400,10 +366,6 @@ int Misc_Device::parse_items(const uint32_t ulItemsCount, const ScriptItem *pstr
 
     sensor_reg_setting_cnt = 0;
     vcsel_reg_setting_cnt = 0;
-    for (i = 0; i < ZONE_COUNT_PER_SRAM_GROUP * CALIB_SRAM_GROUP_COUNT; i++)
-    {
-        roi_sram_size[i] = 0;
-    }
     sensor_settings = (struct setting_rvd *) mapped_script_sensor_settings;
     memset(mapped_script_sensor_settings, 0, sizeof(struct setting_rvd)*MAX_REG_SETTING_COUNT);
 #if (ADS6401_MODULE_SPOT == SWIFT_MODULE_TYPE)
@@ -501,15 +463,6 @@ int Misc_Device::parse_items(const uint32_t ulItemsCount, const ScriptItem *pstr
 #endif
             }
         }
-        else if (Block_Write == pstrItems[i].type) {
-            if (0 == blkwrite_reg_count || NULL_POINTER == blkwrite_reg_data)
-            {
-                DBG_ERROR("Block_Write exist in script file, but no blkwrite blkwrite_reg_data is recieved, please check.\n");
-                continue;
-            }
-
-            copy_roisram_data(pstrItems[i].reg_addr, pstrItems[i].reg_val, blkwrite_reg_count, blkwrite_reg_data);
-        }
     }
 
     // add the END flag item
@@ -533,58 +486,57 @@ int Misc_Device::parse_items(const uint32_t ulItemsCount, const ScriptItem *pstr
     return 0;
 }
 
-int Misc_Device::parse_script_from_buffer(UINT8 workMode, const uint32_t script_buf_size, const uint8_t* script_buf, const uint32_t blkwrite_reg_count, const uint8_t* blkwrite_reg_data)
+int Misc_Device::send_down_external_config(const UINT8 workMode, const uint32_t script_buf_size, const uint8_t* script_buf, const uint32_t roi_sram_size, const uint8_t* roi_sram_data, const bool roi_sram_rotate)
 {
-    int             i;
     ScriptItem *pstrItems = NULL_POINTER;
     uint32_t ulItemsBufSize = MAX_SCRIPT_ITEM_COUNT * sizeof(ScriptItem);
     uint32_t ulItemsCount = 0;
     int ret = 0;
     external_config_script_param_t ex_cfg_script_param;
 
-    if (0 == script_buf_size) {
-        DBG_ERROR("script buffer size is zero.\n");
-        return -1;
+    if (0 != script_buf_size) {
+        pstrItems = (ScriptItem *)malloc(ulItemsBufSize);
+        if (NULL_POINTER == pstrItems) {
+            DBG_ERROR("malloc script data size: %u fail.\n", ulItemsBufSize);
+            return -1;
+        }
+        memset(pstrItems, 0, ulItemsBufSize);
+
+        ret = LoadItemsFromBuffer(script_buf_size, script_buf, pstrItems, &ulItemsCount);
+        if (ret) {
+            free(pstrItems);
+            DBG_ERROR("Fail to load items from buffer for workmode: %u.\n", workMode);
+            return -1;
+        }
+
+        if (true == Utils::is_env_var_true(ENV_VAR_DUMP_PARSING_SCRIPT_ITEMS))
+        {
+            DBG_NOTICE("load items count: %u from buffer: %p.\n", ulItemsCount, script_buf);
+        }
+
+        ret = parse_items(ulItemsCount, pstrItems);
+        if (ret) {
+            if (NULL_POINTER != pstrItems) free(pstrItems);
+            DBG_ERROR("parse item: %u fail on workmode: %u.\n", ulItemsCount, workMode);
+            return -1;
+        }
+
+        if (NULL_POINTER != pstrItems) free(pstrItems);
+
     }
 
-    pstrItems = (ScriptItem *)malloc(ulItemsBufSize);
-    if (NULL_POINTER == pstrItems) {
-        DBG_ERROR("malloc script data size: %u fail.\n", ulItemsBufSize);
-        return -1;
-    }
-
-    memset(pstrItems, 0, ulItemsBufSize);
-
-    ret = LoadItemsFromBuffer(script_buf_size, script_buf, pstrItems, &ulItemsCount);
-    if (ret) {
-        free(pstrItems);
-        DBG_ERROR("Fail to load items from buffer for workmode: %u.\n", workMode);
-        return -1;
-    }
-
-    if (true == Utils::is_env_var_true(ENV_VAR_DUMP_PARSING_SCRIPT_ITEMS))
-    {
-        DBG_NOTICE("load items count: %u from buffer: %p.\n", ulItemsCount, script_buf);
-    }
-
-    ret = parse_items(ulItemsCount, pstrItems, blkwrite_reg_count, blkwrite_reg_data);
-    if (ret) {
-        free(pstrItems);
-        DBG_ERROR("parse item: %u fail on workmode: %u.\n", ulItemsCount, workMode);
-        return -1;
-    }
-
-    free(pstrItems);
+    memcpy(mapped_roi_sram_data, roi_sram_data, roi_sram_size);
+    loaded_roi_sram_size = roi_sram_size;
+    loaded_roi_sram_rotate = roi_sram_rotate;
 
     ex_cfg_script_param.work_mode = workMode;
     ex_cfg_script_param.sensor_reg_setting_cnt = sensor_reg_setting_cnt;
     ex_cfg_script_param.vcsel_reg_setting_cnt = vcsel_reg_setting_cnt;
-    for (i = 0; i < ZONE_COUNT_PER_SRAM_GROUP * CALIB_SRAM_GROUP_COUNT; i++)
-    {
-        ex_cfg_script_param.roi_sram_size[i] = roi_sram_size[i];
-    }
+    ex_cfg_script_param.roi_sram_rotate = roi_sram_rotate;
+    ex_cfg_script_param.roi_sram_size = roi_sram_size;
     ret = write_external_config_script(&ex_cfg_script_param);
-    DBG_NOTICE("write_external_config_script() ret: %d, workMode: %d, vcsel_reg_setting_cnt:%d, sensor_reg_setting_cnt: %d---\n", ret, workMode, vcsel_reg_setting_cnt, sensor_reg_setting_cnt);
+    DBG_NOTICE("write_external_config_script() ret: %d, workMode: %d, vcsel_reg_setting_cnt:%d, sensor_reg_setting_cnt: %d, roi_sram_rotate: %d, roi_sram_size: %d---\n",
+        ret, workMode, vcsel_reg_setting_cnt, sensor_reg_setting_cnt, roi_sram_rotate, roi_sram_size);
 
     return ret;
 }
@@ -949,11 +901,19 @@ int Misc_Device::read_dtof_module_static_data(void)
     return ret;
 }
 
-int Misc_Device::get_dtof_module_static_data(void **pp_module_static_data, void **pp_calib_data_buffer, uint32_t *calib_data_size)
+int Misc_Device::get_dtof_module_static_data(void **pp_module_static_data, void **pp_eeprom_data_buffer, uint32_t *eeprom_data_size)
 {
     *pp_module_static_data = (void *) &module_static_data;
-    *pp_calib_data_buffer = mapped_eeprom_calib_data_buffer;
-    *calib_data_size = sizeof(swift_eeprom_data_t);
+    *pp_eeprom_data_buffer = mapped_eeprom_calib_data_buffer;
+    *eeprom_data_size = sizeof(swift_eeprom_data_t);
+
+    return 0;
+}
+
+int Misc_Device::get_loaded_roi_sram_data_info(void **pp_roisram_data_buffer, uint32_t *roisram_data_size)
+{
+    *pp_roisram_data_buffer = mapped_roi_sram_data;
+    *roisram_data_size = loaded_roi_sram_size;
 
     return 0;
 }
@@ -966,8 +926,8 @@ int Misc_Device::write_dtof_initial_param(struct adaps_dtof_intial_param *param)
         DBG_ERROR("Fail to set initial param for dtof sensor device, errno: %s (%d)...", 
                strerror(errno), errno);
         ret = -1;
-    }else
-    {     
+    }
+    else {
         DBG_INFO("dtof_intial_param env_type=%d measure_type=%d framerate_type=%d     ",
             param->env_type,
             param->measure_type,

@@ -510,28 +510,40 @@ int V4L2::V4l2_initilize(void)
         }
 
         script_loaded = false;
+        qApp->set_roi_sram_rotate(false);
 
         if (host_comm)
         {
-            UINT32 backuped_script_buffer_size;
+            UINT32 backuped_script_buf_sz;
             u8 *backuped_script_buffer;     // script buffer backup from CMD_HOST_SIDE_START_CAPTURE
             UINT8 backuped_wkmode;
-            UINT32 backuped_blkwrite_reg_count;
-            UINT8 *backuped_blkwrite_reg_data;
+            UINT32 backuped_roisram_data_sz;
+            UINT8 *backuped_roisram_data;
 
-            host_comm->get_backuped_script_buffer_info(&backuped_wkmode, &backuped_script_buffer, &backuped_script_buffer_size, &backuped_blkwrite_reg_data, &backuped_blkwrite_reg_count);
+            host_comm->get_backuped_external_config_info(&backuped_wkmode, &backuped_script_buffer, &backuped_script_buf_sz, &backuped_roisram_data, &backuped_roisram_data_sz, &roi_sram_rotate);
+            DBG_INFO("backuped_script_buf_sz: %d, backuped_roisram_data_sz: %d, roi_sram_rotate: %d...\n", backuped_script_buf_sz, backuped_roisram_data_sz, roi_sram_rotate);
 
-            if (backuped_script_buffer_size)
+            roi_sram_loaded = (backuped_roisram_data_sz > 0) ? true: false;
+            if (backuped_roisram_data_sz <= ALL_ROISRAM_GROUP_SIZE)
             {
-                int ret = p_misc_device->parse_script_from_buffer(backuped_wkmode, backuped_script_buffer_size, (const uint8_t* ) backuped_script_buffer, backuped_blkwrite_reg_count, (const uint8_t* ) backuped_blkwrite_reg_data);
+                roi_sram_rotate = false;
+            }
+            qApp->set_roi_sram_rotate(roi_sram_rotate);
+
+            if (backuped_script_buf_sz || backuped_roisram_data_sz)
+            {
+                int ret = p_misc_device->send_down_external_config(backuped_wkmode, backuped_script_buf_sz, (const uint8_t* ) backuped_script_buffer, backuped_roisram_data_sz, (const uint8_t* ) backuped_roisram_data, roi_sram_rotate);
                 if (0 > ret)
                 {
                     char err_msg[] = "work_mode and the register config in script buffer is mismatched";
-                    host_comm->report_error_msg(CMD_HOST_SIDE_START_CAPTURE, CMD_DEVICE_SIDE_ERROR_MISMATCHED_WORK_MODE, err_msg, strlen(err_msg));
+                    host_comm->report_status(CMD_HOST_SIDE_START_CAPTURE, CMD_DEVICE_SIDE_ERROR_MISMATCHED_WORK_MODE, err_msg, strlen(err_msg));
                     return 0 - __LINE__;
                 }
 
-                script_loaded = true;
+                if (backuped_script_buf_sz)
+                {
+                    script_loaded = true;
+                }
             }
         }
 
@@ -659,8 +671,6 @@ int V4L2::Start_streaming(void)
 
 int V4L2::Capture_frame()
 {
-    frame_buffer_param_t param;
-
     struct v4l2_buffer  v4l2_buf;
     struct v4l2_plane v4l2_planes[FMT_NUM_PLANES];
     int bytesused;
@@ -668,6 +678,7 @@ int V4L2::Capture_frame()
     long currTimeUsec;
     status_params1 param1;
 #if defined(RUN_ON_EMBEDDED_LINUX)
+    frame_buffer_param_t param;
     struct adaps_dtof_runtime_status_param *p_runtime_status_param;
     p_misc_device = qApp->get_misc_dev_instance();
 #endif
@@ -732,10 +743,17 @@ int V4L2::Capture_frame()
         total_bytes_per_line = bytesused/snr_param.raw_height;
         payload_bytes_per_line = (snr_param.raw_width * bits_per_pixel)/8;
         padding_bytes_per_line = total_bytes_per_line - payload_bytes_per_line;
+#if defined(RUN_ON_EMBEDDED_LINUX)
         DBG_NOTICE("------script_loaded: %d, workmode: %d, frame raw size: %d X %d, bits_per_pixel: %d, payload_bytes_per_line: %d, total_bytes_per_line: %d, padding_bytes_per_line: %d, frame_buffer_size: %d---\n",
             script_loaded, snr_param.work_mode,
             snr_param.raw_width, snr_param.raw_height,
             bits_per_pixel, payload_bytes_per_line, total_bytes_per_line, padding_bytes_per_line, bytesused);
+#else
+        DBG_NOTICE("------workmode: %d, frame raw size: %d X %d, bits_per_pixel: %d, payload_bytes_per_line: %d, total_bytes_per_line: %d, padding_bytes_per_line: %d, frame_buffer_size: %d---\n",
+            snr_param.work_mode,
+            snr_param.raw_width, snr_param.raw_height,
+            bits_per_pixel, payload_bytes_per_line, total_bytes_per_line, padding_bytes_per_line, bytesused);
+#endif
     }
     else {
         currTimeUsec = tv.tv_sec*1000000 + tv.tv_usec;
@@ -777,6 +795,7 @@ int V4L2::Capture_frame()
         param.pcm_gray_exposure_value = snr_param.exposureParam.pcm_gray_exposure_value;
         param.frame_sequence = v4l2_buf.sequence;
         param.frame_timestamp_us = timestamp_convert_from_timeval_to_us(v4l2_buf.timestamp);
+        param.mipi_rx_fps = mipi_rx_fps;
 
         host_comm->report_frame_raw_data(buffers[v4l2_buf.index].start, bytesused, &param);
     }
@@ -785,7 +804,11 @@ int V4L2::Capture_frame()
     if (true != Utils::is_env_var_true(ENV_VAR_SKIP_FRAME_PROCESS))
     {
         emit update_info(param1);
+#if defined(RUN_ON_EMBEDDED_LINUX)
         emit rx_new_frame(v4l2_buf.sequence, buffers[v4l2_buf.index].start, bytesused, v4l2_buf.timestamp, frm_type, total_bytes_per_line, param);
+#else
+        emit rx_new_frame(v4l2_buf.sequence, buffers[v4l2_buf.index].start, bytesused, v4l2_buf.timestamp, frm_type, total_bytes_per_line);
+#endif
     }
     else {
         if (1 == v4l2_buf.sequence % FRAME_INTERVAL_4_PROGRESS_REPORT)

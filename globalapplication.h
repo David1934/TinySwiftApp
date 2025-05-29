@@ -60,6 +60,9 @@ public:
 
     float get_RealDistanceMaxMappedRange();
     int set_RealDistanceMaxMappedRange(float value);
+
+    bool is_roi_sram_rotate();
+    int set_roi_sram_rotate(bool val);
 #endif
 
 private:
@@ -76,6 +79,7 @@ private:
     AdapsEnvironmentType selected_e_type;
     AdapsFramerateType selected_framerate_type;
     bool            capture_req_from_host;
+    bool            roi_sram_rotate;
     int GrayScaleMinMappedRange;
     int GrayScaleMaxMappedRange;
     float RealDistanceMinMappedRange;

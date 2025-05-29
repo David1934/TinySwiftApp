@@ -66,6 +66,7 @@ GlobalApplication::GlobalApplication(int argc, char *argv[]):QCoreApplication(ar
     selected_m_type = DEFAULT_MEASUREMENT_TYPE;
     selected_framerate_type = DEFAULT_DTOF_FRAMERATE;
     capture_req_from_host = false;
+    roi_sram_rotate = false;
 #endif
 
     //DBG_INFO( "---------------");
@@ -193,6 +194,20 @@ int GlobalApplication::set_capture_req_from_host(bool val)
     int ret = 0;
 
     capture_req_from_host = val;
+
+    return ret;
+}
+
+bool GlobalApplication::is_roi_sram_rotate()
+{
+    return roi_sram_rotate;
+}
+
+int GlobalApplication::set_roi_sram_rotate(bool val)
+{
+    int ret = 0;
+
+    roi_sram_rotate = val;
 
     return ret;
 }
