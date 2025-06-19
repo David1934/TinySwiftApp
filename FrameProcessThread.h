@@ -2,9 +2,11 @@
 #define FrameProcessThread_H
 
 #include <QThread>
-#if !defined(NO_UI_APPLICATION)
+
+#if !defined(CONSOLE_APP_WITHOUT_GUI)
 #include <QImage>
 #endif
+
 #include <QDebug>
 #include"v4l2.h"
 #if defined(RUN_ON_EMBEDDED_LINUX)
@@ -22,7 +24,7 @@ public:
     void stop(int stop_request_code);
     int init(int index);
     bool isSleeping();
-    #if !defined(NO_UI_APPLICATION)
+    #if !defined(CONSOLE_APP_WITHOUT_GUI)
         void setWatchSpot(QSize img_widget_size, QPoint point);
     #endif
 
@@ -54,7 +56,7 @@ private:
     unsigned char *confidence_map_buffer;
     uint32_t outputed_frame_cnt;
     int stop_req_code;
-    #if !defined(NO_UI_APPLICATION)
+    #if !defined(CONSOLE_APP_WITHOUT_GUI)
         QPoint watchSpot;
     #endif
     bool save_frame(unsigned int frm_sequence, void *frm_buf, int buf_size, int frm_w, int frm_h, struct timeval frm_timestamp, enum frame_data_type);
@@ -72,7 +74,7 @@ private slots:
 
 signals:
 
-    #if !defined(NO_UI_APPLICATION)
+    #if !defined(CONSOLE_APP_WITHOUT_GUI)
         void newFrameReady4Display(QImage image, QImage img4confidence);
         void updateWatchSpotInfo(QPoint spot, enum frame_data_type ftype, watchPointInfo_t wpi);
     #endif

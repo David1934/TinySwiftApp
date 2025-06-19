@@ -15,7 +15,7 @@
 #define VERSION_MAJOR                           3
 #define VERSION_MINOR                           0
 #define VERSION_REVISION                        0
-#define LAST_MODIFIED_TIME                      "202500614A"
+#define LAST_MODIFIED_TIME                      "202500624A"
 
 #define DEFAULT_DTOF_FRAMERATE                  AdapsFramerateType30FPS // AdapsFramerateType60FPS
 
@@ -114,7 +114,12 @@
             __stringify(VERSION_MINOR) "."  \
             __stringify(VERSION_REVISION)
 
-#define APP_NAME                          "SpadisQT"
+#if defined(CONSOLE_APP_WITHOUT_GUI)
+    #define APP_NAME                        "SpadisQT_console"
+#else
+    #define APP_NAME                        "SpadisQT"
+#endif
+
 #define APP_VERSION_CODE                 (VERSION_MAJOR << 16 | VERSION_MINOR << 8 | VERSION_REVISION)
 
 #if defined(RUN_ON_EMBEDDED_LINUX)

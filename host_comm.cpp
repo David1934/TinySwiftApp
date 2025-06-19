@@ -41,6 +41,10 @@ Host_Communication::Host_Communication() {
     backuped_script_buffer_size = 0;
     backuped_roisram_data = NULL_POINTER;
     backuped_roisram_data_size = 0;
+    loaded_walkerror_data = NULL_POINTER;
+    loaded_walkerror_data_size = 0;
+    loaded_spotoffset_data = NULL_POINTER;
+    loaded_spotoffset_data_size = 0;
     backuped_wkmode = 0;
     backuped_roi_sram_rotate = false;
     p_misc_device = NULL_POINTER;
@@ -74,6 +78,20 @@ Host_Communication::~Host_Communication()
         free(backuped_roisram_data);
         backuped_roisram_data = NULL_POINTER;
         backuped_roisram_data_size = 0;
+    }
+
+    if (NULL_POINTER != loaded_walkerror_data)
+    {
+        free(loaded_walkerror_data);
+        loaded_walkerror_data = NULL_POINTER;
+        loaded_walkerror_data_size = 0;
+    }
+
+    if (NULL_POINTER != loaded_spotoffset_data)
+    {
+        free(loaded_spotoffset_data);
+        loaded_spotoffset_data = NULL_POINTER;
+        loaded_spotoffset_data_size = 0;
     }
 
     sender_destroy();
@@ -481,7 +499,7 @@ int Host_Communication::dump_capture_req_param(capture_req_param_t* pCaptureReqP
     return 0;
 }
 
-void Host_Communication::swift_set_colormap_range(CommandData_t* pCmdData, uint32_t rxDataLen)
+void Host_Communication::adaps_set_colormap_range(CommandData_t* pCmdData, uint32_t rxDataLen)
 {
     colormap_range_param_t* pColormapRangeParam;
 
@@ -498,6 +516,21 @@ void Host_Communication::swift_set_colormap_range(CommandData_t* pCmdData, uint3
 
     qApp->set_RealDistanceMinMappedRange(pColormapRangeParam->RealDistanceMinMappedRange);
     qApp->set_RealDistanceMaxMappedRange(pColormapRangeParam->RealDistanceMaxMappedRange);
+}
+
+void Host_Communication::adaps_set_walkerror_enable(CommandData_t* pCmdData, uint32_t rxDataLen)
+{
+    walkerror_enable_param_t* pWalkerrorEnableParam;
+
+    if (rxDataLen < (sizeof(CommandData_t) + sizeof(walkerror_enable_param_t)))
+    {
+        LOG_ERROR("swift_set_walkerror_enable: rxDataLen %d is too short for CMD_HOST_SIDE_SET_WALKERROR_ENABLE.\n", rxDataLen);
+        return;
+    }
+
+    pWalkerrorEnableParam = (walkerror_enable_param_t*) pCmdData->param;
+
+    qApp->set_walkerror_enable(pWalkerrorEnableParam->walkerror_enable);
 }
 
 void Host_Communication::backup_roi_sram_data(roisram_data_param_t* pRoiSramParam)
@@ -520,7 +553,7 @@ void Host_Communication::backup_roi_sram_data(roisram_data_param_t* pRoiSramPara
 
 }
 
-void Host_Communication::swift_load_roi_sram(CommandData_t* pCmdData, uint32_t rxDataLen)
+void Host_Communication::adaps_load_roi_sram(CommandData_t* pCmdData, uint32_t rxDataLen)
 {
     roisram_data_param_t* pRoiSramParam;
     char msg[] = "roi sram loaded successfully.";
@@ -549,7 +582,91 @@ void Host_Communication::swift_load_roi_sram(CommandData_t* pCmdData, uint32_t r
     report_status(CMD_HOST_SIDE_SET_ROI_SRAM_DATA, CMD_DEVICE_SIDE_NO_ERROR, msg, strlen(msg));
 }
 
-void Host_Communication::swift_start_capture(CommandData_t* pCmdData, uint32_t rxDataLen)
+void Host_Communication::adaps_load_walkerror_data(CommandData_t* pCmdData, uint32_t rxDataLen)
+{
+    spot_walkerror_data_param_t* pWalkerrorParam;
+    char msg[] = "Walk error loaded successfully.";
+
+    if (rxDataLen < (sizeof(CommandData_t) + sizeof(spot_walkerror_data_param_t)))
+    {
+        LOG_ERROR("<%s>: rxDataLen %d is too short for CMD_HOST_SIDE_SET_SPOT_WALKERROR_DATA.\n", __FUNCTION__, rxDataLen);
+        return;
+    }
+
+    pWalkerrorParam = (spot_walkerror_data_param_t*) pCmdData->param;
+    if (pWalkerrorParam->walkerror_data_size > 0)
+    {
+        qApp->set_capture_req_from_host(true);
+
+        loaded_walkerror_data_size = pWalkerrorParam->walkerror_data_size;
+        
+        if (NULL_POINTER == loaded_walkerror_data)
+        {
+            loaded_walkerror_data = (u8 *) malloc(loaded_walkerror_data_size);
+            if (NULL_POINTER == loaded_walkerror_data) {
+                DBG_ERROR("Fail to malloc for loaded_walkerror_data.\n");
+                return ;
+            }
+        }
+        
+        memcpy(loaded_walkerror_data, &pWalkerrorParam->walkerror_data, loaded_walkerror_data_size);
+        qApp->set_loaded_walkerror_data(loaded_walkerror_data);
+        LOG_DEBUG("------loaded_spotoffset_data %d bytes-----\n", loaded_spotoffset_data_size);
+    }
+    else {
+        char err_msg[128];
+        sprintf(err_msg, "Invalid walkerror_data_size(%d) for CMD_HOST_SIDE_SET_SPOT_WALKERROR_DATA", pWalkerrorParam->walkerror_data_size);
+        report_status(CMD_HOST_SIDE_SET_SPOT_WALKERROR_DATA, CMD_DEVICE_SIDE_ERROR_INVALID_WALKERROR_SIZE, err_msg, strlen(err_msg));
+        return;
+    }
+
+
+    report_status(CMD_HOST_SIDE_SET_SPOT_WALKERROR_DATA, CMD_DEVICE_SIDE_NO_ERROR, msg, strlen(msg));
+}
+
+void Host_Communication::adaps_load_spotoffset_data(CommandData_t* pCmdData, uint32_t rxDataLen)
+{
+    spot_offset_data_param_t* pWalkerrorParam;
+    char msg[] = "Walk error loaded successfully.";
+
+    if (rxDataLen < (sizeof(CommandData_t) + sizeof(spot_offset_data_param_t)))
+    {
+        LOG_ERROR("<%s>: rxDataLen %d is too short for CMD_HOST_SIDE_SET_SPOT_OFFSET_DATA.\n", __FUNCTION__, rxDataLen);
+        return;
+    }
+
+    pWalkerrorParam = (spot_offset_data_param_t*) pCmdData->param;
+    if (pWalkerrorParam->offset_data_size > 0)
+    {
+        qApp->set_capture_req_from_host(true);
+
+        loaded_spotoffset_data_size = pWalkerrorParam->offset_data_size;
+        
+        if (NULL_POINTER == loaded_spotoffset_data)
+        {
+            loaded_spotoffset_data = (u8 *) malloc(loaded_spotoffset_data_size);
+            if (NULL_POINTER == loaded_spotoffset_data) {
+                DBG_ERROR("Fail to malloc for loaded_spotoffset_data.\n");
+                return ;
+            }
+        }
+        
+        memcpy(loaded_spotoffset_data, &pWalkerrorParam->offset_data, loaded_spotoffset_data_size);
+        qApp->set_loaded_spotoffset_data(loaded_spotoffset_data);
+        LOG_DEBUG("------loaded_spotoffset_data %d bytes-----\n", loaded_spotoffset_data_size);
+    }
+    else {
+        char err_msg[128];
+        sprintf(err_msg, "Invalid spotoffset_data_size(%d) for CMD_HOST_SIDE_SET_SPOT_OFFSET_DATA", pWalkerrorParam->offset_data_size);
+        report_status(CMD_HOST_SIDE_SET_SPOT_OFFSET_DATA, CMD_DEVICE_SIDE_ERROR_INVALID_SPOTOFFSET_SIZE, err_msg, strlen(err_msg));
+        return;
+    }
+
+
+    report_status(CMD_HOST_SIDE_SET_SPOT_OFFSET_DATA, CMD_DEVICE_SIDE_NO_ERROR, msg, strlen(msg));
+}
+
+void Host_Communication::adaps_start_capture(CommandData_t* pCmdData, uint32_t rxDataLen)
 {
     capture_req_param_t* pCaptureReqParam;
 
@@ -686,7 +803,7 @@ void Host_Communication::write_device_register(UINT16 cmd, CommandData_t* pCmdDa
     return;
 }
 
-void Host_Communication::swift_event_process(void* pRXData, uint32_t rxDataLen)
+void Host_Communication::adaps_event_process(void* pRXData, uint32_t rxDataLen)
 {
     V4L2 *v4l2 = qApp->get_v4l2_instance();
 
@@ -704,15 +821,27 @@ void Host_Communication::swift_event_process(void* pRXData, uint32_t rxDataLen)
             break;
 
         case CMD_HOST_SIDE_SET_COLORMAP_RANGE_PARAM:
-            swift_set_colormap_range(pCmdData, rxDataLen);
+            adaps_set_colormap_range(pCmdData, rxDataLen);
+            break;
+
+        case CMD_HOST_SIDE_SET_WALKERROR_ENABLE:
+            adaps_set_walkerror_enable(pCmdData, rxDataLen);
             break;
 
         case CMD_HOST_SIDE_SET_ROI_SRAM_DATA:
-            swift_load_roi_sram(pCmdData, rxDataLen);
+            adaps_load_roi_sram(pCmdData, rxDataLen);
+            break;
+
+        case CMD_HOST_SIDE_SET_SPOT_WALKERROR_DATA:
+            adaps_load_walkerror_data(pCmdData, rxDataLen);
+            break;
+
+        case CMD_HOST_SIDE_SET_SPOT_OFFSET_DATA:
+            adaps_load_spotoffset_data(pCmdData, rxDataLen);
             break;
 
         case CMD_HOST_SIDE_START_CAPTURE:
-            swift_start_capture(pCmdData, rxDataLen);
+            adaps_start_capture(pCmdData, rxDataLen);
             break;
 
         case CMD_HOST_SIDE_STOP_CAPTURE:
@@ -763,7 +892,7 @@ void Host_Communication::swift_event_process(void* pRXData, uint32_t rxDataLen)
     return;
 }
 
-void Host_Communication::swift_sender_disconnected()
+void Host_Communication::adaps_sender_disconnected()
 {
     LOG_WARN("sender is disconnected now.\n");
 
@@ -777,7 +906,7 @@ void Host_Communication::swift_sender_disconnected()
     return;
 }
 
-void Host_Communication::swift_sender_connected()
+void Host_Communication::adaps_sender_connected()
 {
     LOG_WARN("sender connect success.\n");
 
@@ -786,7 +915,7 @@ void Host_Communication::swift_sender_connected()
     return;
 }
 
-int Host_Communication::swift_sender_callback(SenderEventId_t id, void* arg_ptr, uint32_t arg_u32, ...)
+int Host_Communication::adaps_sender_callback(SenderEventId_t id, void* arg_ptr, uint32_t arg_u32, ...)
 {
     Host_Communication* obj = instance;
     //LOG_DEBUG("swift_sender_callback_server: id = %d.\n", id);
@@ -794,15 +923,15 @@ int Host_Communication::swift_sender_callback(SenderEventId_t id, void* arg_ptr,
     switch (id)
     {
     case SENDER_EVT_CONNECTED:
-        obj->swift_sender_connected();
+        obj->adaps_sender_connected();
         break;
 
     case SENDER_EVT_DISCONNECTED:
-        obj->swift_sender_disconnected();
+        obj->adaps_sender_disconnected();
         break;
 
     case SENDER_EVT_RECEIVED_MSG:
-        obj->swift_event_process(arg_ptr, arg_u32);
+        obj->adaps_event_process(arg_ptr, arg_u32);
         break;
 
     default:
@@ -824,7 +953,7 @@ int Host_Communication::adaps_sender_init()
 
     init_param.host_or_device = SENDER_RUN_AS_DEVICE;
     init_param.tcp_port = TCP_SERVER_PORT;
-    init_param.callback = swift_sender_callback;
+    init_param.callback = adaps_sender_callback;
 
     ret = sender_init(&init_param);
     LOG_DEBUG("sender init ret %d, sender lib version: %s\n", ret, sender_get_version_str());

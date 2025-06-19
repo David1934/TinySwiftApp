@@ -1,3 +1,23 @@
+9. @2025/06/24 -- version update to 3.0.0_LM20250624A
+    redmine_2487: swift rk3568小型化下位机bug fix
+
+    patch set 1: 散点模组小型化整机，PC端SpadisApp首次链接下位机回放正常，第2次试图链接，显示黑屏。
+    patch set 2: improve roiCoordinatesDumpCheck() and multipleRoiCoordinatesDumpCheck(), reduce the array size of frameCoordinatesMap;
+    patch set 3: add communication commands to load walkerror and offset data from PC SpadisApp for ROI SRAM rotation function;
+    patch set 4: add CMD_HOST_SIDE_SET_WALKERROR_ENABLE (waiting for algo lib add walkerror_enable in AdapsParamAndOutForProcessEveryFrame);
+    patch set 5: rename NO_UI_APPLICATION to CONSOLE_APP_WITHOUT_GUI;
+    patch set 6: allow only one instance of this app be run;
+    patch set 8: to get the right exposure_period/ptm_coarse_exposure_value/ptm_fine_exposure_value for adaps_dtof.cpp and SpadisApp of PC side;
+    patch set 9: try to re-read eeprom data if failure at SpadisQT startup (kernel fail at probe());
+
+    1. bugfix: 散点模组小型化整机，PC端SpadisApp首次链接下位机回放正常，第2次试图链接，显示黑屏；
+    2. feature: 增加与上位机的通讯命令，接收SpdadisApp加载walkerror和offset数据（ROI轮询功能）；
+    3. improve: 增加运行实例检查，只运行一个实例运行，避免一些错误；
+    4. bugfix: 调整下位机SpadisQT启动的步骤，以便能正确获得下位机的配置参数exposure_period, coarse_exposure_time, fine_exposure_time等；
+    5. improve: 如果在出图前尚未成功读取模组eeprom数据，尝试重新读取；
+    6. feature: 增加与上位机的通讯命令，允许用户在出图过程中开或关walkerror（待算法库修改尚未完成）
+    
+
 8. @2025/06/14 -- version update to 3.0.0_LM20250614A
     redmine_2428: SpadisQT 小面阵模组ROI sram轮询功能重新适配 及 优化
     http://gerrit.adaps.corp/c/SpadisQT/+/4857

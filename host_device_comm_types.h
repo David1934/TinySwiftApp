@@ -31,6 +31,9 @@ typedef enum
     CMD_HOST_SIDE_GET_SENSOR_REGISTER               = 0x0007,
     CMD_HOST_SIDE_SET_VCSLDRV_OP7020_REGISTER       = 0x0008,
     CMD_HOST_SIDE_GET_VCSLDRV_OP7020_REGISTER       = 0x0009,
+    CMD_HOST_SIDE_SET_SPOT_WALKERROR_DATA           = 0x000A,
+    CMD_HOST_SIDE_SET_SPOT_OFFSET_DATA              = 0x000B,
+    CMD_HOST_SIDE_SET_WALKERROR_ENABLE              = 0x000C,
 
     // from device side to PC side
     CMD_DEVICE_SIDE_REPORT_MODULE_STATIC_DATA       = 0x1000, // Device side sends the static_module data as requested by the client's CMD_HOST_SIDE_GET_MODULE_STATIC_DATA command
@@ -53,6 +56,8 @@ typedef enum
     CMD_DEVICE_SIDE_ERROR_CAPTURE_ABORT             = 0x0005,
     CMD_DEVICE_SIDE_ERROR_INVALID_ROI_SRAM_SIZE     = 0x0006,
     CMD_DEVICE_SIDE_ERROR_FAIL_TO_START_CAPTURE     = 0x0007,
+    CMD_DEVICE_SIDE_ERROR_INVALID_WALKERROR_SIZE    = 0x0008,
+    CMD_DEVICE_SIDE_ERROR_INVALID_SPOTOFFSET_SIZE   = 0x0009,
 } error_code_t;
 
 #pragma pack(1)
@@ -98,6 +103,11 @@ typedef struct colormap_range_param
     float RealDistanceMaxMappedRange;
 } colormap_range_param_t;
 
+typedef struct walkerror_enable_param
+{
+    BOOLEAN                 walkerror_enable;
+} walkerror_enable_param_t;
+
 typedef struct roisram_data_param
 {
     BOOLEAN                 roi_sram_rotate;
@@ -105,6 +115,18 @@ typedef struct roisram_data_param
                                                     // it shoud <= (PER_ROI_SRAM_MAX_SIZE * ZONE_COUNT_PER_SRAM_GROUP * MAX_CALIB_SRAM_ROTATION_GROUP_CNT) 
     CHAR                    roisram_data[0];        // loaded roi sram buffer, No this member if roisram_data_size == 0
 } roisram_data_param_t;
+
+typedef struct spot_walkerror_data_param
+{
+    UINT32                  walkerror_data_size;
+    CHAR                    walkerror_data[0];        // loaded walkerror data buffer, No this member if walkerror_data_size == 0
+} spot_walkerror_data_param_t;
+
+typedef struct spot_offset_data_param
+{
+    UINT32                  offset_data_size;
+    CHAR                    offset_data[0];        // loaded offset data buffer, No this member if offset_data_size == 0
+} spot_offset_data_param_t;
 
 typedef struct capture_req_param
 {

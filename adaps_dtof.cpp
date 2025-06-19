@@ -58,7 +58,7 @@ u8 ADAPS_DTOF::normalizeGreyscale(u16 range) {
 
 int ADAPS_DTOF::multipleRoiCoordinatesDumpCheck(uint8_t* multiple_roi_sram_data, u16 length, int outImgWidth, int outImgHeight)
 {
-    int  i, j, k;
+    int  i, j;
     uint8_t* base = NULL_POINTER;
     int row,column;
     char lineBuffer[outImgWidth + 1];
@@ -71,9 +71,8 @@ int ADAPS_DTOF::multipleRoiCoordinatesDumpCheck(uint8_t* multiple_roi_sram_data,
         return -1;
     }
 
-    memset(CoordinatesMap, 0, sizeof(u8) * outImgWidth * outImgHeight);
+    memset(frameCoordinatesMap, 0, sizeof(u8) * outImgWidth * outImgHeight);
 
-    k = 0;
     illegal_spot_cnt = 0;
     base = multiple_roi_sram_data;
 
@@ -90,10 +89,10 @@ int ADAPS_DTOF::multipleRoiCoordinatesDumpCheck(uint8_t* multiple_roi_sram_data,
 
         if (row >= 0 && row < outImgHeight && column >= 0 && column < outImgWidth)
         {
-            CoordinatesMap[k][row][column] = CoordinatesMap[k][row][column] + 1;
-            if (0 != (row + column) && CoordinatesMap[k][row][column] > 1)
+            frameCoordinatesMap[row][column] = frameCoordinatesMap[row][column] + 1;
+            if (0 != (row + column) && frameCoordinatesMap[row][column] > 1)
             {
-                DBG_ERROR("Detect the duplicated coordinate at roi sram[%d](%d, %d), duplicated times: %d", k, row, column, CoordinatesMap[k][row][column]);
+                DBG_ERROR("Detect the duplicated coordinate at roi sram(%d, %d), duplicated times: %d", row, column, frameCoordinatesMap[row][column]);
             }
         }
     }
@@ -107,12 +106,12 @@ int ADAPS_DTOF::multipleRoiCoordinatesDumpCheck(uint8_t* multiple_roi_sram_data,
 
         for (i = 0; i < outImgWidth; i++)
         {
-            if (0 == CoordinatesMap[k][j][i])
+            if (0 == frameCoordinatesMap[j][i])
             {
                 buf_len += sprintf(lineBuffer + buf_len, "%c", BLANK_CHAR);
             }
             else {
-                buf_len += sprintf(lineBuffer + buf_len, "%c", CoordinatesMap[k][j][i] + '0');
+                buf_len += sprintf(lineBuffer + buf_len, "%c", frameCoordinatesMap[j][i] + '0');
                 if (0 != (j + i)) // For ROI SRAM, (0,0) is illegal according to Yangdong.
                 {
                     spot_cnt++;
@@ -126,57 +125,52 @@ int ADAPS_DTOF::multipleRoiCoordinatesDumpCheck(uint8_t* multiple_roi_sram_data,
     return 0;
 }
 
-int ADAPS_DTOF::roiCoordinatesDumpCheck(uint8_t* spot_cali_data, int outImgWidth, int outImgHeight)
+int ADAPS_DTOF::roiCoordinatesDumpCheck(uint8_t* roi_sram_data, int outImgWidth, int outImgHeight, int roisram_group_index)
 {
-    int  i, j, k;
+    int  i, j;
     uint8_t* base = NULL_POINTER;
     int row,column;
     char lineBuffer[outImgWidth + 1];
     int buf_len = 0;
     int spot_cnt;
-    int illegal_spot_cnt[CALIB_SRAM_GROUP_COUNT];
+    int illegal_spot_cnt;
 
-    if (NULL_POINTER == spot_cali_data) {
-        DBG_ERROR( "spot_cali_data is NULL");
+    if (NULL_POINTER == roi_sram_data) {
+        DBG_ERROR( "roi_sram_data is NULL");
         return -1;
     }
 
-    memset(CoordinatesMap, 0, sizeof(u8) * outImgWidth * outImgHeight * CALIB_SRAM_GROUP_COUNT);
+    memset(frameCoordinatesMap, 0, sizeof(u8) * outImgWidth * outImgHeight);
 
-    for (k = 0; k < CALIB_SRAM_GROUP_COUNT; k++)
+    illegal_spot_cnt = 0;
+
+    for (j = 0; j < ZONE_COUNT_PER_SRAM_GROUP; j++)
     {
-        illegal_spot_cnt[k] = 0;
+        base = roi_sram_data + (j * PER_CALIB_SRAM_ZONE_SIZE);
 
-        for (j = 0; j < ZONE_COUNT_PER_SRAM_GROUP; j++)
+        for (i = 0; i < PER_ZONE_MAX_SPOT_COUNT; i++)
         {
-            base = spot_cali_data + (k * PER_CALIB_SRAM_ZONE_SIZE * ZONE_COUNT_PER_SRAM_GROUP) + (j * PER_CALIB_SRAM_ZONE_SIZE);
+            row = *(base + i*2);
+            column = *(base + i*2 + 1);
 
-            for (i = 0; i < PER_ZONE_MAX_SPOT_COUNT; i++)
+            if (row < 0 || column < 0 || row >= outImgHeight || column >= outImgWidth)
             {
-                row = *(base + i*2);
-                column = *(base + i*2 + 1);
+                illegal_spot_cnt++;
+                DBG_ERROR("Detect the illegal coordinate(%d, %d) at roi sram, offset: 0x%x, illegal_spot_cnt: %d", column, row,
+                    (j * PER_CALIB_SRAM_ZONE_SIZE) + i*2, illegal_spot_cnt);
+            }
 
-                if (row < 0 || column < 0 || row >= outImgHeight || column >= outImgWidth)
+            if (row >= 0 && row < outImgHeight && column >= 0 && column < outImgWidth)
+            {
+                frameCoordinatesMap[row][column] = frameCoordinatesMap[row][column] + 1;
+                if (0 != (row + column) && frameCoordinatesMap[row][column] > 1)
                 {
-                    illegal_spot_cnt[k]++;
-                    DBG_ERROR("Detect the illegal coordinate(%d, %d) at roi sram[%d], offset: 0x%x, illegal_spot_cnt: %d", column, row, k,
-                        (k * PER_CALIB_SRAM_ZONE_SIZE * ZONE_COUNT_PER_SRAM_GROUP) + (j * PER_CALIB_SRAM_ZONE_SIZE) + i*2,
-                        illegal_spot_cnt[k]);
-                }
-
-                if (row >= 0 && row < outImgHeight && column >= 0 && column < outImgWidth)
-                {
-                    CoordinatesMap[k][row][column] = CoordinatesMap[k][row][column] + 1;
-                    if (0 != (row + column) && CoordinatesMap[k][row][column] > 1)
-                    {
-                        DBG_ERROR("Detect the duplicated coordinate at roi sram[%d](%d, %d), duplicated times: %d", k, row, column, CoordinatesMap[k][row][column]);
-                    }
+                    DBG_ERROR("Detect the duplicated coordinate at roi sram(%d, %d), duplicated times: %d", row, column, frameCoordinatesMap[row][column]);
                 }
             }
         }
     }
 
-    k = 0;
     spot_cnt = 0;
     for (j = 0; j < outImgHeight; j++)
     {
@@ -185,12 +179,12 @@ int ADAPS_DTOF::roiCoordinatesDumpCheck(uint8_t* spot_cali_data, int outImgWidth
 
         for (i = 0; i < outImgWidth; i++)
         {
-            if (0 == CoordinatesMap[k][j][i])
+            if (0 == frameCoordinatesMap[j][i])
             {
                 buf_len += sprintf(lineBuffer + buf_len, "%c", BLANK_CHAR);
             }
             else {
-                buf_len += sprintf(lineBuffer + buf_len, "%c", CoordinatesMap[k][j][i] + '0');
+                buf_len += sprintf(lineBuffer + buf_len, "%c", frameCoordinatesMap[j][i] + '0');
                 if (0 != (j + i)) // For ROI SRAM, (0,0) is illegal according to Yangdong.
                 {
                     spot_cnt++;
@@ -199,32 +193,7 @@ int ADAPS_DTOF::roiCoordinatesDumpCheck(uint8_t* spot_cali_data, int outImgWidth
         }
         printf("%s\n", lineBuffer);
     }
-    DBG_NOTICE("---ROI SRAM%d--outImgWidth: %d, outImgHeight: %d, spot_cnt: %d, illegal_spot_cnt: %d----\n", k, outImgWidth, outImgHeight, spot_cnt, illegal_spot_cnt[k]);
-
-    k = 1;
-    spot_cnt = 0;
-    for (j = 0; j < outImgHeight; j++)
-    {
-        memset(lineBuffer, 0, outImgWidth + 1);
-        buf_len = 0;
-
-        for (i = 0; i < outImgWidth; i++)
-        {
-            if (0 == CoordinatesMap[k][j][i])
-            {
-                buf_len += sprintf(lineBuffer + buf_len, "%c", BLANK_CHAR);
-            }
-            else {
-                buf_len += sprintf(lineBuffer + buf_len, "%c", CoordinatesMap[k][j][i] + '0');
-                if (0 != (j + i)) // For ROI SRAM, (0,0) is illegal according to Yangdong.
-                {
-                    spot_cnt++;
-                }
-            }
-        }
-        printf("%s\n", lineBuffer);
-    }
-    DBG_NOTICE("---ROI SRAM%d--outImgWidth: %d, outImgHeight: %d, spot_cnt: %d, illegal_spot_cnt: %d----\n", k, outImgWidth, outImgHeight, spot_cnt, illegal_spot_cnt[k]);
+    DBG_NOTICE("---ROI SRAM%d--outImgWidth: %d, outImgHeight: %d, spot_cnt: %d, illegal_spot_cnt: %d----\n", roisram_group_index, outImgWidth, outImgHeight, spot_cnt, illegal_spot_cnt);
 
     return 0;
 }
@@ -233,6 +202,7 @@ int ADAPS_DTOF::FillSetWrapperParamFromEepromInfo(uint8_t* pEEPROMData, SetWrapp
     int result = 0;
     Utils *utils;
     int dump_roi_sram_size = 0;
+    Host_Communication *host_comm = Host_Communication::getInstance();
 
     if (NULL_POINTER == pEEPROMData) {
         DBG_ERROR( "pEEPROMData is NULL for EEPROMInfo");
@@ -260,16 +230,6 @@ int ADAPS_DTOF::FillSetWrapperParamFromEepromInfo(uint8_t* pEEPROMData, SetWrapp
         }
     }
 
-#if (ADS6401_MODULE_SPOT == SWIFT_MODULE_TYPE)
-    setparam->adapsSpodOffsetData     = reinterpret_cast<float*>(pEEPROMData + AD4001_EEPROM_SPOTOFFSET_OFFSET);
-    setparam->proximity_hist          = pEEPROMData + AD4001_EEPROM_PROX_HISTOGRAM_OFFSET;
-    setparam->accurateSpotPosData     = reinterpret_cast<float*>(pEEPROMData + AD4001_EEPROM_ACCURATESPODPOS_OFFSET);
-#else
-    setparam->adapsSpodOffsetData     = reinterpret_cast<float*>(pEEPROMData + AD4001_EEPROM_SPOTOFFSET_OFFSET+ONE_SPOD_OFFSET_BYTE_SIZE);  //pointer to offset0
-    setparam->proximity_hist          = NULL_POINTER;
-    setparam->accurateSpotPosData     = NULL_POINTER;
-#endif
-
     if (true == qApp->is_roi_sram_rotate())
     {
         void* loaded_roi_sram_data;
@@ -277,6 +237,9 @@ int ADAPS_DTOF::FillSetWrapperParamFromEepromInfo(uint8_t* pEEPROMData, SetWrapp
 
         p_misc_device->get_loaded_roi_sram_data_info(&loaded_roi_sram_data, &loaded_roi_sram_size);
         setparam->spot_cali_data = (uint8_t* ) loaded_roi_sram_data;
+        setparam->adapsSpodOffsetData     = qApp->get_loaded_spotoffset_data();
+        setparam->proximity_hist          = NULL_POINTER;
+        setparam->accurateSpotPosData     = NULL_POINTER;
 
         if (true == Utils::is_env_var_true(ENV_VAR_ROI_SRAM_COORDINATES_CHECK))
         {
@@ -284,11 +247,25 @@ int ADAPS_DTOF::FillSetWrapperParamFromEepromInfo(uint8_t* pEEPROMData, SetWrapp
         }
     }
     else {
+#if (ADS6401_MODULE_SPOT == SWIFT_MODULE_TYPE)
+        setparam->adapsSpodOffsetData     = reinterpret_cast<float*>(pEEPROMData + AD4001_EEPROM_SPOTOFFSET_OFFSET);
+        setparam->proximity_hist          = pEEPROMData + AD4001_EEPROM_PROX_HISTOGRAM_OFFSET;
+        setparam->accurateSpotPosData     = reinterpret_cast<float*>(pEEPROMData + AD4001_EEPROM_ACCURATESPODPOS_OFFSET);
+#else
+        setparam->adapsSpodOffsetData     = reinterpret_cast<float*>(pEEPROMData + AD4001_EEPROM_SPOTOFFSET_OFFSET+ONE_SPOD_OFFSET_BYTE_SIZE);  //pointer to offset0
+        setparam->proximity_hist          = NULL_POINTER;
+        setparam->accurateSpotPosData     = NULL_POINTER;
+#endif
+
         setparam->spot_cali_data          = pEEPROMData + AD4001_EEPROM_ROISRAM_DATA_OFFSET;
 
         if (true == Utils::is_env_var_true(ENV_VAR_ROI_SRAM_COORDINATES_CHECK))
         {
-            roiCoordinatesDumpCheck(setparam->spot_cali_data, m_sns_param.out_frm_width, m_sns_param.out_frm_height);
+            roiCoordinatesDumpCheck(setparam->spot_cali_data, m_sns_param.out_frm_width, m_sns_param.out_frm_height, 0);
+            if (AD4001_EEPROM_ROISRAM_DATA_SIZE >= (2 * PER_CALIB_SRAM_ZONE_SIZE * ZONE_COUNT_PER_SRAM_GROUP))
+            {
+                roiCoordinatesDumpCheck(setparam->spot_cali_data + PER_CALIB_SRAM_ZONE_SIZE * ZONE_COUNT_PER_SRAM_GROUP, m_sns_param.out_frm_width, m_sns_param.out_frm_height, 1);
+            }
         }
     }
 
@@ -305,6 +282,14 @@ int ADAPS_DTOF::FillSetWrapperParamFromEepromInfo(uint8_t* pEEPROMData, SetWrapp
     setparam->cali_ref_depth[AdapsEnvTypeIndoor - 1]  = *reinterpret_cast<float*>(pEEPROMData + AD4001_EEPROM_INDOOR_CALIBREFDISTANCE_OFFSET);
     setparam->cali_ref_depth[AdapsEnvTypeOutdoor - 1] = *reinterpret_cast<float*>(pEEPROMData + AD4001_EEPROM_OUTDOOR_CALIBREFDISTANCE_OFFSET);
 
+    if (true == qApp->is_capture_req_from_host() && NULL_POINTER != host_comm)
+    {
+        set_param.walkerror = (0 != host_comm->get_req_walkerror_version());
+    }
+    else {
+        set_param.walkerror = true;
+    }
+
 #if (ADS6401_MODULE_SPOT == SWIFT_MODULE_TYPE)
     if (true == Utils::is_env_var_true(ENV_VAR_DISABLE_WALK_ERROR))
     {
@@ -318,12 +303,21 @@ int ADAPS_DTOF::FillSetWrapperParamFromEepromInfo(uint8_t* pEEPROMData, SetWrapp
         setparam->walk_error_para_list = pEEPROMData + AD4001_EEPROM_WALK_ERROR_OFFSET;
     }
 #else
-    // PAY ATTETION: No walk error parameters in eeprom for flood module
-    setparam->walkerror = false;
-    setparam->calibrationInfo = NULL_POINTER;
-    setparam->walk_error_para_list = NULL_POINTER;
-    DBG_NOTICE("force walk error to FALSE.");
+    if (true == qApp->is_roi_sram_rotate() && NULL != qApp->get_loaded_walkerror_data())
+    {
+        setparam->calibrationInfo = NULL_POINTER;
+        setparam->walk_error_para_list = qApp->get_loaded_walkerror_data();
+        DBG_NOTICE("walk error to true since walkerror parameter is loaded.");
+    }
+    else {
+        // PAY ATTETION: No walk error parameters in eeprom for flood module
+        setparam->walkerror = false;
+        setparam->calibrationInfo = NULL_POINTER;
+        setparam->walk_error_para_list = NULL_POINTER;
+        DBG_NOTICE("force walk error to FALSE since swift flood module has no walkerror parameters in eeprom.");
+    }
 #endif
+    qApp->set_walkerror_enable(setparam->walkerror); // set initial value for application CLASS.
 
 #ifdef WINDOWS_BUILD
     setparam->dump_data =false;
@@ -378,14 +372,6 @@ int ADAPS_DTOF::initParams(WrapperDepthInitInputParams* initInputParams, Wrapper
         set_param.mirror_frame.mirror_y = false;
     }
 
-    if (true == qApp->is_capture_req_from_host() && NULL_POINTER != host_comm)
-    {
-        set_param.walkerror = (0 != host_comm->get_req_walkerror_version());
-    }
-    else {
-        set_param.walkerror = true;
-    }
-
     // always allow to check environment variable to change these setting for debug.
     if (true == Utils::is_env_var_true(ENV_VAR_ENABLE_EXPAND_PIXEL))
     {
@@ -418,7 +404,6 @@ int ADAPS_DTOF::initParams(WrapperDepthInitInputParams* initInputParams, Wrapper
 
     DepthMapWrapperGetVersion(m_DepthLibversion);
     set_param.OutAlgoVersion = (uint8_t*)m_DepthLibversion;
-    DBG_NOTICE("depth algo lib version: %s, roi_sram_rotate: %d", m_DepthLibversion, qApp->is_roi_sram_rotate());
 
     p_eeprominfo = (swift_eeprom_data_t *) p_misc_device->get_dtof_calib_eeprom_param();
     if (NULL_POINTER == p_eeprominfo) {
@@ -472,11 +457,10 @@ int ADAPS_DTOF::initParams(WrapperDepthInitInputParams* initInputParams, Wrapper
     initOutputParams->exposure_time = &m_exposure_time;
     initOutputParams->sensitivity = &m_sensitivity;
 
-    DBG_INFO("initParams set_param.work_mode=%d set_param.env_type=%d  set_param.measure_type=%d\n",
-           set_param.work_mode,set_param.env_type,set_param.measure_type);
     DBG_INFO("initParams set_param.compose_subframe=%d set_param.expand_pixel=%d set_param.mirror_frame.mirror_x=%d  set_param.mirror_frame.mirror_y=%d\n",
            set_param.compose_subframe,set_param.expand_pixel,set_param.mirror_frame.mirror_x,set_param.mirror_frame.mirror_y);
-    DBG_INFO("initParams set success\n");
+    DBG_NOTICE("initParams success, algo lib version: %s, roi_sram_rotate: %d, walkerror: %d, walk_error_para_list: %p, work_mode=%d env_type=%d  measure_type=%d", 
+        m_DepthLibversion, qApp->is_roi_sram_rotate(), set_param.walkerror, set_param.walk_error_para_list, set_param.work_mode,set_param.env_type,set_param.measure_type);
 
     return 0;
 }
@@ -500,14 +484,13 @@ int ADAPS_DTOF::adaps_dtof_initilize()
         return result;
     }
 
-#if 1 //(ADS6401_MODULE_SPOT == SWIFT_MODULE_TYPE)
     CircleForMask circleForMask;
     circleForMask.CircleMaskCenterX = m_sns_param.out_frm_width;
     circleForMask.CircleMaskCenterY = m_sns_param.out_frm_height;
     circleForMask.CircleMaskR = 0.0f;
 
     DepthMapWrapperSetCircleMask(m_handlerDepthLib,circleForMask);
-#endif
+
     DBG_INFO("Adaps depth lib initialize okay.");
 
     m_conversionLibInited = true;
@@ -569,6 +552,8 @@ void ADAPS_DTOF::PrepareFrameParam(WrapperDepthCamConfig *wrapper_depth_map_conf
     wrapper_depth_map_config->frame_parameters.focusRoi.FocusLeftTopY = 0;
     wrapper_depth_map_config->frame_parameters.focusRoi.FocusRightBottomX = m_sns_param.out_frm_width;
     wrapper_depth_map_config->frame_parameters.focusRoi.FocusRightBottomY = m_sns_param.out_frm_height;
+
+    //wrapper_depth_map_config->frame_parameters.walkerror_enable = qApp->is_walkerror_enabled();
 }
 
 void ADAPS_DTOF::Distance_2_BGRColor(int bucketNum, float bucketSize, u16 distance, struct BGRColor *destColor)
@@ -717,7 +702,7 @@ int ADAPS_DTOF::depthMapDump(const u16 depth16_buffer[], const int outImgWidth, 
     if (0 == frm_interval_4_depthmap_dump)
         return 0;
 
-    if ((1 != frm_interval_4_depthmap_dump) && (1 != (out_frame_cnt % frm_interval_4_depthmap_dump)))
+    if (0 != (out_frame_cnt % frm_interval_4_depthmap_dump))
         return 0;
 
     for (j = 0; j < outImgHeight; j++)
@@ -761,7 +746,8 @@ int ADAPS_DTOF::depthMapDump(const u16 depth16_buffer[], const int outImgWidth, 
         printf("%s\n", lineBuffer);
     }
 
-    DBG_NOTICE("-----out_frame_cnt: %d, non_zero_spot_count: %d, h_conf_spot_count: %d, l_conf_spot_count: %d, call from line: %d----\n", out_frame_cnt, non_zero_spot_count, h_conf_spot_count, l_conf_spot_count, callline);
+    DBG_NOTICE("-----out_frame_cnt: %d, non_zero_spot_count: %d, h_conf_spot_count: %d, l_conf_spot_count: %d,frm_interval_4_depthmap_dump: %d call from line: %d----\n",
+        out_frame_cnt, non_zero_spot_count, h_conf_spot_count, l_conf_spot_count, frm_interval_4_depthmap_dump, callline);
 
     return 0;
 }

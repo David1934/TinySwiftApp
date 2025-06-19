@@ -1,5 +1,6 @@
 #include <signal.h>
-#if !defined(NO_UI_APPLICATION)
+
+#if !defined(CONSOLE_APP_WITHOUT_GUI)
 #include <QTime>
 #include <QTimer>
 #include <QShortcut>
@@ -9,21 +10,20 @@
 #include <QScreen>
 #include <QMouseEvent>
 #include <QSize>
+
+#include "ui_mainwindow.h"
 #endif
 
 #include "globalapplication.h"
 #include "common.h"
 #include "mainwindow.h"
 #include "FrameProcessThread.h"
-#if !defined(NO_UI_APPLICATION)
-#include "ui_mainwindow.h"
-#endif
 
 #define UNUSED(X) (void)X
 #define QStringToCharPtr(qstr) (qstr.toUtf8().constData())
 
 
-#if !defined(NO_UI_APPLICATION)
+#if !defined(CONSOLE_APP_WITHOUT_GUI)
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
@@ -32,7 +32,7 @@ MainWindow::MainWindow()
 #endif
 {
     char AppNameVersion[128];
-#if !defined(NO_UI_APPLICATION)
+#if !defined(CONSOLE_APP_WITHOUT_GUI)
     int w;
     int h;
 #endif
@@ -41,7 +41,7 @@ MainWindow::MainWindow()
     displayedFrameCnt = 0;
     displayed_fps = 0;
     frame_process_thread = NULL_POINTER;
-#if !defined(NO_UI_APPLICATION)
+#if !defined(CONSOLE_APP_WITHOUT_GUI)
     ui->setupUi(this);
 #endif
     sprintf(AppNameVersion, "%s %s built at %s,%s"
@@ -49,13 +49,13 @@ MainWindow::MainWindow()
         APP_VERSION,
         __DATE__, __TIME__
         );
-#if !defined(NO_UI_APPLICATION)
+#if !defined(CONSOLE_APP_WITHOUT_GUI)
     this->setWindowTitle(AppNameVersion);
 #endif
     DBG_NOTICE("AppVersion: %s, Build on QT version: %s, Runtime lib QT version: %s...",
         AppNameVersion, QT_VERSION_STR, qVersion());
 
-#if !defined(NO_UI_APPLICATION)
+#if !defined(CONSOLE_APP_WITHOUT_GUI)
     w = this->width();
     h = this->height();
     DBG_INFO("MainWindow resolution: %d X %d", w, h);
@@ -127,7 +127,7 @@ MainWindow::~MainWindow()
         delete frame_process_thread;
     }
 
-#if !defined(NO_UI_APPLICATION)
+#if !defined(CONSOLE_APP_WITHOUT_GUI)
     delete ui;
 #endif
 #if defined(RUN_ON_EMBEDDED_LINUX)
@@ -141,7 +141,7 @@ MainWindow::~MainWindow()
 void MainWindow::startFrameProcessThread(void)
 {
     int ret = 0;
-#if !defined(NO_UI_APPLICATION)
+#if !defined(CONSOLE_APP_WITHOUT_GUI)
     char auto_test_times_string[32];
 #endif
     sensortype sensor_type = qApp->get_sensor_type();
@@ -187,7 +187,7 @@ void MainWindow::startFrameProcessThread(void)
 #endif
 
         DBG_ERROR("Fail to frame_process_thread init()...");
-#if !defined(NO_UI_APPLICATION)
+#if !defined(CONSOLE_APP_WITHOUT_GUI)
         ui->mainlabel->setText("Fail to frame_process_thread init(),\nPlease check camera is ready or not?");
 #endif
         delete frame_process_thread;
@@ -198,7 +198,7 @@ void MainWindow::startFrameProcessThread(void)
 
     connect(frame_process_thread, SIGNAL(threadEnd(int)), this, SLOT(onThreadEnd(int)));
 
-#if !defined(NO_UI_APPLICATION)
+#if !defined(CONSOLE_APP_WITHOUT_GUI)
     qRegisterMetaType<enum frame_data_type>("enum frame_data_type");
     qRegisterMetaType<watchPointInfo_t>("watchPointInfo_t");
     connect(frame_process_thread, SIGNAL(updateWatchSpotInfo(QPoint , enum frame_data_type, watchPointInfo_t)), 
@@ -232,7 +232,7 @@ void MainWindow::startFrameProcessThread(void)
 
     frame_process_thread->start();
 
-#if !defined(NO_UI_APPLICATION)
+#if !defined(CONSOLE_APP_WITHOUT_GUI)
     if (to_test_times > 0)
     {
         test_timer->start(1000 * TIMER_TEST_INTERVAL);
@@ -243,7 +243,6 @@ void MainWindow::startFrameProcessThread(void)
 
 void MainWindow::onThreadEnd(int stop_request_code)
 {
-#if !defined(NO_UI_APPLICATION)
     switch (stop_request_code) {
         case STOP_REQUEST_RGB:
             break;
@@ -258,21 +257,26 @@ void MainWindow::onThreadEnd(int stop_request_code)
             break;
 
         case STOP_REQUEST_QUIT:
+#if !defined(CONSOLE_APP_WITHOUT_GUI)
             this->close();
+#endif
             break;
 
         case STOP_REQUEST_STOP:
             delete frame_process_thread;
             frame_process_thread = NULL_POINTER;
+#if !defined(CONSOLE_APP_WITHOUT_GUI)
             ui->mainlabel->setText("Device is stopped");
             ui->confidence_bitmap->setText("Confidence bitmap is NA");
+#endif
         break;
 
         default:
+#if !defined(CONSOLE_APP_WITHOUT_GUI)
             ui->mainlabel->setText("Device is ready");
+#endif
             break;
     }
-#endif
 
 }
 
@@ -302,7 +306,7 @@ void MainWindow::Quit(void)
             else {
                 if (isFinished)
                 {
-#if !defined(NO_UI_APPLICATION)
+#if !defined(CONSOLE_APP_WITHOUT_GUI)
                     this->close(); // frame_process_thread->exit(1);
 #else
                     qApp->exit(0);
@@ -322,14 +326,14 @@ void MainWindow::unixSignalHandler(int signal)
     switch (signal) {
         case SIGTSTP:
             DBG_NOTICE("CTRL-Z recieved, screen shot will be excuted!");
-#if !defined(NO_UI_APPLICATION)
+#if !defined(CONSOLE_APP_WITHOUT_GUI)
             captureAndSaveScreenshot();
 #endif
             break;
 
         case SIGUSR1:
             DBG_ERROR("User Signal 1 recieved, some error happened\nPls check kernel log for detailed info!");
-#if !defined(NO_UI_APPLICATION)
+#if !defined(CONSOLE_APP_WITHOUT_GUI)
             ui->mainlabel->setText("User Signal 1 recieved, some error happened\nPls check kernel log for detailed info!");
 #endif
             if (NULL_POINTER != frame_process_thread)
@@ -347,7 +351,7 @@ void MainWindow::unixSignalHandler(int signal)
 
         case SIGUSR2:
             DBG_ERROR("User Signal 2 recieved, some error happened\nPls check kernel log for detailed info!");
-#if !defined(NO_UI_APPLICATION)
+#if !defined(CONSOLE_APP_WITHOUT_GUI)
             ui->mainlabel->setText("User Signal 2 recieved, some error happened\nPls check kernel log for detailed info!");
 #endif
             if (NULL_POINTER != frame_process_thread)
@@ -401,7 +405,7 @@ void MainWindow::on_stopCapture()
     if (NULL_POINTER != frame_process_thread)
     {
         frame_process_thread->stop(STOP_REQUEST_STOP);
-#if !defined(NO_UI_APPLICATION)
+#if !defined(CONSOLE_APP_WITHOUT_GUI)
         ui->startStopButton->setText("Start");
 #endif
     }
@@ -412,7 +416,7 @@ void MainWindow::on_capture_options_set(capture_req_param_t* param)
 {
     switch (param->work_mode) 
     {
-#if !defined(NO_UI_APPLICATION)
+#if !defined(CONSOLE_APP_WITHOUT_GUI)
         case ADAPS_PCM_MODE:
             ui->radioButton_pcm->setChecked(true);
             break;
@@ -441,7 +445,7 @@ void MainWindow::on_capture_options_set(capture_req_param_t* param)
 
     switch (param->env_type) 
     {
-#if !defined(NO_UI_APPLICATION)
+#if !defined(CONSOLE_APP_WITHOUT_GUI)
         case AdapsEnvTypeOutdoor:
             ui->radioButton_outdoor->setChecked(true);
             break;
@@ -462,7 +466,7 @@ void MainWindow::on_capture_options_set(capture_req_param_t* param)
 
     switch (param->framerate_type) 
     {
-#if !defined(NO_UI_APPLICATION)
+#if !defined(CONSOLE_APP_WITHOUT_GUI)
         case AdapsFramerateType15FPS:
             ui->radioButton_15fps->setChecked(true);
             break;
@@ -505,7 +509,7 @@ void MainWindow::on_startCapture()
 {
     if (NULL_POINTER == frame_process_thread)
     {
-#if !defined(NO_UI_APPLICATION)
+#if !defined(CONSOLE_APP_WITHOUT_GUI)
         sensortype sensor_type = qApp->get_sensor_type();
 
 #if defined(RUN_ON_EMBEDDED_LINUX)
@@ -557,7 +561,7 @@ void MainWindow::on_startCapture()
 }
 
 
-#if !defined(NO_UI_APPLICATION)
+#if !defined(CONSOLE_APP_WITHOUT_GUI)
 void MainWindow::watchSpotInfoUpdate(  QPoint spot, enum frame_data_type ftype, watchPointInfo_t wpi)
 {
     char temp_string[64];

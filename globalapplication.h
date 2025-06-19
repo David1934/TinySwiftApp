@@ -2,7 +2,7 @@
 #define GLOBALAPPLICATION_H
 
 #include <QObject>
-#if !defined(NO_UI_APPLICATION)
+#if !defined(CONSOLE_APP_WITHOUT_GUI)
 	#include <QApplication>
 #else
 	#include <QCoreApplication>
@@ -18,7 +18,7 @@ class GlobalApplication;
 #endif
 #define qApp (static_cast<GlobalApplication *>(QCoreApplication::instance()))
 
-#if !defined(NO_UI_APPLICATION)
+#if !defined(CONSOLE_APP_WITHOUT_GUI)
 class GlobalApplication : public QApplication
 #else
 class GlobalApplication : public QCoreApplication
@@ -63,6 +63,15 @@ public:
 
     bool is_roi_sram_rotate();
     int set_roi_sram_rotate(bool val);
+
+    UINT8* get_loaded_walkerror_data();
+    int set_loaded_walkerror_data(UINT8* value);
+
+    float* get_loaded_spotoffset_data();
+    int set_loaded_spotoffset_data(UINT8* value);
+
+    bool is_walkerror_enabled();
+    int set_walkerror_enable(bool val);
 #endif
 
 private:
@@ -80,10 +89,15 @@ private:
     AdapsFramerateType selected_framerate_type;
     bool            capture_req_from_host;
     bool            roi_sram_rotate;
+    bool            walkerror_enable;
     int GrayScaleMinMappedRange;
     int GrayScaleMaxMappedRange;
     float RealDistanceMinMappedRange;
     float RealDistanceMaxMappedRange;
+    //UINT32 backuped_walkerror_data_size;
+    UINT8 *loaded_walkerror_data;
+    //UINT32 backuped_spotoffset_data_size;
+    UINT8 *loaded_spotoffset_data;
     Misc_Device     *misc_dev_instance;
 
     AdapsMeasurementType string_2_measurementtype(QString& str);

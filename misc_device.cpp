@@ -166,6 +166,7 @@ Misc_Device::Misc_Device()
 
         if (0 > read_dtof_module_static_data())
         {
+            DBG_ERROR("Failed to read module static data");
             return;
         }
 
@@ -622,6 +623,14 @@ int Misc_Device::read_dtof_exposure_param(void)
 
 void* Misc_Device::get_dtof_calib_eeprom_param(void)
 {
+    if (false == module_static_data.ready || p_eeprominfo)
+    {
+        if (0 > read_dtof_module_static_data())
+        {
+            DBG_ERROR("Failed to read module static data");
+        }
+    }
+
     return p_eeprominfo;
 }
 

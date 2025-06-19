@@ -129,7 +129,7 @@ private:
 #if 0 //defined(ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT)
     bool trace_calib_sram_switch;
 #endif
-    u8 CoordinatesMap[CALIB_SRAM_GROUP_COUNT][OUTPUT_HEIGHT_4_DTOF_SENSOR][OUTPUT_WIDTH_4_DTOF_SENSOR];
+    u8 frameCoordinatesMap[OUTPUT_HEIGHT_4_DTOF_SENSOR][OUTPUT_WIDTH_4_DTOF_SENSOR];
 
     int FillSetWrapperParamFromEepromInfo(uint8_t* pEEPROMData, SetWrapperParam* setparam);
     int initParams(WrapperDepthInitInputParams* initInputParams, WrapperDepthInitOutputParams* initOutputParams);
@@ -137,7 +137,7 @@ private:
     u8 normalizeGreyscale(u16 range);
     void Distance_2_BGRColor(int bucketNum, float bucketSize, u16 distance, struct BGRColor *destColor);
     int hexdump_param(void* param_ptr, int param_size, const char *param_name, int callline);
-    int roiCoordinatesDumpCheck(uint8_t* spot_cali_data, int outImgWidth, int outImgHeight);
+    int roiCoordinatesDumpCheck(uint8_t* roi_sram_data, int outImgWidth, int outImgHeight, int roisram_group_index);
     int multipleRoiCoordinatesDumpCheck(uint8_t* multiple_roi_sram_data, u16 length, int outImgWidth, int outImgHeight);
 };
 

@@ -373,7 +373,7 @@ struct hawk_norflash_op_param
 
 
 //==========================================================================
-#if defined(CONFIG_VIDEO_ADS6401)  // FOR ADAPS_SWIFT
+#if defined(CONFIG_VIDEO_ADS6401) || defined(CONFIG_VIDEO_PACIFIC) // FOR ADAPS_SWIFT
 
 #include "adaps_types.h"
 

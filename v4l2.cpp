@@ -652,6 +652,8 @@ int V4L2::Start_streaming(void)
 #if defined(RUN_ON_EMBEDDED_LINUX)
     if (SENSOR_TYPE_DTOF == snr_param.sensor_type)
     {
+        struct adaps_dtof_exposure_param *p_exposure_param;
+
         p_misc_device = qApp->get_misc_dev_instance();
         if (NULL_POINTER == p_misc_device)
         {
@@ -663,6 +665,17 @@ int V4L2::Start_streaming(void)
         {
             return 0 - __LINE__;
         }
+
+        p_exposure_param = (struct adaps_dtof_exposure_param *) p_misc_device->get_dtof_exposure_param();
+        if (NULL_POINTER == p_exposure_param) {
+            DBG_ERROR("p_exposure_param is NULL");
+            return 0 - __LINE__;
+        }
+
+        snr_param.exposureParam.exposure_period= p_exposure_param->exposure_period;
+        snr_param.exposureParam.ptm_coarse_exposure_value = p_exposure_param->ptm_coarse_exposure_value;
+        snr_param.exposureParam.ptm_fine_exposure_value = p_exposure_param->ptm_fine_exposure_value;
+        snr_param.exposureParam.pcm_gray_exposure_value = p_exposure_param->pcm_gray_exposure_value;
     }
 #endif
 

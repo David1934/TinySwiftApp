@@ -285,7 +285,7 @@ bool FrameProcessThread::new_frame_handle(
                                     frm_timestamp, FDATA_TYPE_DTOF_DECODED_GRAYSCALE);
                             }
                         }
-#if !defined(NO_UI_APPLICATION)
+#if !defined(CONSOLE_APP_WITHOUT_GUI)
                         adaps_dtof->ConvertGreyscaleToColoredMap(depth_buffer,rgb_buffer, sns_param.out_frm_width,sns_param.out_frm_height);
                         if (sns_param.save_frame_cnt > 0)
                         {
@@ -316,7 +316,8 @@ bool FrameProcessThread::new_frame_handle(
                     // On rockchip platform:
                     //frame raw size: 4104 X 32, bits_per_pixel: 8, payload_bytes_per_line: 4104, total_bytes_per_line: 4352, padding_bytes_per_line 248, frame_buffer_size: 139264
                     //
-                    // export expected_frame_md5sum="85f24805d05ed40d63426bc193094e84"
+                    // export expected_frame_md5sum="85f24805d05ed40d63426bc193094e84" for spot register setting
+                    // export expected_frame_md5sum="5b3cceee5be473e943817e9800e70a40" for flood register setting
                     // echo 0x8 > /sys/kernel/debug/adaps/dbg_ctrl
                     utils->MD5Check4Buffer(
                         static_cast<unsigned char*>(frm_rawdata) + total_bytes_per_line * 2,
@@ -415,7 +416,7 @@ bool FrameProcessThread::new_frame_handle(
                                 save_depth_txt_file(merged_depth_buffer, frm_sequence, depth_buffer_size);
                             }
                         }
-#if !defined(NO_UI_APPLICATION)
+#if !defined(CONSOLE_APP_WITHOUT_GUI)
                         adaps_dtof->ConvertDepthToColoredMap(merged_depth_buffer, rgb_buffer, confidence_map_buffer, sns_param.out_frm_width, sns_param.out_frm_height);
                         if (sns_param.save_frame_cnt > 0)
                         {
@@ -453,7 +454,7 @@ bool FrameProcessThread::new_frame_handle(
                             host_comm->report_frame_depth16_data(depth_buffer, depth_buffer_size, &frmBufParam);
                         }
 
-#if !defined(NO_UI_APPLICATION)
+#if !defined(CONSOLE_APP_WITHOUT_GUI)
                         if (0 != watchSpot.x() && 0 != watchSpot.y())
                         {
                             u16 distance;
@@ -488,7 +489,7 @@ bool FrameProcessThread::new_frame_handle(
                                 save_depth_txt_file(depth_buffer, frm_sequence, sns_param.out_frm_width*sns_param.out_frm_height*sizeof(u16));
                             }
                         }
-#if !defined(NO_UI_APPLICATION)
+#if !defined(CONSOLE_APP_WITHOUT_GUI)
                         adaps_dtof->ConvertDepthToColoredMap(depth_buffer, rgb_buffer, confidence_map_buffer, sns_param.out_frm_width, sns_param.out_frm_height);
                         if (sns_param.save_frame_cnt > 0)
                         {
@@ -514,7 +515,7 @@ bool FrameProcessThread::new_frame_handle(
             if (v4l2)
             {
                 utils->yuyv_2_rgb((unsigned char *)frm_rawdata,rgb_buffer,sns_param.out_frm_width,sns_param.out_frm_height);
-#if !defined(NO_UI_APPLICATION)
+#if !defined(CONSOLE_APP_WITHOUT_GUI)
                 if (0 != watchSpot.x() && 0 != watchSpot.y())
                 {
                     u8 r,g,b;
@@ -535,7 +536,7 @@ bool FrameProcessThread::new_frame_handle(
             if (v4l2)
             {
                 utils->nv12_2_rgb((unsigned char *)frm_rawdata,rgb_buffer,sns_param.out_frm_width,sns_param.out_frm_height);
-#if !defined(NO_UI_APPLICATION)
+#if !defined(CONSOLE_APP_WITHOUT_GUI)
                 if (0 != watchSpot.x() && 0 != watchSpot.y())
                 {
                     u8 r,g,b;
@@ -569,7 +570,7 @@ bool FrameProcessThread::new_frame_handle(
         {
             memset(depth_buffer, 0, depth_buffer_size);
         }
-#if !defined(NO_UI_APPLICATION)
+#if !defined(CONSOLE_APP_WITHOUT_GUI)
         QImage img = QImage(rgb_buffer, sns_param.out_frm_width, sns_param.out_frm_height, sns_param.out_frm_width*RGB_IMAGE_CHANEL,QImage::Format_RGB888);
         if (FDATA_TYPE_DTOF_RAW_DEPTH == ftype)
         {
@@ -633,7 +634,7 @@ void FrameProcessThread::onThreadLoopExit()
     emit threadEnd(stop_req_code);
 }
 
-#if !defined(NO_UI_APPLICATION)
+#if !defined(CONSOLE_APP_WITHOUT_GUI)
 void FrameProcessThread::setWatchSpot(QSize img_widget_size, QPoint point)
 {
     u8 spotX, spotY;
@@ -670,6 +671,7 @@ bool FrameProcessThread::isSleeping()
 int FrameProcessThread::init(int index)
 {
     int ret = 0;
+    int ret_4_start_stream = 0;
     ret = v4l2->V4l2_initilize();
     if (ret < 0)
     {
@@ -678,6 +680,14 @@ int FrameProcessThread::init(int index)
         return ret;
     }
     else {
+        ret_4_start_stream = v4l2->Start_streaming(); // need this before adaps_dtof->adaps_dtof_initilize() to get the real exposure_period ptm_fine_exposure_value in initParams()
+        if (ret_4_start_stream < 0)
+        {
+            DBG_ERROR("Fail to v4l2->V4l2_initilize(),ret:%d, errno: %s (%d)...", ret_4_start_stream,
+                strerror(errno), errno);
+            return ret_4_start_stream;
+        }
+
         if (SENSOR_TYPE_DTOF == sns_param.sensor_type)
         {
 #if defined(RUN_ON_EMBEDDED_LINUX)
@@ -716,8 +726,7 @@ int FrameProcessThread::init(int index)
 #endif
         }
         rgb_buffer = (unsigned char *)malloc(sizeof(unsigned char)*sns_param.out_frm_width*sns_param.out_frm_height*RGB_IMAGE_CHANEL);
-        ret = v4l2->Start_streaming();
-        if (0 == ret)
+        if (0 == ret_4_start_stream)
         {
             stopped = false;
             majorindex = index;

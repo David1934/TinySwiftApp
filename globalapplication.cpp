@@ -3,7 +3,7 @@
 #include <string>
 #include <QCommandLineParser>
 
-#if !defined(NO_UI_APPLICATION)
+#if !defined(CONSOLE_APP_WITHOUT_GUI)
 GlobalApplication::GlobalApplication(int argc, char *argv[]):QApplication(argc, argv)
 #else
 GlobalApplication::GlobalApplication(int argc, char *argv[]):QCoreApplication(argc, argv)
@@ -67,6 +67,9 @@ GlobalApplication::GlobalApplication(int argc, char *argv[]):QCoreApplication(ar
     selected_framerate_type = DEFAULT_DTOF_FRAMERATE;
     capture_req_from_host = false;
     roi_sram_rotate = false;
+    loaded_walkerror_data = nullptr;
+    loaded_spotoffset_data = nullptr;
+    walkerror_enable = false;
 #endif
 
     //DBG_INFO( "---------------");
@@ -212,6 +215,20 @@ int GlobalApplication::set_roi_sram_rotate(bool val)
     return ret;
 }
 
+bool GlobalApplication::is_walkerror_enabled()
+{
+    return walkerror_enable;
+}
+
+int GlobalApplication::set_walkerror_enable(bool val)
+{
+    int ret = 0;
+
+    walkerror_enable = val;
+
+    return ret;
+}
+
 AdapsFramerateType GlobalApplication::get_framerate_type()
 {
     return selected_framerate_type;
@@ -324,6 +341,34 @@ int GlobalApplication::set_RealDistanceMaxMappedRange(float value)
     int ret = 0;
 
     RealDistanceMaxMappedRange = value;
+
+    return ret;
+}
+
+UINT8* GlobalApplication::get_loaded_walkerror_data()
+{
+    return loaded_walkerror_data;
+}
+
+int GlobalApplication::set_loaded_walkerror_data(UINT8* value)
+{
+    int ret = 0;
+
+    loaded_walkerror_data = value;
+
+    return ret;
+}
+
+float* GlobalApplication::get_loaded_spotoffset_data()
+{
+    return (float *) loaded_spotoffset_data;
+}
+
+int GlobalApplication::set_loaded_spotoffset_data(UINT8* value)
+{
+    int ret = 0;
+
+    loaded_spotoffset_data = value;
 
     return ret;
 }

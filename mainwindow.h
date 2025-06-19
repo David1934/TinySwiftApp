@@ -1,7 +1,7 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
-#if !defined(NO_UI_APPLICATION)
+#if !defined(CONSOLE_APP_WITHOUT_GUI)
 #include <QMainWindow>
 #endif
 #include "FrameProcessThread.h"
@@ -15,7 +15,7 @@ namespace Ui {
     class MainWindow;
 }
 
-#if defined(NO_UI_APPLICATION)
+#if defined(CONSOLE_APP_WITHOUT_GUI)
 class MainWindow : public QObject
 #else
 class MainWindow : public QMainWindow
@@ -24,7 +24,7 @@ class MainWindow : public QMainWindow
     Q_OBJECT
 
 public:
-    #if defined(NO_UI_APPLICATION)
+    #if defined(CONSOLE_APP_WITHOUT_GUI)
         explicit MainWindow();
     #else
         explicit MainWindow(QWidget *parent = 0);
@@ -33,14 +33,14 @@ public:
 
 protected:
 
-    #if !defined(NO_UI_APPLICATION)
+    #if !defined(CONSOLE_APP_WITHOUT_GUI)
         virtual void closeEvent(QCloseEvent *event);
         virtual bool eventFilter(QObject *obj, QEvent *event);
     #endif
 
 private slots:
 
-    #if !defined(NO_UI_APPLICATION)
+    #if !defined(CONSOLE_APP_WITHOUT_GUI)
         bool new_frame_display(QImage image, QImage img4confidence);
         bool update_status_info(status_params2 param2);
 
@@ -66,7 +66,7 @@ private:
         Misc_Device *m_misc_dev;
     #endif
 
-    #if !defined(NO_UI_APPLICATION)
+    #if !defined(CONSOLE_APP_WITHOUT_GUI)
         Ui::MainWindow *ui;
         QTimer      *test_timer;
     #endif
@@ -77,7 +77,7 @@ private:
     unsigned long displayedFrameCnt;
     int displayed_fps;
 
-    #if !defined(NO_UI_APPLICATION)
+    #if !defined(CONSOLE_APP_WITHOUT_GUI)
         void captureAndSaveScreenshot();
     #endif
     void startFrameProcessThread(void);

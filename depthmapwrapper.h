@@ -97,6 +97,7 @@ typedef struct {
     int32_t focutPoint[2];// 0 is x,1 is y
     WrapperDepthSramSpodposDataInfo strSpodPosData;
     FocusRoi             focusRoi;
+//    bool            walkerror_enable;
 } AdapsParamAndOutForProcessEveryFrame;
 //end: add by hzt 2021-12-6 for adaps control
 
