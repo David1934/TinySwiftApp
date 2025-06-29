@@ -4,6 +4,9 @@
 
 ADAPS_DTOF::ADAPS_DTOF(struct sensor_params params)
 {
+    memset(depthOutputs, 0, sizeof(depthOutputs));
+    memset(&depthInput, 0, sizeof(depthInput));
+    memset(&depthConfig, 0, sizeof(depthConfig));
     memcpy(&m_sns_param, &params, sizeof(struct sensor_params));
 
     m_basic_colors[4] = {255, 0, 0};
@@ -17,16 +20,95 @@ ADAPS_DTOF::ADAPS_DTOF(struct sensor_params params)
     m_rangeLow = RANGE_MIN;
     m_conversionLibInited = false;
     m_decoded_frame_cnt = 0;
+    m_decoded_success_frame_cnt = 0;
 #if 0 //defined(ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT)
     trace_calib_sram_switch = Utils::is_env_var_true(ENV_VAR_TRACE_ROI_SRAM_SWITCH);
 #endif
+    dump_walkerror_param_cnt = Utils::get_env_var_intvalue(ENV_VAR_DUMP_WALKERROR_PARAM_COUNT);
     p_misc_device = qApp->get_misc_dev_instance();
+    init_frame_checker(&checker);
 }
 
 
 ADAPS_DTOF::~ADAPS_DTOF()
 {
+    DBG_NOTICE("------decode statistics------work_mode: %d, decoded_frame_cnt: %d, m_decoded_success_frame_cnt: %d---\n",
+        set_param.work_mode, m_decoded_frame_cnt, m_decoded_success_frame_cnt);
     p_misc_device = NULL_POINTER;
+}
+
+int ADAPS_DTOF::dump_frame_headinfo(unsigned int frm_sequence, unsigned char *frm_rawdata, int frm_rawdata_size, enum sensor_workmode swk)
+{
+    if (frm_rawdata == NULL || frm_rawdata_size < 3) {
+        return -1;  // Invalid input
+    }
+
+    if (WK_DTOF_FHR != swk && WK_DTOF_PHR != swk) {
+        return -1;  // Invalid input
+    }
+
+#if 1
+    DBG_NOTICE("sram_id: %d, zone_id: %d, frame_id: %d, frm_sequence: %d.", frm_rawdata[0], frm_rawdata[1], frm_rawdata[2], frm_sequence);
+#else
+    Utils *utils;
+    utils = new Utils();
+    utils->hexdump(frm_rawdata, 256, "first 256 bytes of frame raw data");
+    delete utils;
+#endif
+
+    return 0;
+}
+
+// Initialize the frame loss checker
+void ADAPS_DTOF::init_frame_checker(FrameLossChecker *checker)
+{
+    checker->last_id = 0;
+    checker->first_frame = 1;
+    checker->total_frames = 0;
+    checker->dropped_frames = 0;
+}
+
+// Check if frames are dropped for the new frame
+// Returns: Number of dropped frames (0 = no loss, >0 = number of dropped frames)
+int ADAPS_DTOF::check_frame_loss(FrameLossChecker *checker, const unsigned char *buffer, size_t buffer_size)
+{
+    if (buffer == NULL || buffer_size < 3) {
+        return -1;  // Invalid input
+    }
+
+    unsigned char current_id = buffer[2];
+    int lost_count = 0;
+
+    if (checker->first_frame) {
+        checker->first_frame = 0;
+    } else {
+        // Calculate the expected ID of the next frame
+        unsigned char expected_id = (checker->last_id + 1) & 0xFF;
+        
+        // Calculate the number of dropped frames
+        if (current_id != expected_id) {
+            if (current_id > expected_id) {
+                lost_count = current_id - expected_id;
+            } else {
+                lost_count = 256 - (expected_id - current_id);
+            }
+            checker->dropped_frames += lost_count;
+        }
+    }
+
+    checker->last_id = current_id;
+    checker->total_frames++;
+    return lost_count;
+}
+
+// Get the frame loss rate (percentage)
+float ADAPS_DTOF::get_frame_loss_rate(const FrameLossChecker *checker)
+{
+    if (checker->total_frames <= 1) {
+        return 0.0f;
+    }
+    return (float)checker->dropped_frames / 
+           (float)(checker->total_frames - 1) * 100.0f;
 }
 
 int ADAPS_DTOF::hexdump_param(void* param_ptr, int param_size, const char *param_name, int callline)
@@ -198,11 +280,14 @@ int ADAPS_DTOF::roiCoordinatesDumpCheck(uint8_t* roi_sram_data, int outImgWidth,
     return 0;
 }
 
-int ADAPS_DTOF::FillSetWrapperParamFromEepromInfo(uint8_t* pEEPROMData, SetWrapperParam* setparam) {
+int ADAPS_DTOF::FillSetWrapperParamFromEepromInfo(uint8_t* pEEPROMData, SetWrapperParam* setparam, WrapperDepthInitInputParams* initInputParams)
+{
     int result = 0;
     Utils *utils;
     int dump_roi_sram_size = 0;
+#if !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
     Host_Communication *host_comm = Host_Communication::getInstance();
+#endif
 
     if (NULL_POINTER == pEEPROMData) {
         DBG_ERROR( "pEEPROMData is NULL for EEPROMInfo");
@@ -230,16 +315,15 @@ int ADAPS_DTOF::FillSetWrapperParamFromEepromInfo(uint8_t* pEEPROMData, SetWrapp
         }
     }
 
-    if (true == qApp->is_roi_sram_rotate())
-    {
-        void* loaded_roi_sram_data;
-        uint32_t loaded_roi_sram_size;
+    p_misc_device->get_loaded_roi_sram_data_info(&loaded_roi_sram_data, &loaded_roi_sram_size);
 
-        p_misc_device->get_loaded_roi_sram_data_info(&loaded_roi_sram_data, &loaded_roi_sram_size);
+    if (0 != loaded_roi_sram_size && NULL != loaded_roi_sram_data)
+    {
         setparam->spot_cali_data = (uint8_t* ) loaded_roi_sram_data;
-        setparam->adapsSpodOffsetData     = qApp->get_loaded_spotoffset_data();
-        setparam->proximity_hist          = NULL_POINTER;
-        setparam->accurateSpotPosData     = NULL_POINTER;
+        //initInputParams->pRawData = (uint8_t*) p_eeprominfo;
+        //initInputParams->rawDataSize = sizeof(swift_eeprom_data_t);
+        initInputParams->pRawData = set_param.spot_cali_data;
+        initInputParams->rawDataSize = loaded_roi_sram_size;
 
         if (true == Utils::is_env_var_true(ENV_VAR_ROI_SRAM_COORDINATES_CHECK))
         {
@@ -247,17 +331,11 @@ int ADAPS_DTOF::FillSetWrapperParamFromEepromInfo(uint8_t* pEEPROMData, SetWrapp
         }
     }
     else {
-#if (ADS6401_MODULE_SPOT == SWIFT_MODULE_TYPE)
-        setparam->adapsSpodOffsetData     = reinterpret_cast<float*>(pEEPROMData + AD4001_EEPROM_SPOTOFFSET_OFFSET);
-        setparam->proximity_hist          = pEEPROMData + AD4001_EEPROM_PROX_HISTOGRAM_OFFSET;
-        setparam->accurateSpotPosData     = reinterpret_cast<float*>(pEEPROMData + AD4001_EEPROM_ACCURATESPODPOS_OFFSET);
-#else
-        setparam->adapsSpodOffsetData     = reinterpret_cast<float*>(pEEPROMData + AD4001_EEPROM_SPOTOFFSET_OFFSET+ONE_SPOD_OFFSET_BYTE_SIZE);  //pointer to offset0
-        setparam->proximity_hist          = NULL_POINTER;
-        setparam->accurateSpotPosData     = NULL_POINTER;
-#endif
-
         setparam->spot_cali_data          = pEEPROMData + AD4001_EEPROM_ROISRAM_DATA_OFFSET;
+        //initInputParams->pRawData = (uint8_t*) p_eeprominfo;
+        //initInputParams->rawDataSize = sizeof(swift_eeprom_data_t);
+        initInputParams->pRawData = set_param.spot_cali_data;
+        initInputParams->rawDataSize = AD4001_EEPROM_ROISRAM_DATA_SIZE;
 
         if (true == Utils::is_env_var_true(ENV_VAR_ROI_SRAM_COORDINATES_CHECK))
         {
@@ -268,6 +346,31 @@ int ADAPS_DTOF::FillSetWrapperParamFromEepromInfo(uint8_t* pEEPROMData, SetWrapp
             }
         }
     }
+
+    setparam->adapsSpodOffsetData     = qApp->get_loaded_spotoffset_data();
+    setparam->adapsSpodOffsetDataLength = qApp->get_loaded_spotoffset_data_size();
+
+    if (0 != setparam->adapsSpodOffsetDataLength && NULL != setparam->adapsSpodOffsetData)
+    {
+    }
+    else {
+#if (ADS6401_MODULE_SPOT == SWIFT_MODULE_TYPE)
+        setparam->adapsSpodOffsetData     = reinterpret_cast<float*>(pEEPROMData + AD4001_EEPROM_SPOTOFFSET_OFFSET);
+        setparam->adapsSpodOffsetDataLength = AD4001_EEPROM_SPOTOFFSET_SIZE;
+#else
+        setparam->adapsSpodOffsetData     = reinterpret_cast<float*>(pEEPROMData + AD4001_EEPROM_SPOTOFFSET_OFFSET+ONE_SPOD_OFFSET_BYTE_SIZE);  //pointer to offset0
+        setparam->adapsSpodOffsetDataLength = AD4001_EEPROM_SPOTOFFSET_SIZE;
+#endif
+    }
+
+#if (ADS6401_MODULE_SPOT == SWIFT_MODULE_TYPE)
+    setparam->proximity_hist          = pEEPROMData + AD4001_EEPROM_PROX_HISTOGRAM_OFFSET;
+    //setparam->accurateSpotPosData     = reinterpret_cast<float*>(pEEPROMData + AD4001_EEPROM_ACCURATESPODPOS_OFFSET);
+#else
+    setparam->proximity_hist          = NULL_POINTER;
+    //setparam->accurateSpotPosData     = NULL_POINTER;
+#endif
+
 
     dump_roi_sram_size = Utils::get_env_var_intvalue(ENV_VAR_DUMP_ROI_SRAM_SIZE);
     if (dump_roi_sram_size)
@@ -282,41 +385,70 @@ int ADAPS_DTOF::FillSetWrapperParamFromEepromInfo(uint8_t* pEEPROMData, SetWrapp
     setparam->cali_ref_depth[AdapsEnvTypeIndoor - 1]  = *reinterpret_cast<float*>(pEEPROMData + AD4001_EEPROM_INDOOR_CALIBREFDISTANCE_OFFSET);
     setparam->cali_ref_depth[AdapsEnvTypeOutdoor - 1] = *reinterpret_cast<float*>(pEEPROMData + AD4001_EEPROM_OUTDOOR_CALIBREFDISTANCE_OFFSET);
 
+#if !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
     if (true == qApp->is_capture_req_from_host() && NULL_POINTER != host_comm)
     {
         set_param.walkerror = (0 != host_comm->get_req_walkerror_version());
     }
-    else {
+    else 
+#endif
+    {
         set_param.walkerror = true;
     }
 
+    if (true == set_param.walkerror)
+    {
+        if (true == Utils::is_env_var_true(ENV_VAR_DISABLE_WALK_ERROR))
+        {
+            setparam->walkerror = false;
+            setparam->calibrationInfo = NULL_POINTER;
+            setparam->walk_error_para_list = NULL_POINTER;
+            setparam->walk_error_para_list_length = 0;
+            DBG_NOTICE("force walk error to FALSE by environment variable 'disable_walk_error'.");
+        }
+        else {
+            setparam->calibrationInfo = NULL_POINTER;
+            setparam->walk_error_para_list = qApp->get_loaded_walkerror_data();
+            setparam->walk_error_para_list_length = qApp->get_loaded_walkerror_data_size();
+
+            if (0 != setparam->walk_error_para_list_length && NULL != setparam->walk_error_para_list)
+            {
+                DBG_NOTICE("walk error to true since walkerror parameter is loaded.");
+                setparam->walkerror = true;
+            }
+            else {
 #if (ADS6401_MODULE_SPOT == SWIFT_MODULE_TYPE)
-    if (true == Utils::is_env_var_true(ENV_VAR_DISABLE_WALK_ERROR))
-    {
-        setparam->walkerror = false;
-        setparam->calibrationInfo = NULL_POINTER;
-        setparam->walk_error_para_list = NULL_POINTER;
-        DBG_NOTICE("force walk error to FALSE.");
-    }
-    else {
-        setparam->calibrationInfo = pEEPROMData + AD4001_EEPROM_VERSION_INFO_OFFSET;
-        setparam->walk_error_para_list = pEEPROMData + AD4001_EEPROM_WALK_ERROR_OFFSET;
-    }
+                DBG_NOTICE("walk error to true since walkerror parameter exist in eeprom.");
+                setparam->walkerror = true;
+                setparam->calibrationInfo = pEEPROMData + AD4001_EEPROM_VERSION_INFO_OFFSET;
+                setparam->walk_error_para_list = pEEPROMData + AD4001_EEPROM_WALK_ERROR_OFFSET;
+                setparam->walk_error_para_list_length = AD4001_EEPROM_WALK_ERROR_SIZE;
 #else
-    if (true == qApp->is_roi_sram_rotate() && NULL != qApp->get_loaded_walkerror_data())
-    {
-        setparam->calibrationInfo = NULL_POINTER;
-        setparam->walk_error_para_list = qApp->get_loaded_walkerror_data();
-        DBG_NOTICE("walk error to true since walkerror parameter is loaded.");
-    }
-    else {
-        // PAY ATTETION: No walk error parameters in eeprom for flood module
-        setparam->walkerror = false;
-        setparam->calibrationInfo = NULL_POINTER;
-        setparam->walk_error_para_list = NULL_POINTER;
-        DBG_NOTICE("force walk error to FALSE since swift flood module has no walkerror parameters in eeprom.");
-    }
+                // PAY ATTETION: No walk error parameters in eeprom for flood module
+                setparam->walkerror = false;
+                setparam->calibrationInfo = NULL_POINTER;
+                setparam->walk_error_para_list = NULL_POINTER;
+                setparam->walk_error_para_list_length = 0;
+                DBG_NOTICE("force walk error to FALSE since swift flood module has no walkerror parameters in eeprom.");
 #endif
+            }
+    
+            if (dump_walkerror_param_cnt > 0 && NULL != setparam->walk_error_para_list)
+            {
+                uint32_t i;
+                WalkErrorParam_t *pWalkErrParam = (WalkErrorParam_t *) setparam->walk_error_para_list;
+            
+                printf("ParamIndex zoneId   spotId      x    y    paramD        paramX      paramY      paramZ      param0    sizeof(WalkErrorParam_t): %ld\n", sizeof(WalkErrorParam_t));
+                for (i = 0; i < dump_walkerror_param_cnt; i++)
+                {
+                    printf("   %4d      %d      %4d     <%3d, %3d>  %f     %f    %f    %f    %f\n", 
+                        i, pWalkErrParam[i].zoneId, pWalkErrParam[i].spotId, pWalkErrParam[i].x, pWalkErrParam[i].y,
+                        pWalkErrParam[i].paramD, pWalkErrParam[i].paramX, pWalkErrParam[i].paramY, pWalkErrParam[i].paramZ, pWalkErrParam[i].param0);
+                }
+            }
+        }
+    }
+
     qApp->set_walkerror_enable(setparam->walkerror); // set initial value for application CLASS.
 
 #ifdef WINDOWS_BUILD
@@ -329,7 +461,9 @@ int ADAPS_DTOF::FillSetWrapperParamFromEepromInfo(uint8_t* pEEPROMData, SetWrapp
 int ADAPS_DTOF::initParams(WrapperDepthInitInputParams* initInputParams, WrapperDepthInitOutputParams* initOutputParams)
 {
     struct adaps_dtof_exposure_param *p_exposure_param;
+#if !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
     Host_Communication *host_comm = Host_Communication::getInstance();
+#endif
 
     if (NULL_POINTER == p_misc_device)
     {
@@ -340,6 +474,7 @@ int ADAPS_DTOF::initParams(WrapperDepthInitInputParams* initInputParams, Wrapper
     memset(&set_param, 0, sizeof(SetWrapperParam));
     set_param.work_mode = static_cast<int>(m_sns_param.work_mode);
 
+#if !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
     if (true == qApp->is_capture_req_from_host() && NULL_POINTER != host_comm)
     {
         set_param.expand_pixel = host_comm->get_req_expand_pixel();
@@ -371,6 +506,12 @@ int ADAPS_DTOF::initParams(WrapperDepthInitInputParams* initInputParams, Wrapper
     else {
         set_param.mirror_frame.mirror_y = false;
     }
+#else
+    set_param.expand_pixel = false;
+    set_param.compose_subframe = true;
+    set_param.mirror_frame.mirror_x = false;
+    set_param.mirror_frame.mirror_y = false;
+#endif
 
     // always allow to check environment variable to change these setting for debug.
     if (true == Utils::is_env_var_true(ENV_VAR_ENABLE_EXPAND_PIXEL))
@@ -410,7 +551,7 @@ int ADAPS_DTOF::initParams(WrapperDepthInitInputParams* initInputParams, Wrapper
         DBG_ERROR("p_eeprominfo is NULL for EEPROMInfo");
         return 0 - __LINE__;
     }
-    FillSetWrapperParamFromEepromInfo((uint8_t* ) p_eeprominfo, &set_param);
+    FillSetWrapperParamFromEepromInfo((uint8_t* ) p_eeprominfo, &set_param, initInputParams);
 
     p_exposure_param = (struct adaps_dtof_exposure_param *) p_misc_device->get_dtof_exposure_param();
     if (NULL_POINTER == p_exposure_param) {
@@ -432,24 +573,6 @@ int ADAPS_DTOF::initParams(WrapperDepthInitInputParams* initInputParams, Wrapper
     initInputParams->dm_width = m_sns_param.out_frm_width;
     initInputParams->dm_height = m_sns_param.out_frm_height;
 
-    // for spot algo lib, pRawData and rawDataSize are useless;
-    // for flood algo lib, pRawData and rawDataSize are used for ROI sram and its size
-    //initInputParams->pRawData = (uint8_t*) p_eeprominfo;
-    //initInputParams->rawDataSize = sizeof(swift_eeprom_data_t);
-    initInputParams->pRawData = set_param.spot_cali_data;
-
-    if (true == qApp->is_roi_sram_rotate())
-    {
-        void* loaded_roi_sram_data;
-        uint32_t loaded_roi_sram_size;
-
-        p_misc_device->get_loaded_roi_sram_data_info(&loaded_roi_sram_data, &loaded_roi_sram_size);
-        initInputParams->rawDataSize = loaded_roi_sram_size;
-    }
-    else {
-        initInputParams->rawDataSize = AD4001_EEPROM_ROISRAM_DATA_SIZE;
-    }
-
     initInputParams->configFilePath = m_DepthLibConfigXmlPath;
     sprintf(m_DepthLibConfigXmlPath, "%s", DEPTH_LIB_CONFIG_PATH);
     initInputParams->setparam = set_param;
@@ -459,8 +582,8 @@ int ADAPS_DTOF::initParams(WrapperDepthInitInputParams* initInputParams, Wrapper
 
     DBG_INFO("initParams set_param.compose_subframe=%d set_param.expand_pixel=%d set_param.mirror_frame.mirror_x=%d  set_param.mirror_frame.mirror_y=%d\n",
            set_param.compose_subframe,set_param.expand_pixel,set_param.mirror_frame.mirror_x,set_param.mirror_frame.mirror_y);
-    DBG_NOTICE("initParams success, algo lib version: %s, roi_sram_rotate: %d, walkerror: %d, walk_error_para_list: %p, work_mode=%d env_type=%d  measure_type=%d", 
-        m_DepthLibversion, qApp->is_roi_sram_rotate(), set_param.walkerror, set_param.walk_error_para_list, set_param.work_mode,set_param.env_type,set_param.measure_type);
+    DBG_NOTICE("initParams success, algo lib version: %s, roi_sram_rotate: %d, walkerror: %d, loaded_roi_sram_size: %d, adapsSpodOffsetDataLength: %d, work_mode=%d env_type=%d  measure_type=%d", 
+        m_DepthLibversion, qApp->is_roi_sram_rotate(), set_param.walkerror, loaded_roi_sram_size, set_param.adapsSpodOffsetDataLength, set_param.work_mode,set_param.env_type,set_param.measure_type);
 
     return 0;
 }
@@ -491,7 +614,7 @@ int ADAPS_DTOF::adaps_dtof_initilize()
 
     DepthMapWrapperSetCircleMask(m_handlerDepthLib,circleForMask);
 
-    DBG_INFO("Adaps depth lib initialize okay.");
+    DBG_NOTICE("Adaps depth lib initialize okay, m_handlerDepthLib: %p.", m_handlerDepthLib);
 
     m_conversionLibInited = true;
 
@@ -974,17 +1097,14 @@ void ADAPS_DTOF::ConvertGreyscaleToColoredMap(u16 depth16_buffer[], u8 greyscale
 #endif
 }
 
-int ADAPS_DTOF::dtof_frame_decode(unsigned char *frm_rawdata, int frm_rawdata_size, u16 depth16_buffer[], enum sensor_workmode swk)
+int ADAPS_DTOF::dtof_frame_decode(unsigned int frm_sequence, unsigned char *frm_rawdata, int frm_rawdata_size, u16 depth16_buffer[], enum sensor_workmode swk)
 {
-    WrapperDepthCamConfig config;
     int result=0;
     bool done = false;
     uint32_t req_output_stream_cnt = 0;
     // Host_Communication *host_comm = Host_Communication::getInstance();
 
     Q_UNUSED(swk);
-    WrapperDepthOutput outputs[MAX_DEPTH_OUTPUT_FORMATS];
-    WrapperDepthInput depthInput;
 
     if (false == m_conversionLibInited)
     {
@@ -1003,41 +1123,41 @@ int ADAPS_DTOF::dtof_frame_decode(unsigned char *frm_rawdata, int frm_rawdata_si
     {
         if ((0 != (host_comm->get_req_out_data_type() & FRAME_DECODED_DEPTH16)) && (0 != (host_comm->get_req_out_data_type() & FRAME_DECODED_POINT_CLOUD)))
         {
-            outputs[0].format                    = WRAPPER_CAM_FORMAT_DEPTH16;
-            outputs[0].out_image_length          = m_sns_param.out_frm_width*m_sns_param.out_frm_height*sizeof(u16);
-            outputs[0].formatParams.bitsPerPixel = 16;
-            outputs[0].formatParams.strideBytes  = m_sns_param.out_frm_width;
-            outputs[0].formatParams.sliceHeight  = m_sns_param.out_frm_height;
-            outputs[0].out_depth_image = (uint8_t*) depth16_buffer;
+            depthOutputs[0].format                    = WRAPPER_CAM_FORMAT_DEPTH16;
+            depthOutputs[0].out_image_length          = m_sns_param.out_frm_width*m_sns_param.out_frm_height*sizeof(u16);
+            depthOutputs[0].formatParams.bitsPerPixel = 16;
+            depthOutputs[0].formatParams.strideBytes  = m_sns_param.out_frm_width;
+            depthOutputs[0].formatParams.sliceHeight  = m_sns_param.out_frm_height;
+            depthOutputs[0].out_depth_image = (uint8_t*) depth16_buffer;
 
-            outputs[1].format                    = WRAPPER_CAM_FORMAT_DEPTH_POINT_CLOUD;
-            outputs[1].count_pt_cloud          = m_sns_param.out_frm_width*m_sns_param.out_frm_height*sizeof(u16);
-            outputs[1].formatParams.bitsPerPixel = 16;
-            outputs[1].formatParams.strideBytes  = m_sns_param.out_frm_width*2;
-            outputs[1].formatParams.sliceHeight  = m_sns_param.out_frm_height;
-            outputs[1].out_pcloud_image = m_out_put_pointcloud_buffer;
+            depthOutputs[1].format                    = WRAPPER_CAM_FORMAT_DEPTH_POINT_CLOUD;
+            depthOutputs[1].count_pt_cloud          = m_sns_param.out_frm_width*m_sns_param.out_frm_height*sizeof(u16);
+            depthOutputs[1].formatParams.bitsPerPixel = 16;
+            depthOutputs[1].formatParams.strideBytes  = m_sns_param.out_frm_width*2;
+            depthOutputs[1].formatParams.sliceHeight  = m_sns_param.out_frm_height;
+            depthOutputs[1].out_pcloud_image = m_out_put_pointcloud_buffer;
 
             req_output_stream_cnt = 2;
         }
         else if (0 != (host_comm->get_req_out_data_type() & FRAME_DECODED_DEPTH16))
         {
-            outputs[0].format                    = WRAPPER_CAM_FORMAT_DEPTH16;
-            outputs[0].out_image_length          = m_sns_param.out_frm_width*m_sns_param.out_frm_height*sizeof(u16);
-            outputs[0].formatParams.bitsPerPixel = 16;
-            outputs[0].formatParams.strideBytes  = m_sns_param.out_frm_width;
-            outputs[0].formatParams.sliceHeight  = m_sns_param.out_frm_height;
-            outputs[0].out_depth_image = (uint8_t*) depth16_buffer;
+            depthOutputs[0].format                    = WRAPPER_CAM_FORMAT_DEPTH16;
+            depthOutputs[0].out_image_length          = m_sns_param.out_frm_width*m_sns_param.out_frm_height*sizeof(u16);
+            depthOutputs[0].formatParams.bitsPerPixel = 16;
+            depthOutputs[0].formatParams.strideBytes  = m_sns_param.out_frm_width;
+            depthOutputs[0].formatParams.sliceHeight  = m_sns_param.out_frm_height;
+            depthOutputs[0].out_depth_image = (uint8_t*) depth16_buffer;
 
             req_output_stream_cnt = 1;
         }
         else if (0 != (host_comm->get_req_out_data_type() & FRAME_DECODED_POINT_CLOUD))
         {
-            outputs[0].format                    = WRAPPER_CAM_FORMAT_DEPTH_POINT_CLOUD;
-            outputs[0].out_image_length          = m_sns_param.out_frm_width*m_sns_param.out_frm_height*sizeof(u16);
-            outputs[0].formatParams.bitsPerPixel = 16;
-            outputs[0].formatParams.strideBytes  = m_sns_param.out_frm_width;
-            outputs[0].formatParams.sliceHeight  = m_sns_param.out_frm_height;
-            outputs[0].out_depth_image = (uint8_t*) depth16_buffer;
+            depthOutputs[0].format                    = WRAPPER_CAM_FORMAT_DEPTH_POINT_CLOUD;
+            depthOutputs[0].out_image_length          = m_sns_param.out_frm_width*m_sns_param.out_frm_height*sizeof(u16);
+            depthOutputs[0].formatParams.bitsPerPixel = 16;
+            depthOutputs[0].formatParams.strideBytes  = m_sns_param.out_frm_width;
+            depthOutputs[0].formatParams.sliceHeight  = m_sns_param.out_frm_height;
+            depthOutputs[0].out_depth_image = (uint8_t*) depth16_buffer;
 
             req_output_stream_cnt = 1;
         }
@@ -1045,12 +1165,12 @@ int ADAPS_DTOF::dtof_frame_decode(unsigned char *frm_rawdata, int frm_rawdata_si
     else 
 #endif
     {
-        outputs[0].format                    = WRAPPER_CAM_FORMAT_DEPTH16;
-        outputs[0].formatParams.bitsPerPixel = 16;
-        outputs[0].formatParams.strideBytes  = m_sns_param.out_frm_width;
-        outputs[0].formatParams.sliceHeight  = m_sns_param.out_frm_height;
-        outputs[0].out_image_length          = m_sns_param.out_frm_width*m_sns_param.out_frm_height*sizeof(u16);
-        outputs[0].out_depth_image = (uint8_t*) depth16_buffer;
+        depthOutputs[0].format                    = WRAPPER_CAM_FORMAT_DEPTH16;
+        depthOutputs[0].formatParams.bitsPerPixel = 16;
+        depthOutputs[0].formatParams.strideBytes  = m_sns_param.out_frm_width;
+        depthOutputs[0].formatParams.sliceHeight  = m_sns_param.out_frm_height;
+        depthOutputs[0].out_image_length          = m_sns_param.out_frm_width*m_sns_param.out_frm_height*sizeof(u16);
+        depthOutputs[0].out_depth_image = (uint8_t*) depth16_buffer;
         req_output_stream_cnt = 1;
     }
 
@@ -1061,7 +1181,15 @@ int ADAPS_DTOF::dtof_frame_decode(unsigned char *frm_rawdata, int frm_rawdata_si
     depthInput.in_image_size    = frm_rawdata_size;
     //DBG_INFO( "raw_width: %d raw_height: %d out_width: %d out_height: %d\n", m_sns_param.raw_width, m_sns_param.raw_height, m_sns_param.out_frm_width, m_sns_param.out_frm_height);
 
-    PrepareFrameParam(&config);
+    if (true == Utils::is_env_var_true(ENV_VAR_FRAME_DROP_CHECK_ENABLE))
+    {
+        int lost = check_frame_loss(&checker, frm_rawdata, frm_rawdata_size);
+        if (lost > 0) {
+            DBG_ERROR("Dropped %d frames, last_id: %d, frm_sequence: %d\n", lost, checker.last_id, frm_sequence);
+        }
+    }
+
+    PrepareFrameParam(&depthConfig);
 
     //BOOL disableAlgo = CamX::OsUtils::GetPropertyBool("debug.adaps.disableAlgo", false);
     bool disableAlgo =false;
@@ -1071,15 +1199,15 @@ int ADAPS_DTOF::dtof_frame_decode(unsigned char *frm_rawdata, int frm_rawdata_si
         if (0 == m_decoded_frame_cnt)
         {
             hexdump_param(&depthInput, sizeof(WrapperDepthInput), "depthInput", __LINE__);
-            hexdump_param(&config, sizeof(WrapperDepthCamConfig), "config", __LINE__);
-            hexdump_param(&outputs, sizeof(WrapperDepthOutput), "output0", __LINE__);
+            hexdump_param(&depthConfig, sizeof(WrapperDepthCamConfig), "depthConfig", __LINE__);
+            hexdump_param(&depthOutputs, sizeof(WrapperDepthOutput), "output0", __LINE__);
         }
 
         done = DepthMapWrapperProcessFrame(m_handlerDepthLib,
                                     depthInput,
-                                    &config,
+                                    &depthConfig,
                                     req_output_stream_cnt,
-                                    outputs);
+                                    depthOutputs);
         m_decoded_frame_cnt++;
 
     }
@@ -1096,10 +1224,12 @@ int ADAPS_DTOF::dtof_frame_decode(unsigned char *frm_rawdata, int frm_rawdata_si
 
     if (true == done)
     {
+        m_decoded_success_frame_cnt++;
+        //DBG_ERROR("DepthMapWrapperProcessFrame() return true, frm_sequence: %d\n", frm_sequence);
         result = 0;
     }
     else {
-        //DBG_ERROR("DepthMapWrapperProcessFrame() return false\n");
+        //DBG_ERROR("DepthMapWrapperProcessFrame() return false, frm_sequence: %d\n", frm_sequence);
         result = -1;
     }
 

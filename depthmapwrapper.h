@@ -158,24 +158,25 @@ typedef struct {
     AdapsMirrorFrameSet mirror_frame;
     float* adapsLensIntrinsicData;          // 9xsizeof(float)
     float* adapsSpodOffsetData;             // 4x240xsizeof(float)
-    float* accurateSpotPosData;             // 4x240xsizeof(float)x2 delete
+    uint32_t adapsSpodOffsetDataLength;
     uint8_t ptm_fine_exposure_value;        // fine exposure value, 0 - 255
     uint8_t exposure_period;                // exposure_period, 0 - 255
     float cali_ref_tempe[2];  //[0] for indoor, [1] for outdoor
     float cali_ref_depth[2];  //[0] for indoor, [1] for outdoor
     AdapsEnvironmentType env_type;  // value 0-->indoor, value 1 -->outdoor
     AdapsMeasurementType measure_type; //value 0-->normal distance, 1-->short distance
-    uint8_t *proximity_hist; //256 bytes for eeprom
+    uint8_t* proximity_hist; //256 bytes for eeprom
     uint8_t roiIndex;   // Only zoom focus Camx version support the "roiIndex"
     // TODO - after v1.2.0
-    uint8_t *OutAlgoVersion;  // OutAlgoVersion[AdapsAlgoVersionLength];
+    uint8_t* OutAlgoVersion;  // OutAlgoVersion[AdapsAlgoVersionLength];
     uint8_t zone_cnt;
     uint8_t peak_index; // 0: double peaks   1: select first peak 
     uint8_t* spot_cali_data;//add 2023-11-7
     //zondID | spotID | X     | Y     | paramD | paramX | paramY | paramZ | param0 | dummy | dummy2
     //1byte  | 1byte  |1byte  |1byte  | 4byte  | 4byte  | 4byte  | 4byte  | 4byte  | 1byte | 1byte
     //Every spot has 26byte data (zondID to dummy2)
-    uint8_t* walk_error_para_list; // length: 900*26
+    uint8_t* walk_error_para_list;
+    uint32_t walk_error_para_list_length;
     uint8_t* calibrationInfo; // length:64 ,byte 0-8 ofilm version ,byte 9-26 adaps sdk version v4.0-180-g3b7adfgh
 #ifdef WINDOWS_BUILD
     bool dump_data;

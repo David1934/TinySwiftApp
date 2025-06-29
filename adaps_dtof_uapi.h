@@ -408,6 +408,22 @@ struct hawk_norflash_op_param
 #define OFFSET(structure, member)           ((uintptr_t)&((structure*)0)->member)
 #define MEMBER_SIZE(structure, member)      sizeof(((structure*)0)->member)
 
+#pragma pack(1)
+typedef struct WalkErrorParameters {
+    uint8_t zoneId;
+    uint8_t spotId;
+    uint8_t x;
+    uint8_t y;
+    float paramD;
+    float paramX;
+    float paramY;
+    float paramZ;
+    float param0;
+    uint8_t dummy1;//reserved
+    uint8_t dummy2;//reserved
+}WalkErrorParam_t;
+#pragma pack()
+
 #if (ADS6401_MODULE_SPOT == SWIFT_MODULE_TYPE)
 enum {
     CALIBRATION_INFO,
@@ -431,7 +447,7 @@ enum {
 #define SWIFT_MODULE_INFO_LENGTH            16
 #define SWIFT_OFFSET_SIZE                   960
 
-#define SWIFT_WALKERROR_SIZE                24960 //26 * 960
+#define SWIFT_WALKERROR_SIZE                (sizeof(WalkErrorParam_t) * PER_ZONE_MAX_SPOT_COUNT *ZONE_COUNT_PER_SRAM_GROUP) //26 * 960
 #define SWIFT_SPOTENERGY_SIZE               960
 #define SWIFT_NOISE_SIZE                    10732
 #define SWIFT_CHECKSUM_SIZE                 20
@@ -439,7 +455,8 @@ enum {
 #define MODULE_INFO_RESERVED_SIZE           176
 #define WALKERROR_RESERVED_SIZE             5760
 
-#define EEPROM_CALIB_DATA_MAX_SIZE          (64*1024)  // 64*1024, unit is bytes
+#define EEPROM_CHIP_CAPACITY_SIZE           (64*1024)  // 64*1024, unit is bytes
+#define EEPROM_PAGE_SIZE                    64
 #define ROI_SRAM_BUF_MAX_SIZE               (2*1024)   // 2x1024, unit is bytes
 #define REG_SETTING_BUF_MAX_SIZE_PER_SEG    2048       // unit is bytes, there may be 2 segments
 
@@ -458,9 +475,9 @@ typedef struct SwiftEepromData
     __u32           driverChannelOffset[4];  // 16 bytes
     __u32           distanceTemperatureCoefficient;
     // Page 67 - 186
-    float           spotPos[SWIFT_MAX_SPOT_COUNT]; // 7680 bytes, 120 pages
+    float           spotPos[SWIFT_MAX_SPOT_COUNT]; // 7680 bytes, 120 pages, reused for offset B and outdoor
     // Page 187 - 246
-    float           spotOffset[SWIFT_OFFSET_SIZE]; // 3840 bytes, 60 pages
+    float           spotOffset[SWIFT_OFFSET_SIZE]; // 3840 bytes, 60 pages, offset A
     // Page 247
     __u32           tdcDelay[16]; // 64 bytes
     // Page 248
@@ -559,7 +576,9 @@ typedef struct SwiftEepromData
 //offset
 #define OFFSET_VALID_DATA_LENGTH                            960
 
-#define EEPROM_CALIB_DATA_MAX_SIZE                          (32*1024)  // 32*1024, unit is bytes
+// EEPROM-I2C--P24C256F-D4H-MIR
+#define EEPROM_CHIP_CAPACITY_SIZE                           (32*1024)  // 32*1024, unit is bytes
+#define EEPROM_PAGE_SIZE                                    64
 #define ROI_SRAM_BUF_MAX_SIZE                               (2*1024)   // 2x1024, unit is bytes
 #define REG_SETTING_BUF_MAX_SIZE_PER_SEG                    2048       // unit is bytes, there may be 2 segments
 
@@ -586,7 +605,7 @@ enum SwiftFloodEEPROMSizeInfo
 
 
 #pragma pack(1)
-typedef struct SwiftEepromData
+typedef struct SwiftFloodEepromData
 {
     // In Swift EEPROM, one page has 64 bytes.
     // Page 0
@@ -663,6 +682,7 @@ typedef struct SwiftEepromData
 
 #endif
 
+#define FW_VERSION_LENGTH                                   12
 
 struct adaps_dtof_intial_param {
     AdapsEnvironmentType env_type;
@@ -703,7 +723,15 @@ struct adaps_dtof_module_static_data{
     __u16 otp_vbd;        // unit is 10mv, or the related V X 100
     __u16 otp_adc_vref;
     __u8 serialNumber[SENSOR_SN_LENGTH];
+    __u8 sensor_drv_version[FW_VERSION_LENGTH];
     __u8 ready;
+};
+
+struct adaps_dtof_update_eeprom_data{
+    __u32 module_type;            // refer to ADS6401_MODULE_SPOT and ADS6401_MODULE_FLOOD of adaps_types.h file
+    __u32 eeprom_capacity;       // unit is byte
+    __u32 offset;             //eeprom data start offset
+    __u32 length;                //eeprom data length
 };
 
 typedef struct {
@@ -737,6 +765,9 @@ typedef struct {
 
 #define ADTOF_SET_EXTERNAL_CONFIG_SCRIPT      \
     _IOW('T', ADAPS_DTOF_PRIVATE + 7, external_config_script_param_t *)
+
+#define ADTOF_UPDATE_EEPROM_DATA       \
+    _IOW('T', ADAPS_DTOF_PRIVATE + 8, struct adaps_dtof_update_eeprom_data)
 
 
 #endif // FOR ADAPS_SWIFT

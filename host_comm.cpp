@@ -1,3 +1,5 @@
+#if !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
+
 #include <cstdio>
 #include <stdio.h>
 #include <stdlib.h>
@@ -9,6 +11,7 @@
 #include "utils.h"
 #include "globalapplication.h"
 #include "host_comm.h"
+#include "depthmapwrapper.h"    // to use DepthMapWrapperGetVersion()
 
 #if defined(ROI_SRAM_DATA_INJECTION_4_ROISRAM_ROTATE_TEST)
 #include "ads6401_roi_sram_test_data.h"
@@ -53,6 +56,7 @@ Host_Communication::Host_Communication() {
     txDepth16FrameCnt = 0;
     firstRawdataFrameTimeUsec = 0;
     firstDepth16FrameTimeUsec = 0;
+    eeprom_capacity = 0;
     adaps_sender_init();
 
 #if defined(ROI_SRAM_DATA_INJECTION_4_ROISRAM_ROTATE_TEST)
@@ -65,38 +69,41 @@ Host_Communication::Host_Communication() {
 
 Host_Communication::~Host_Communication()
 {
-    LOG_DEBUG("%s() total txRawdataFrameCnt: %ld, txDepth16FrameCnt: %ld..\n", __FUNCTION__, txRawdataFrameCnt, txDepth16FrameCnt);
-    if (NULL_POINTER != backuped_script_buffer)
-    {
-        free(backuped_script_buffer);
-        backuped_script_buffer = NULL_POINTER;
-        backuped_script_buffer_size = 0;
+    if (NULL_POINTER != instance) {
+        DBG_NOTICE("------communication statistics------total txRawdataFrameCnt: %ld, txDepth16FrameCnt: %ld---\n",
+            txRawdataFrameCnt, txDepth16FrameCnt);
+        if (NULL_POINTER != backuped_script_buffer)
+        {
+            free(backuped_script_buffer);
+            backuped_script_buffer = NULL_POINTER;
+            backuped_script_buffer_size = 0;
+        }
+        
+        if (NULL_POINTER != backuped_roisram_data)
+        {
+            free(backuped_roisram_data);
+            backuped_roisram_data = NULL_POINTER;
+            backuped_roisram_data_size = 0;
+        }
+        
+        if (NULL_POINTER != loaded_walkerror_data)
+        {
+            free(loaded_walkerror_data);
+            loaded_walkerror_data = NULL_POINTER;
+            loaded_walkerror_data_size = 0;
+        }
+        
+        if (NULL_POINTER != loaded_spotoffset_data)
+        {
+            free(loaded_spotoffset_data);
+            loaded_spotoffset_data = NULL_POINTER;
+            loaded_spotoffset_data_size = 0;
+        }
+        
+        sender_destroy();
+        delete instance;
+        instance = NULL_POINTER;
     }
-
-    if (NULL_POINTER != backuped_roisram_data)
-    {
-        free(backuped_roisram_data);
-        backuped_roisram_data = NULL_POINTER;
-        backuped_roisram_data_size = 0;
-    }
-
-    if (NULL_POINTER != loaded_walkerror_data)
-    {
-        free(loaded_walkerror_data);
-        loaded_walkerror_data = NULL_POINTER;
-        loaded_walkerror_data_size = 0;
-    }
-
-    if (NULL_POINTER != loaded_spotoffset_data)
-    {
-        free(loaded_spotoffset_data);
-        loaded_spotoffset_data = NULL_POINTER;
-        loaded_spotoffset_data_size = 0;
-    }
-
-    sender_destroy();
-    delete instance;
-    instance = NULL_POINTER;
 }
 
 UINT8 Host_Communication::get_req_out_data_type()
@@ -192,7 +199,7 @@ int Host_Communication::report_status(UINT16 responsed_cmd, UINT16 status_code, 
         return result;
     }
 
-    LOG_DEBUG("%s(%s) sucessfully!\n", __FUNCTION__, msg);
+    LOG_DEBUG("%s(%s) done!\n", __FUNCTION__, msg);
 
     return 0;
 }
@@ -297,7 +304,8 @@ int Host_Communication::report_frame_depth16_data(void* pFrameData, uint32_t fra
         txDepth16Frame_fps = (txDepth16FrameCnt * 1000000) / streamed_timeUs;
     }
 
-    if (1 == txDepth16FrameCnt % FRAME_INTERVAL_4_PROGRESS_REPORT)
+    //if (1 == txDepth16FrameCnt % FRAME_INTERVAL_4_PROGRESS_REPORT)
+    if (txDepth16FrameCnt < 3)
     {
         LOG_DEBUG("%s() sucessfully, mipi_rx_fps = %d fps, txDepth16Frame_fps = %d fps, txDepth16FrameCnt: %ld, frame_sequence: %ld, sizeof(CommandData_t): %ld, ulCmdDataLen: %d, frameData_size: %d, ulBufSize: %d.\n", 
             __FUNCTION__, pDataBufferParam->mipi_rx_fps, txDepth16Frame_fps, txDepth16FrameCnt, pDataBufferParam->frame_sequence, sizeof(CommandData_t), ulCmdDataLen, frameData_size, ulBufSize);
@@ -376,7 +384,8 @@ int Host_Communication::report_frame_raw_data(void* pFrameData, uint32_t frameDa
         txRawdataFrame_fps = (txRawdataFrameCnt * 1000000) / streamed_timeUs;
     }
 
-    if (1 == txRawdataFrameCnt % FRAME_INTERVAL_4_PROGRESS_REPORT)
+    //if (1 == txRawdataFrameCnt % FRAME_INTERVAL_4_PROGRESS_REPORT)
+    if (txRawdataFrameCnt < 3)
     {
         LOG_DEBUG("%s() sucessfully, mipi_rx_fps = %d fps, txRawdataFrame_fps = %d fps, txRawdataFrameCnt: %ld, frame_sequence: %ld, sizeof(CommandData_t): %ld, ulCmdDataLen: %d, frameData_size: %d, ulBufSize: %d.\n", 
             __FUNCTION__, pDataBufferParam->mipi_rx_fps, txRawdataFrame_fps, txRawdataFrameCnt, pDataBufferParam->frame_sequence, sizeof(CommandData_t), ulCmdDataLen, frameData_size, ulBufSize);
@@ -387,9 +396,9 @@ int Host_Communication::report_frame_raw_data(void* pFrameData, uint32_t frameDa
 
 int Host_Communication::dump_module_static_data(module_static_data_t *pStaticDataParam)
 {
-    CHAR                    serialNumber[SENSOR_SN_LENGTH+1] = {0};
+    //CHAR                    serialNumber[SENSOR_SN_LENGTH+1] = {0};
 
-    memcpy(serialNumber, pStaticDataParam->serialNumber, SENSOR_SN_LENGTH);
+    //memcpy(serialNumber, pStaticDataParam->serialNumber, SENSOR_SN_LENGTH);
 
     LOG_DEBUG("UINT8            data_type = 0x%x;               // refer to enum swift_data_type of this .h file", pStaticDataParam->data_type);
     LOG_DEBUG("UINT32           module_type = 0x%x;             // refer to ADS6401_MODULE_SPOT and ADS6401_MODULE_FLOOD of adaps_types.h file", pStaticDataParam->module_type);
@@ -397,7 +406,11 @@ int Host_Communication::dump_module_static_data(module_static_data_t *pStaticDat
     LOG_DEBUG("UINT16           otp_vbe25 = 0x%04x;", pStaticDataParam->otp_vbe25);
     LOG_DEBUG("UINT16           otp_vbd = 0x%04x;", pStaticDataParam->otp_vbd);
     LOG_DEBUG("UINT16           otp_adc_vref = 0x%04x;", pStaticDataParam->otp_adc_vref);
-    LOG_DEBUG("CHAR             serialNumber = [%s];", serialNumber);
+    LOG_DEBUG("CHAR             serialNumber = [%s];", pStaticDataParam->serialNumber);
+    LOG_DEBUG("CHAR             sensor_drv_version = [%s];", pStaticDataParam->sensor_drv_version);
+    LOG_DEBUG("CHAR             algo_lib_version = [%s];", pStaticDataParam->algo_lib_version);
+    LOG_DEBUG("CHAR             sender_lib_version = [%s];", pStaticDataParam->sender_lib_version);
+    LOG_DEBUG("CHAR             spadisQT_version = [%s];", pStaticDataParam->spadisQT_version);
     LOG_DEBUG("UINT32           eeprom_data_size = %d;          // unit is byte", pStaticDataParam->eeprom_data_size);
     LOG_DEBUG("sizeof(module_static_data_t) = %ld", sizeof(module_static_data_t));
 
@@ -445,18 +458,21 @@ int Host_Communication::report_module_static_data()
     pStaticDataParam  = (module_static_data_t *) pCmdData->param;
     pStaticDataParam->module_type = module_static_data->module_type;
     pStaticDataParam->eeprom_capacity = module_static_data->eeprom_capacity;
+    eeprom_capacity = module_static_data->eeprom_capacity;
     pStaticDataParam->otp_vbe25 = module_static_data->otp_vbe25;
     pStaticDataParam->otp_vbd = module_static_data->otp_vbd;
     pStaticDataParam->otp_adc_vref = module_static_data->otp_adc_vref;
     memcpy(pStaticDataParam->serialNumber, module_static_data->serialNumber, SENSOR_SN_LENGTH);
+
+    memcpy(pStaticDataParam->sensor_drv_version, module_static_data->sensor_drv_version, FW_VERSION_LENGTH);
+    DepthMapWrapperGetVersion(pStaticDataParam->algo_lib_version);
+    strcpy(pStaticDataParam->sender_lib_version, sender_get_version_str());
+    sprintf(pStaticDataParam->spadisQT_version, "%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_REVISION);
+
     pStaticDataParam->data_type = MODULE_STATIC_DATA;
     pStaticDataParam->eeprom_data_size = EEPROM_size;
     memcpy(pStaticDataParam->eeprom_data, pEEPROM_buffer, EEPROM_size);
-    //dump_buffer_data(pStaticDataParam->calib_data, "module_static_data", __LINE__);
-    if (true == Utils::is_env_var_true(ENV_VAR_DUMP_MODULE_STATIC_DATA))
-    {
-        dump_module_static_data(pStaticDataParam);
-    }
+    dump_module_static_data(pStaticDataParam);
 
     int result = sender_async_send_msg(async_buf, ulBufSize, 0);
 
@@ -465,7 +481,7 @@ int Host_Communication::report_module_static_data()
         LOG_ERROR("async send module calibrate data fail: %u.\n", ulBufSize);
         return result;
     }
-    LOG_DEBUG("%s() sucessfully.\n", __FUNCTION__);
+    LOG_DEBUG("%s() sucessfully, send_buffer_size: %d.\n", __FUNCTION__, ulBufSize);
 
     return 0;
 }
@@ -611,6 +627,7 @@ void Host_Communication::adaps_load_walkerror_data(CommandData_t* pCmdData, uint
         
         memcpy(loaded_walkerror_data, &pWalkerrorParam->walkerror_data, loaded_walkerror_data_size);
         qApp->set_loaded_walkerror_data(loaded_walkerror_data);
+        qApp->set_loaded_walkerror_data_size(loaded_walkerror_data_size);
         LOG_DEBUG("------loaded_spotoffset_data %d bytes-----\n", loaded_spotoffset_data_size);
     }
     else {
@@ -653,6 +670,7 @@ void Host_Communication::adaps_load_spotoffset_data(CommandData_t* pCmdData, uin
         
         memcpy(loaded_spotoffset_data, &pWalkerrorParam->offset_data, loaded_spotoffset_data_size);
         qApp->set_loaded_spotoffset_data(loaded_spotoffset_data);
+        qApp->set_loaded_spotoffset_data_size(loaded_spotoffset_data_size);
         LOG_DEBUG("------loaded_spotoffset_data %d bytes-----\n", loaded_spotoffset_data_size);
     }
     else {
@@ -664,6 +682,77 @@ void Host_Communication::adaps_load_spotoffset_data(CommandData_t* pCmdData, uin
 
 
     report_status(CMD_HOST_SIDE_SET_SPOT_OFFSET_DATA, CMD_DEVICE_SIDE_NO_ERROR, msg, strlen(msg));
+}
+
+void Host_Communication::adaps_request_device_reboot(CommandData_t* pCmdData, uint32_t rxDataLen)
+{
+    device_reboot_request_t* pRebootParam;
+
+    if (rxDataLen < (sizeof(CommandData_t) + sizeof(device_reboot_request_t)))
+    {
+        LOG_ERROR("<%s>: rxDataLen %d is too short for CMD_HOST_SIDE_SET_DEVICE_REBOOT.\n", __FUNCTION__, rxDataLen);
+        return;
+    }
+
+    pRebootParam = (device_reboot_request_t*) pCmdData->param;
+    if (CMD_HOST_SIDE_REBOOT_NO_REASON != pRebootParam->reboot_reason_code)
+    {
+        LOG_DEBUG("System will re-boot now.\n");
+        LOG_DEBUG("Request reboot reason: %s\n", pRebootParam->reboot_reason_msg);
+        Utils::system_reboot();
+    }
+    else {
+        char err_msg[128];
+        sprintf(err_msg, "Invalid reboot_reason_code(%d) for CMD_HOST_SIDE_SET_DEVICE_REBOOT", pRebootParam->reboot_reason_code);
+        report_status(CMD_HOST_SIDE_SET_DEVICE_REBOOT, CMD_DEVICE_SIDE_ERROR_INVALID_REBOOT_REASON, err_msg, strlen(err_msg));
+        return;
+    }
+}
+
+void Host_Communication::adaps_update_eeprom_data(CommandData_t* pCmdData, uint32_t rxDataLen)
+{
+    int ret = -1;
+    UINT32 update_data_size;
+    UINT32 update_data_offset;
+    UINT8 *update_data;
+    eeprom_data_update_param_t* pEepromUpdateParam;
+
+    if (rxDataLen < (sizeof(CommandData_t) + sizeof(eeprom_data_update_param_t)))
+    {
+        LOG_ERROR("<%s>: rxDataLen %d is too short for CMD_HOST_SIDE_SET_EEPROM_DATA.\n", __FUNCTION__, rxDataLen);
+        return;
+    }
+
+    qApp->set_capture_req_from_host(true);
+    pEepromUpdateParam = (eeprom_data_update_param_t*) pCmdData->param;
+    update_data_size = pEepromUpdateParam->length;
+    update_data_offset = pEepromUpdateParam->offset;
+    update_data = (UINT8 *) pEepromUpdateParam->eeprom_data;
+
+    if ((update_data_size > 0) && ((0 != eeprom_capacity) && (eeprom_capacity >= (update_data_offset + update_data_size))))
+    {
+        p_misc_device = qApp->get_misc_dev_instance();
+        dump_buffer_data(update_data, "update_eeprom_data", __LINE__);
+        ret = p_misc_device->update_eeprom_data(update_data, update_data_offset, update_data_size);
+        LOG_DEBUG("------update_data_size %d, offset: %d, eeprom_capacity: %d-----\n", update_data_size, update_data_offset, eeprom_capacity);
+    }
+    else {
+        char err_msg[128];
+        sprintf(err_msg, "Invalid parameter(offset: %d, length: %d) for CMD_HOST_SIDE_SET_EEPROM_DATA", update_data_offset, update_data_size);
+        report_status(CMD_HOST_SIDE_SET_EEPROM_DATA, CMD_DEVICE_SIDE_ERROR_INVALID_EEPROM_UPD_PARAM, err_msg, strlen(err_msg));
+        return;
+    }
+
+    if (0 == ret)
+    {
+        char msg[] = "EEPROM data update successfully.";
+        report_status(CMD_HOST_SIDE_SET_SPOT_OFFSET_DATA, CMD_DEVICE_SIDE_NO_ERROR, msg, strlen(msg));
+    }
+    else {
+        char msg[] = "Fail to update eeprom data, check kernel log please.";
+        report_status(CMD_HOST_SIDE_SET_SPOT_OFFSET_DATA, CMD_DEVICE_SIDE_ERROR_FAIL_TO_UPDATE_EEPROM, msg, strlen(msg));
+    }
+
 }
 
 void Host_Communication::adaps_start_capture(CommandData_t* pCmdData, uint32_t rxDataLen)
@@ -813,7 +902,7 @@ void Host_Communication::adaps_event_process(void* pRXData, uint32_t rxDataLen)
     }
 
     CommandData_t* pCmdData = (CommandData_t*)pRXData;
-    LOG_DEBUG("swift_event_process: cmd = 0x%x, rxDataLen %d.\n", pCmdData->cmd, rxDataLen);
+    LOG_DEBUG("adaps_event_process: cmd = 0x%x, rxDataLen %d.\n", pCmdData->cmd, rxDataLen);
     switch (pCmdData->cmd)
     {
         case CMD_HOST_SIDE_GET_MODULE_STATIC_DATA:
@@ -838,6 +927,14 @@ void Host_Communication::adaps_event_process(void* pRXData, uint32_t rxDataLen)
 
         case CMD_HOST_SIDE_SET_SPOT_OFFSET_DATA:
             adaps_load_spotoffset_data(pCmdData, rxDataLen);
+            break;
+
+        case CMD_HOST_SIDE_SET_DEVICE_REBOOT:
+            adaps_request_device_reboot(pCmdData, rxDataLen);
+            break;
+
+        case CMD_HOST_SIDE_SET_EEPROM_DATA:
+            adaps_update_eeprom_data(pCmdData, rxDataLen);
             break;
 
         case CMD_HOST_SIDE_START_CAPTURE:
@@ -988,5 +1085,6 @@ int Host_Communication::roi_sram_rotate_data_injection()
 
     return ret;
 }
-#endif
+#endif // defined(ROI_SRAM_DATA_INJECTION_4_ROISRAM_ROTATE_TEST)
 
+#endif // !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)

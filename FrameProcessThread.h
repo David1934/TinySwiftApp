@@ -37,6 +37,7 @@ private:
     volatile bool sleeping;
     volatile bool skip_frame_decode;
     volatile uint32_t dump_spot_statistics_times;
+    volatile uint32_t dump_ptm_frame_headinfo_times;
     struct sensor_params sns_param;
     char *expected_md5_string;
 
@@ -64,7 +65,7 @@ private:
 
 private slots:
 
-#if defined(RUN_ON_EMBEDDED_LINUX)
+#if !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
     bool new_frame_handle(unsigned int frm_sequence, void *frm_buf, int buf_len, struct timeval frm_timestamp, enum frame_data_type, int total_bytes_per_line, frame_buffer_param_t frmBufParam);
 #else
     bool new_frame_handle(unsigned int frm_sequence, void *frm_buf, int buf_len, struct timeval frm_timestamp, enum frame_data_type, int total_bytes_per_line);

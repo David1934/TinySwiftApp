@@ -66,9 +66,13 @@ public:
 
     UINT8* get_loaded_walkerror_data();
     int set_loaded_walkerror_data(UINT8* value);
+    UINT32 get_loaded_walkerror_data_size();
+    int set_loaded_walkerror_data_size(UINT32 value);
 
     float* get_loaded_spotoffset_data();
     int set_loaded_spotoffset_data(UINT8* value);
+    UINT32 get_loaded_spotoffset_data_size();
+    int set_loaded_spotoffset_data_size(UINT32 value);
 
     bool is_walkerror_enabled();
     int set_walkerror_enable(bool val);
@@ -94,10 +98,10 @@ private:
     int GrayScaleMaxMappedRange;
     float RealDistanceMinMappedRange;
     float RealDistanceMaxMappedRange;
-    //UINT32 backuped_walkerror_data_size;
     UINT8 *loaded_walkerror_data;
-    //UINT32 backuped_spotoffset_data_size;
+    UINT32 loaded_walkerror_data_size;
     UINT8 *loaded_spotoffset_data;
+    UINT32 loaded_spotoffset_data_size;
     Misc_Device     *misc_dev_instance;
 
     AdapsMeasurementType string_2_measurementtype(QString& str);

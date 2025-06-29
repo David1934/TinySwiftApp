@@ -359,6 +359,20 @@ int GlobalApplication::set_loaded_walkerror_data(UINT8* value)
     return ret;
 }
 
+UINT32 GlobalApplication::get_loaded_walkerror_data_size()
+{
+    return loaded_walkerror_data_size;
+}
+
+int GlobalApplication::set_loaded_walkerror_data_size(UINT32 value)
+{
+    int ret = 0;
+
+    loaded_walkerror_data_size = value;
+
+    return ret;
+}
+
 float* GlobalApplication::get_loaded_spotoffset_data()
 {
     return (float *) loaded_spotoffset_data;
@@ -369,6 +383,20 @@ int GlobalApplication::set_loaded_spotoffset_data(UINT8* value)
     int ret = 0;
 
     loaded_spotoffset_data = value;
+
+    return ret;
+}
+
+UINT32 GlobalApplication::get_loaded_spotoffset_data_size()
+{
+    return loaded_spotoffset_data_size;
+}
+
+int GlobalApplication::set_loaded_spotoffset_data_size(UINT32 value)
+{
+    int ret = 0;
+
+    loaded_spotoffset_data_size = value;
 
     return ret;
 }

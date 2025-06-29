@@ -13,9 +13,9 @@
 #endif
 
 #define VERSION_MAJOR                           3
-#define VERSION_MINOR                           0
-#define VERSION_REVISION                        0
-#define LAST_MODIFIED_TIME                      "202500624A"
+#define VERSION_MINOR                           1
+#define VERSION_REVISION                        1
+#define LAST_MODIFIED_TIME                      "202500725A"
 
 #define DEFAULT_DTOF_FRAMERATE                  AdapsFramerateType30FPS // AdapsFramerateType60FPS
 
@@ -90,6 +90,9 @@
 #define ENV_VAR_TEST_PATTERN_TYPE               "test_pattern_type"
 #define ENV_VAR_ROI_SRAM_COORDINATES_CHECK      "roi_sram_coordinates_check"
 #define ENV_VAR_ROI_SRAM_DATA_INJECTION         "roi_sram_data_injection"
+#define ENV_VAR_RAW_FILE_REPLAY_ENABLE          "raw_file_replay_enable"
+#define ENV_VAR_DEPTH16_FILE_REPLAY_ENABLE      "depth16_file_replay_enable"
+#define ENV_VAR_FRAME_DROP_CHECK_ENABLE         "frame_drop_check_enable"
 
 #define ENV_VAR_DBGINFO_ENABLE                  "debug_info_enable"
 #define ENV_VAR_TRACE_ROI_SRAM_SWITCH           "trace_roi_sram_switch"
@@ -106,6 +109,8 @@
 #define ENV_VAR_DUMP_PARSING_SCRIPT_ITEMS       "dump_parsing_script_items"
 #define ENV_VAR_DUMP_SPOTS_ITVL_BY_CONFIDENCE   "dump_spots_interval_by_confidence" // every X frame print once, 0 means no print
 #define ENV_VAR_DUMP_SPOT_STATISTICS_TIMES      "dump_spot_statistics_times"
+#define ENV_VAR_DUMP_PTM_FRAME_HEADINFO_TIMES   "dump_ptm_frame_headinfo_times"
+#define ENV_VAR_DUMP_WALKERROR_PARAM_COUNT      "dump_walkerror_param_count"
 
 #define __tostr(x)                          #x
 #define __stringify(x)                      __tostr(x)

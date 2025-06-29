@@ -73,6 +73,7 @@ public:
     int get_dtof_module_static_data(void **pp_module_static_data, void **pp_eeprom_data_buffer, uint32_t *eeprom_data_size);
     int send_down_external_config(const UINT8 workMode, const uint32_t script_buf_size, const uint8_t* script_buf, const uint32_t roi_sram_size, const uint8_t* roi_sram_data, const bool roi_sram_rotate);
     int get_loaded_roi_sram_data_info(void **pp_roisram_data_buffer, uint32_t *roisram_data_size);
+    int update_eeprom_data(UINT8 *buf, UINT32 offset, UINT32 length);
 
 private:
 
@@ -87,7 +88,7 @@ private:
     struct adaps_dtof_runtime_status_param last_runtime_status_param;
     struct adaps_dtof_exposure_param exposureParam;
     int eeprom_data_size;
-    u8* mapped_eeprom_calib_data_buffer;
+    u8* mapped_eeprom_data_buffer;
     u8* mapped_script_sensor_settings;
     uint16_t sensor_reg_setting_cnt;
     uint16_t vcsel_reg_setting_cnt;

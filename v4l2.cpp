@@ -12,10 +12,14 @@ V4L2::V4L2(struct sensor_params params)
 {
 #if defined(RUN_ON_EMBEDDED_LINUX)
     fd_4_dtof = 0;
+#if !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
     host_comm = Host_Communication::getInstance();
+#endif
+    utils = new Utils();
 #endif
     buffers = NULL_POINTER;
     sensordata = NULL_POINTER;
+    p_misc_device = NULL_POINTER;
     fd = 0;
     firstFrameTimeUsec = 0;
     rxFrameCnt = 0;
@@ -57,34 +61,19 @@ V4L2::V4L2(struct sensor_params params)
 
 V4L2::~V4L2()
 {
+#if defined(RUN_ON_EMBEDDED_LINUX)
+    if (NULL_POINTER != utils)
+    {
+        delete utils;
+        utils = NULL_POINTER;
+    }
+#endif
+
     if (NULL_POINTER != sensordata)
     {
         free(sensordata);
         sensordata = NULL_POINTER;
     }
-}
-
-void V4L2::V4l2_mode_switch(struct sensor_params params)
-{
-    memcpy(&snr_param, &params, sizeof(struct sensor_params));
-
-    if (NULL_POINTER != sensordata[params.work_mode].sensor_subdev)
-    {
-        memcpy(sensor_sd_name, sensordata[params.work_mode].sensor_subdev, DEV_NODE_LEN);
-    }
-    else {
-        memset(sensor_sd_name, 0, DEV_NODE_LEN);
-    }
-    memcpy(media_dev, sensordata[params.work_mode].media_devnode, DEV_NODE_LEN);
-    memcpy(video_dev, sensordata[params.work_mode].video_devnode, DEV_NODE_LEN);
-    snr_param.raw_width = sensordata[params.work_mode].raw_w;
-    snr_param.raw_height = sensordata[params.work_mode].raw_h;
-    pixel_format = sensordata[params.work_mode].pixfmt;
-    frame_buffer_count = sensordata[params.work_mode].frm_buf_cnt;
-    snr_param.sensor_type = sensordata[params.work_mode].stype;
-    frm_type = sensordata[params.work_mode].ftype;
-    snr_param.out_frm_width = sensordata[params.work_mode].out_frm_width;
-    snr_param.out_frm_height = sensordata[params.work_mode].out_frm_height;
 }
 
 int V4L2::init()
@@ -512,6 +501,7 @@ int V4L2::V4l2_initilize(void)
         script_loaded = false;
         qApp->set_roi_sram_rotate(false);
 
+#if !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
         if (host_comm)
         {
             UINT32 backuped_script_buf_sz;
@@ -546,6 +536,7 @@ int V4L2::V4l2_initilize(void)
                 }
             }
         }
+#endif
 
         param.env_type = snr_param.env_type;
         param.measure_type = snr_param.measure_type;
@@ -691,7 +682,9 @@ int V4L2::Capture_frame()
     long currTimeUsec;
     status_params1 param1;
 #if defined(RUN_ON_EMBEDDED_LINUX)
+#if !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
     frame_buffer_param_t param;
+#endif
     struct adaps_dtof_runtime_status_param *p_runtime_status_param;
     p_misc_device = qApp->get_misc_dev_instance();
 #endif
@@ -788,6 +781,19 @@ int V4L2::Capture_frame()
     param1.curr_exp_vop_abs = p_runtime_status_param->expected_vop_abs_x100;
     param1.curr_exp_pvdd = p_runtime_status_param->expected_pvdd_x100;
 
+    if (Utils::is_env_var_true(ENV_VAR_RAW_FILE_REPLAY_ENABLE))
+    {
+        if (true == utils->is_replay_data_exist())
+        {
+            int ret = utils->loadNextFileToBuffer((char *) buffers[v4l2_buf.index].start, bytesused);
+            if (ret != bytesused)
+            {
+                DBG_ERROR("Fail to loadNextFileToBuffer, ret: %d, bytesused: %d!", ret, bytesused);
+            }
+        }
+    }
+
+#if !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
     if (host_comm)
     {
         param.work_mode = snr_param.work_mode;
@@ -813,11 +819,12 @@ int V4L2::Capture_frame()
         host_comm->report_frame_raw_data(buffers[v4l2_buf.index].start, bytesused, &param);
     }
 #endif
+#endif
 
     if (true != Utils::is_env_var_true(ENV_VAR_SKIP_FRAME_PROCESS))
     {
         emit update_info(param1);
-#if defined(RUN_ON_EMBEDDED_LINUX)
+#if !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
         emit rx_new_frame(v4l2_buf.sequence, buffers[v4l2_buf.index].start, bytesused, v4l2_buf.timestamp, frm_type, total_bytes_per_line, param);
 #else
         emit rx_new_frame(v4l2_buf.sequence, buffers[v4l2_buf.index].start, bytesused, v4l2_buf.timestamp, frm_type, total_bytes_per_line);
@@ -849,15 +856,19 @@ void V4L2::Stop_streaming(void)
     if (rxFrameCnt <= 0) // not started yet.
         return;
 
-    DBG_NOTICE("------Test Statistics------streamed: %02d:%02d:%02d, rxFrameCnt: %ld, mipi_rx_fps: %d, frame raw size: %d X %d---\n",
-        streamed_second/3600,streamed_second/60,streamed_second%60,
-        rxFrameCnt, mipi_rx_fps, 
-        snr_param.raw_width, snr_param.raw_height);
-
-    if (-1 == ioctl(fd, VIDIOC_STREAMOFF, &buf_type)) {
-        DBG_ERROR("Fail to stream off, errno: %s (%d)...", 
-            strerror(errno), errno);
+    if (0 != fd)
+    {
+        DBG_NOTICE("------streaming statistics------streamed: %02d:%02d:%02d, rxFrameCnt: %ld, mipi_rx_fps: %d, frame raw size: %d X %d---\n",
+            streamed_second/3600,streamed_second/60,streamed_second%60,
+            rxFrameCnt, mipi_rx_fps, 
+            snr_param.raw_width, snr_param.raw_height);
+        
+        if (-1 == ioctl(fd, VIDIOC_STREAMOFF, &buf_type)) {
+            DBG_ERROR("Fail to stream off, errno: %s (%d)...", 
+                strerror(errno), errno);
+        }
     }
+
     return;
 }
 
@@ -866,10 +877,13 @@ void V4L2::V4l2_close(void)
     if (SENSOR_TYPE_DTOF == snr_param.sensor_type)
     {
 #if defined(RUN_ON_EMBEDDED_LINUX)
-        if ((0 != fd_4_dtof) && (-1 == close(fd_4_dtof))) {
-            DBG_ERROR("Fail to close device %d (%s), errno: %s (%d)...", fd_4_dtof, sd_devnode_4_dtof,
-                strerror(errno), errno);
-            return;
+        if (0 != fd_4_dtof){
+            if (-1 == close(fd_4_dtof)) {
+                DBG_ERROR("Fail to close device %d (%s), errno: %s (%d)...", fd_4_dtof, sd_devnode_4_dtof,
+                    strerror(errno), errno);
+                return;
+            }
+            fd_4_dtof = 0;
         }
 #endif
     }

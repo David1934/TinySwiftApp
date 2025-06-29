@@ -31,10 +31,17 @@ Utils::Utils()
 {
     currentIndex = 0;
     generate_crc32_table();
-    replay_file_path = REPLAY_DATA_FILE_PATH;  // 替换为实际的目录路径
-    QString fileExtension = REPLAY_DATA_FILE_EXT_NAME;  // 替换为实际的文件后缀名
-
-    loadFiles(replay_file_path, fileExtension);
+    replay_file_path = REPLAY_DATA_FILE_PATH;
+    if (Utils::is_env_var_true(ENV_VAR_RAW_FILE_REPLAY_ENABLE))
+    {
+        QString fileExtension = REPLAY_RAW_FILE_EXT_NAME;
+        loadFiles(replay_file_path, fileExtension);
+    }
+    else if (Utils::is_env_var_true(ENV_VAR_DEPTH16_FILE_REPLAY_ENABLE))
+    {
+        QString fileExtension = REPLAY_DEPTH16_FILE_EXT_NAME;
+        loadFiles(replay_file_path, fileExtension);
+    }
 }
 
 Utils::~Utils()
@@ -104,11 +111,13 @@ void Utils::loadFiles(const QString &directoryPath, const QString &fileExtension
 // 从文件列表中获取下一个文件内容加载到buffer，循环加载
 QByteArray Utils::loadNextFileToBuffer() {
     if (fileList.isEmpty()) {
+        DBG_ERROR("Filelist is NULL!");
         return QByteArray();
     }
 
     QString currentFileName = fileList[currentIndex];
     QString fullFilePath = replay_file_path + "/" + currentFileName;
+    DBG_NOTICE("load file %s, currentIndex: %d", fullFilePath.toUtf8().data(), currentIndex);
     QFile file(fullFilePath);
     if (file.open(QIODevice::ReadOnly)) {
         QByteArray buffer = file.readAll();
@@ -121,6 +130,36 @@ QByteArray Utils::loadNextFileToBuffer() {
 
     return QByteArray();
 }
+
+int Utils::loadNextFileToBuffer(char *buffer, int max_read_size) {
+    if (fileList.empty()) {
+        DBG_ERROR("Filelist is NULL!");
+        return -1; // 文件列表为空
+    }
+
+    QString currentFileName = fileList[currentIndex];
+    QString fullFilePath = replay_file_path + "/" + currentFileName;
+    
+    // 打开文件（二进制模式）
+    FILE *file = fopen(fullFilePath.toUtf8().data(), "rb");
+    if (file == NULL) {
+        return -1; // 文件打开失败
+    }
+
+    // 读取文件内容到缓冲区
+    size_t bytesRead = fread(buffer, 1, max_read_size, file);
+    
+    // 关闭文件
+    fclose(file);
+    
+    DBG_NOTICE("load file %s, currentIndex: %d", fullFilePath.toUtf8().data(), currentIndex);
+    // 移动到下一个文件索引
+    currentIndex = (currentIndex + 1) % fileList.size();
+    
+    // 返回实际读取的字节数
+    return static_cast<int>(bytesRead);
+}
+
 
 bool Utils::is_replay_data_exist()
 {

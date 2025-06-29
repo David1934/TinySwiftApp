@@ -56,13 +56,15 @@ private slots:
     void unixSignalHandler(int signal);
     void on_startCapture();
     void on_stopCapture();
-#if defined(RUN_ON_EMBEDDED_LINUX)
+#if defined(RUN_ON_EMBEDDED_LINUX) && !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
     void on_capture_options_set(capture_req_param_t* param);
 #endif
 
 private:
     #if defined(RUN_ON_EMBEDDED_LINUX)
+        #if !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
         Host_Communication *host_comm;
+        #endif
         Misc_Device *m_misc_dev;
     #endif
 

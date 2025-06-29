@@ -20,6 +20,7 @@
 #include "common.h"
 #include "host_comm.h"
 #include "misc_device.h"
+#include"utils.h"
 
 #define BUFFER_COUNT_4_DTOF_SENSOR              6
 #define OUTPUT_WIDTH_4_DTOF_SENSOR              210
@@ -55,7 +56,7 @@ struct sensor_data
     enum frame_data_type ftype;
 };
 
-#if defined(RUN_ON_EMBEDDED_LINUX)
+#if !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
 Q_DECLARE_METATYPE(frame_buffer_param_t);
 #endif
 
@@ -70,7 +71,6 @@ public:
     int V4l2_initilize(void);
     int Start_streaming(void);
     int Capture_frame();
-    void V4l2_mode_switch(struct sensor_params params);
     void Stop_streaming(void);
     void V4l2_close(void);
     void Get_frame_size_4_curr_wkmode(int *in_width, int *in_height, int *out_width, int *out_height);
@@ -110,8 +110,11 @@ private:
     bool            roi_sram_rotate;
     char        sd_devnode_4_dtof[DEV_NODE_LEN];
     int         fd_4_dtof;
+#if !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
     Host_Communication *host_comm;
+#endif
     Misc_Device *p_misc_device;
+    Utils *utils;
 #endif
 
     int init();
@@ -126,7 +129,7 @@ private:
 
 signals:
 
-#if defined(RUN_ON_EMBEDDED_LINUX)
+#if !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
     void rx_new_frame(unsigned int frm_sequence, void *frm_buf, int frm_len, struct timeval frm_timestamp, enum frame_data_type ftype, int total_bytes_per_line, frame_buffer_param_t frmBufParam);
 #else
     void rx_new_frame(unsigned int frm_sequence, void *frm_buf, int frm_len, struct timeval frm_timestamp, enum frame_data_type ftype, int total_bytes_per_line);

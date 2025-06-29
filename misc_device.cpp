@@ -116,7 +116,7 @@ Misc_Device::Misc_Device()
 {
     p_eeprominfo = NULL_POINTER;
     mmap_buffer_base = NULL_POINTER;
-    mapped_eeprom_calib_data_buffer = NULL_POINTER;
+    mapped_eeprom_data_buffer = NULL_POINTER;
     mapped_script_sensor_settings = NULL_POINTER;
 #if (ADS6401_MODULE_SPOT == SWIFT_MODULE_TYPE)
     mapped_script_vcsel_opn7020_settings = NULL_POINTER;
@@ -127,8 +127,8 @@ Misc_Device::Misc_Device()
     vcsel_reg_setting_cnt = 0;
     loaded_roi_sram_size = 0;
     loaded_roi_sram_rotate = false;
-    // mmap_buffer_max_size should be a multiple of PAGE_SIZE (4096)
-    mmap_buffer_max_size = EEPROM_CALIB_DATA_MAX_SIZE
+    // mmap_buffer_max_size should be a multiple of PAGE_SIZE (4096, for Linux kernel memory management)
+    mmap_buffer_max_size = EEPROM_CHIP_CAPACITY_SIZE
         + REG_SETTING_BUF_MAX_SIZE_PER_SEG
         + REG_SETTING_BUF_MAX_SIZE_PER_SEG
         + (PER_CALIB_SRAM_ZONE_SIZE * ZONE_COUNT_PER_SRAM_GROUP * MAX_CALIB_SRAM_ROTATION_GROUP_CNT);
@@ -154,8 +154,8 @@ Misc_Device::Misc_Device()
             DBG_ERROR("Failed to mmap buffer, mmap_buffer_max_size: %d...", mmap_buffer_max_size);
             return;
         }
-        mapped_eeprom_calib_data_buffer = (u8* ) mmap_buffer_base;
-        mapped_script_sensor_settings = (u8*)((u8*)mmap_buffer_base + EEPROM_CALIB_DATA_MAX_SIZE);
+        mapped_eeprom_data_buffer = (u8* ) mmap_buffer_base;
+        mapped_script_sensor_settings = (u8*)(mapped_eeprom_data_buffer + EEPROM_CHIP_CAPACITY_SIZE);
 #if (ADS6401_MODULE_SPOT == SWIFT_MODULE_TYPE)
         mapped_script_vcsel_opn7020_settings = (u8* ) (mapped_script_sensor_settings + ROI_SRAM_BUF_MAX_SIZE);
         mapped_roi_sram_data = mapped_script_vcsel_opn7020_settings + REG_SETTING_BUF_MAX_SIZE_PER_SEG;
@@ -542,6 +542,25 @@ int Misc_Device::send_down_external_config(const UINT8 workMode, const uint32_t 
     return ret;
 }
 
+int Misc_Device::update_eeprom_data(UINT8 *buf, UINT32 offset, UINT32 length)
+{
+    struct adaps_dtof_update_eeprom_data update_data;
+
+    update_data.module_type = module_static_data.module_type;
+    update_data.eeprom_capacity = module_static_data.eeprom_capacity;
+    update_data.offset = offset;
+    update_data.length = length;
+    memcpy(mapped_eeprom_data_buffer + offset, buf, length);
+
+    sem_wait(&misc_semLock);
+    int ret = misc_ioctl(fd_4_misc, ADTOF_UPDATE_EEPROM_DATA, &update_data);
+    sem_post(&misc_semLock);
+    if (-1 == ret) {
+        errno_debug("ADTOF_UPDATE_EEPROM_DATA");
+    }
+    return ret;
+}
+
 int Misc_Device::write_device_register(register_op_data_t *reg)
 {
     sem_wait(&misc_semLock);
@@ -898,7 +917,7 @@ int Misc_Device::read_dtof_module_static_data(void)
     else {
         if (module_static_data.ready)
         {
-            p_eeprominfo = (swift_eeprom_data_t *) mapped_eeprom_calib_data_buffer;
+            p_eeprominfo = (swift_eeprom_data_t *) mapped_eeprom_data_buffer;
             if (false == Utils::is_env_var_true(ENV_VAR_SKIP_EEPROM_CRC_CHK))
             {
                 ret = check_crc32_4_dtof_calib_eeprom_param();
@@ -913,7 +932,7 @@ int Misc_Device::read_dtof_module_static_data(void)
 int Misc_Device::get_dtof_module_static_data(void **pp_module_static_data, void **pp_eeprom_data_buffer, uint32_t *eeprom_data_size)
 {
     *pp_module_static_data = (void *) &module_static_data;
-    *pp_eeprom_data_buffer = mapped_eeprom_calib_data_buffer;
+    *pp_eeprom_data_buffer = mapped_eeprom_data_buffer;
     *eeprom_data_size = sizeof(swift_eeprom_data_t);
 
     return 0;

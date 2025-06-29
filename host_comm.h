@@ -1,7 +1,7 @@
 #ifndef HOST_COMMUNICATION_H
 #define HOST_COMMUNICATION_H
 
-#if defined(RUN_ON_EMBEDDED_LINUX)
+#if defined(RUN_ON_EMBEDDED_LINUX) && !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
 
 #include <QObject>
 #include <QString>
@@ -60,6 +60,7 @@ private:
     UINT8 *loaded_walkerror_data;     // roisram_data backuped from CMD_HOST_SIDE_SET_SPOT_WALKERROR_DATA
     UINT32 loaded_spotoffset_data_size;
     UINT8 *loaded_spotoffset_data;
+    UINT32 eeprom_capacity;       // unit is byte
     Misc_Device *p_misc_device;
 
     unsigned long txRawdataFrameCnt;
@@ -80,6 +81,8 @@ private:
     void adaps_load_walkerror_data(CommandData_t* pCmdData, uint32_t rxDataLen);
     void adaps_load_spotoffset_data(CommandData_t* pCmdData, uint32_t rxDataLen);
     void adaps_set_walkerror_enable(CommandData_t* pCmdData, uint32_t rxDataLen);
+    void adaps_update_eeprom_data(CommandData_t* pCmdData, uint32_t rxDataLen);
+    void adaps_request_device_reboot(CommandData_t* pCmdData, uint32_t rxDataLen);
 
     void adaps_event_process(void* pRXData, uint32_t rxDataLen);
     void adaps_sender_disconnected(void);
@@ -96,7 +99,7 @@ private:
 
 };
 
-#endif // RUN_ON_EMBEDDED_LINUX
+#endif // defined(RUN_ON_EMBEDDED_LINUX) && !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
 
 #endif // HOST_COMMUNICATION_H
 

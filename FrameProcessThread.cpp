@@ -22,6 +22,7 @@ FrameProcessThread::FrameProcessThread()
     sns_param.save_frame_cnt = qApp->get_save_cnt();
     skip_frame_decode = Utils::is_env_var_true(ENV_VAR_SKIP_FRAME_DECODE);
     dump_spot_statistics_times = Utils::get_env_var_intvalue(ENV_VAR_DUMP_SPOT_STATISTICS_TIMES);
+    dump_ptm_frame_headinfo_times = Utils::get_env_var_intvalue(ENV_VAR_DUMP_PTM_FRAME_HEADINFO_TIMES);
 
 #if defined(RUN_ON_EMBEDDED_LINUX)
     if (SENSOR_TYPE_DTOF == sns_param.sensor_type)
@@ -60,7 +61,7 @@ FrameProcessThread::FrameProcessThread()
         v4l2->Get_frame_size_4_curr_wkmode(&sns_param.raw_width, &sns_param.raw_height, &sns_param.out_frm_width, &sns_param.out_frm_height);
     }
     qApp->register_v4l2_instance(v4l2);
-#if defined(RUN_ON_EMBEDDED_LINUX)
+#if !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
     qRegisterMetaType<frame_buffer_param_t>("frame_buffer_param_t");
     connect(v4l2, SIGNAL(rx_new_frame(unsigned int, void *, int, struct timeval, enum frame_data_type, int, frame_buffer_param_t)),
             this, SLOT(new_frame_handle(unsigned int, void *, int, struct timeval, enum frame_data_type, int, frame_buffer_param_t)), Qt::DirectConnection);
@@ -81,6 +82,7 @@ FrameProcessThread::~FrameProcessThread()
     if (NULL_POINTER != utils)
     {
         delete utils;
+        utils = NULL_POINTER;
     }
 
 #if defined(RUN_ON_EMBEDDED_LINUX)
@@ -101,6 +103,7 @@ FrameProcessThread::~FrameProcessThread()
     if (NULL_POINTER != adaps_dtof)
     {
         delete adaps_dtof;
+        adaps_dtof = NULL_POINTER;
     }
 #endif
 
@@ -119,6 +122,7 @@ FrameProcessThread::~FrameProcessThread()
     if (NULL_POINTER != v4l2)
     {
         delete v4l2;
+        v4l2 = NULL_POINTER;
     }
 }
 
@@ -213,7 +217,7 @@ bool FrameProcessThread::new_frame_handle(
     struct timeval frm_timestamp, 
     enum frame_data_type ftype, 
     int total_bytes_per_line
-#if defined(RUN_ON_EMBEDDED_LINUX)
+#if !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
     , frame_buffer_param_t frmBufParam
 #endif
     )
@@ -262,9 +266,10 @@ bool FrameProcessThread::new_frame_handle(
                     }
                 }
                 else {
-                    decodeRet = adaps_dtof->dtof_frame_decode((unsigned char *)frm_rawdata, buf_len, depth_buffer, sns_param.work_mode);
+                    decodeRet = adaps_dtof->dtof_frame_decode(frm_sequence, (unsigned char *)frm_rawdata, buf_len, depth_buffer, sns_param.work_mode);
                     if (0 == decodeRet)
                     {
+#if !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
                         Host_Communication *host_comm = Host_Communication::getInstance();
                         if (host_comm)
                         {
@@ -275,6 +280,7 @@ bool FrameProcessThread::new_frame_handle(
 
                             host_comm->report_frame_depth16_data(depth_buffer, depth_buffer_size, &frmBufParam);
                         }
+#endif
 
                         if (sns_param.save_frame_cnt > 0)
                         {
@@ -308,7 +314,10 @@ bool FrameProcessThread::new_frame_handle(
         case FDATA_TYPE_DTOF_RAW_DEPTH:
             if (adaps_dtof)
             {
-                //DBG_INFO("frm_sequence:%d, buf_len:%d, save_frame_cnt:%d", frm_sequence, buf_len, sns_param.save_frame_cnt);
+                if (frm_sequence < dump_ptm_frame_headinfo_times && 0 != dump_ptm_frame_headinfo_times)
+                {
+                    adaps_dtof->dump_frame_headinfo(frm_sequence, (unsigned char *)frm_rawdata, buf_len, sns_param.work_mode);
+                }
 
                 if (NULL_POINTER != expected_md5_string)
                 {
@@ -360,7 +369,7 @@ bool FrameProcessThread::new_frame_handle(
                     }
                 }
                 else {
-                    decodeRet = adaps_dtof->dtof_frame_decode((unsigned char *)frm_rawdata, buf_len, depth_buffer, sns_param.work_mode);
+                    decodeRet = adaps_dtof->dtof_frame_decode(frm_sequence, (unsigned char *)frm_rawdata, buf_len, depth_buffer, sns_param.work_mode);
 
 #if 0 // Don't check md5 for the decoded sub-frame buffer.
                     if (NULL_POINTER != expected_md5_string)
@@ -435,15 +444,35 @@ bool FrameProcessThread::new_frame_handle(
 #else
                     if (0 == decodeRet)
                     {
+#if !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
                         Host_Communication *host_comm = Host_Communication::getInstance();
+#endif
 
                         outputed_frame_cnt++;
+                        if (Utils::is_env_var_true(ENV_VAR_DEPTH16_FILE_REPLAY_ENABLE))
+                        {
+                            if (true == utils->is_replay_data_exist())
+                            {
+                                QByteArray buffer = utils->loadNextFileToBuffer();
+                                if (buffer.isEmpty()) {
+                                    DBG_ERROR("Fail to loadNextFileToBuffer, return empty, depth_buffer_size: %d!", depth_buffer_size);
+                                }
+                                else {
+                                    std::string stdStr = buffer.toStdString();
+                                    memcpy(depth_buffer, (void *) stdStr.c_str(), depth_buffer_size);
+                                    DBG_NOTICE("loadNextFileToBuffer() return success, depth_buffer_size: %d!", depth_buffer_size);
+                                    //depth_buffer = (void *) stdStr.c_str();
+                                }
+                            }
+                        }
+
                         if (frm_sequence < dump_spot_statistics_times && 0 != dump_spot_statistics_times)
                         {
                             adaps_dtof->dumpSpotCount(depth_buffer, sns_param.out_frm_width, sns_param.out_frm_height, frm_sequence, outputed_frame_cnt, decodeRet, __LINE__);
                         }
                         adaps_dtof->depthMapDump(depth_buffer, sns_param.out_frm_width, sns_param.out_frm_height, outputed_frame_cnt, __LINE__);
 
+#if !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
                         if (host_comm)
                         {
                             frmBufParam.data_type = FRAME_DECODED_DEPTH16;
@@ -453,6 +482,7 @@ bool FrameProcessThread::new_frame_handle(
 
                             host_comm->report_frame_depth16_data(depth_buffer, depth_buffer_size, &frmBufParam);
                         }
+#endif
 
 #if !defined(CONSOLE_APP_WITHOUT_GUI)
                         if (0 != watchSpot.x() && 0 != watchSpot.y())
@@ -503,10 +533,13 @@ bool FrameProcessThread::new_frame_handle(
 #endif
                     }
                     else {
-                        //DBG_ERROR("dtof_frame_decode() return %d , errno: %s (%d), save_frame_cnt: %d...", decodeRet, strerror(errno), errno, sns_param.save_frame_cnt);
+                        //DBG_ERROR("dtof_frame_decode() return %d , frm_sequence: %d, adaps_dtof: %p...", decodeRet, frm_sequence, adaps_dtof);
                     }
 #endif
                 }
+            }
+            else {
+                DBG_ERROR("adaps_dtof is NULL");
             }
             break;
 #endif
@@ -726,6 +759,7 @@ int FrameProcessThread::init(int index)
 #endif
         }
         rgb_buffer = (unsigned char *)malloc(sizeof(unsigned char)*sns_param.out_frm_width*sns_param.out_frm_height*RGB_IMAGE_CHANEL);
+        memset(rgb_buffer, 0, sizeof(unsigned char)*sns_param.out_frm_width*sns_param.out_frm_height*RGB_IMAGE_CHANEL);
         if (0 == ret_4_start_stream)
         {
             stopped = false;

@@ -1,3 +1,29 @@
+10. @2025/07/24 -- version update to 3.1.0_LM20250724A
+    redmine_2487: swift rk3568小型化下位机bug fix
+
+    patch set 1 - 5: add replay function for frame raw and depth16 files by the environment variables;
+    patch set 6: add build switch STANDALONE_APP_WITHOUT_HOST_COMMUNICATION;
+    patch set 7: add environment variable 'dump_walkerror_param_count' to dump walk error parameters;
+    patch set 8: bugfix: no depth16 data is reported to PC SpadisApp sometimes, reason is delete ADAPS_DTOF class 
+       but not set adaps_dtof = NULL_POINTER in ~FrameProcessThread();
+    patch set 9: add frame drop check with the environment variable 'frame_drop_check_enable';
+    patch set 10: move some struct variables from dtof_frame_decode() to class ADAPS_DTOF;
+    patch set 11: add dump_frame_headinfo() for debug;
+    patch set 13: add adapsSpodOffsetDataLength and walk_error_para_list_length for SetWrapperParam;
+    patch set 14: add 'utils = new Utils();' on V4L2() to avoid NULL point error for utils;
+    patch set 15: add update_eeprom_data function;
+    patch set 16: use loaded data if any, do not depend on is_roi_sram_rotate any more;
+    patch set 18: add CMD_HOST_SIDE_SET_DEVICE_REBOOT cmd, add device side fw version report to SpadisApp at CMD_HOST_SIDE_GET_MODULE_STATIC_DATA;
+    patch set 19: update SpadisQT version to 3.1.0;
+    patch set 20-21: improve exit(close and destructor) handle to try to avoid SpadisQT hang issue;
+
+    1. bugfix: 修复偶尔不上报depth16数据给上位机SpadisApp的问题
+    2. feature: 增加命令处理eeprom数据更新，和更新成功下位机重启
+    3. improve: 修改下位机的实现逻辑，如果SpadisApp有下载walkerror/roi sram/offset数据，会优先使用加载的数据，即使没有开启ROI轮询；
+    4. feature: 增加下位机4个软件部件（ads6401驱动,算法库,sender通讯库,SpadisQT应用）版本的上报给SpadisApp, 以便在PC端显示，以备用户查看
+    5. improve: 增强一些调试功能，丢帧监测，mipi raw data头打印等
+    6. improve: 优化关闭退出处理代码，尝试解决偶尔地SpadisQT进程挂死的问题；
+
 9. @2025/06/24 -- version update to 3.0.0_LM20250624A
     redmine_2487: swift rk3568小型化下位机bug fix
 

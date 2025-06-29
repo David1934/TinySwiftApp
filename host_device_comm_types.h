@@ -7,6 +7,7 @@
 #define ZONE_COUNT_PER_SRAM_GROUP               4
 #define MAX_CALIB_SRAM_ROTATION_GROUP_CNT       9
 #define SENSOR_SN_LENGTH                        12
+#define FW_VERSION_LENGTH                       12
 
 #if !defined(BOOLEAN)
 //#define BOOLEAN                                 unsigned char
@@ -34,6 +35,8 @@ typedef enum
     CMD_HOST_SIDE_SET_SPOT_WALKERROR_DATA           = 0x000A,
     CMD_HOST_SIDE_SET_SPOT_OFFSET_DATA              = 0x000B,
     CMD_HOST_SIDE_SET_WALKERROR_ENABLE              = 0x000C,
+    CMD_HOST_SIDE_SET_EEPROM_DATA                   = 0x000D,
+    CMD_HOST_SIDE_SET_DEVICE_REBOOT                 = 0x000E,
 
     // from device side to PC side
     CMD_DEVICE_SIDE_REPORT_MODULE_STATIC_DATA       = 0x1000, // Device side sends the static_module data as requested by the client's CMD_HOST_SIDE_GET_MODULE_STATIC_DATA command
@@ -58,7 +61,17 @@ typedef enum
     CMD_DEVICE_SIDE_ERROR_FAIL_TO_START_CAPTURE     = 0x0007,
     CMD_DEVICE_SIDE_ERROR_INVALID_WALKERROR_SIZE    = 0x0008,
     CMD_DEVICE_SIDE_ERROR_INVALID_SPOTOFFSET_SIZE   = 0x0009,
+    CMD_DEVICE_SIDE_ERROR_FAIL_TO_UPDATE_EEPROM     = 0x000A,
+    CMD_DEVICE_SIDE_ERROR_INVALID_EEPROM_UPD_PARAM  = 0x000B,
+    CMD_DEVICE_SIDE_ERROR_INVALID_REBOOT_REASON     = 0x000C,
 } error_code_t;
+
+typedef enum
+{
+    // from PC to device side
+    CMD_HOST_SIDE_REBOOT_NO_REASON                  = 0x0000, // Don't allow set to this one if PC side want to reboot device really.
+    CMD_HOST_SIDE_REBOOT_FOR_EEPROM_UPDATE_DONE     = 0x0001,
+} device_reboot_reason_t;
 
 #pragma pack(1)
 
@@ -128,6 +141,13 @@ typedef struct spot_offset_data_param
     CHAR                    offset_data[0];        // loaded offset data buffer, No this member if offset_data_size == 0
 } spot_offset_data_param_t;
 
+typedef struct eeprom_data_update_param
+{
+    UINT32                  offset;             //eeprom data start offset
+    UINT32                  length;                //eeprom data length
+    CHAR                    eeprom_data[0];        // eeprom data buffer to be updated, No this member if length == 0
+} eeprom_data_update_param_t;
+
 typedef struct capture_req_param
 {
     UINT8                   work_mode;              // refer to swift_workmode_t of adaps_types.h
@@ -188,6 +208,10 @@ typedef struct module_static_data_s
     UINT16                  otp_vbd;        // unit is 10mv, or the related V X 100
     UINT16                  otp_adc_vref;
     CHAR                    serialNumber[SENSOR_SN_LENGTH];  // read out from ads6401 e-fuse data
+    CHAR                    sensor_drv_version[FW_VERSION_LENGTH];
+    CHAR                    algo_lib_version[FW_VERSION_LENGTH];
+    CHAR                    sender_lib_version[FW_VERSION_LENGTH];
+    CHAR                    spadisQT_version[FW_VERSION_LENGTH];
     UINT32                  eeprom_data_size;        // unit is byte
     CHAR                    eeprom_data[0];
 } module_static_data_t;
@@ -198,6 +222,12 @@ typedef struct error_report_param_s
     UINT16                  responsed_cmd;
     CHAR                    err_msg[ERROR_MSG_MAX_LENGTH];
 } error_report_param_t;
+
+typedef struct device_reboot_request_s
+{
+    UINT8                   reboot_reason_code;
+    CHAR                    reboot_reason_msg[ERROR_MSG_MAX_LENGTH];
+} device_reboot_request_t;
 
 #ifndef register_op_data_type
 #define register_op_data_type

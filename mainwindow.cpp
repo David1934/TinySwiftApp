@@ -92,6 +92,7 @@ MainWindow::MainWindow()
 #if defined(RUN_ON_EMBEDDED_LINUX)
     m_misc_dev = new Misc_Device();
     qApp->register_misc_dev_instance(m_misc_dev);
+#if !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
     host_comm = Host_Communication::getInstance();
 
     connect(host_comm, &Host_Communication::start_capture, this, &MainWindow::on_startCapture);
@@ -99,6 +100,7 @@ MainWindow::MainWindow()
 
     qRegisterMetaType<capture_req_param_t*>("capture_req_param_t*");
     connect(host_comm, &Host_Communication::set_capture_options, this, &MainWindow::on_capture_options_set);
+#endif
 #endif
 
     startFrameProcessThread();
@@ -125,13 +127,18 @@ MainWindow::~MainWindow()
             //frame_process_thread->wait(WAIT_TIME_4_THREAD_EXIT); // unit is milliseconds
         }
         delete frame_process_thread;
+        frame_process_thread = NULL_POINTER;
     }
 
 #if !defined(CONSOLE_APP_WITHOUT_GUI)
     delete ui;
+    ui = NULL_POINTER;
 #endif
 #if defined(RUN_ON_EMBEDDED_LINUX)
+#if !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
     delete host_comm;
+    host_comm = NULL_POINTER;
+#endif
     delete m_misc_dev;
     m_misc_dev = NULL_POINTER;
     qApp->register_misc_dev_instance(m_misc_dev);
@@ -178,7 +185,7 @@ void MainWindow::startFrameProcessThread(void)
     ret = frame_process_thread->init(0);
     if (ret < 0)
     {
-#if defined(RUN_ON_EMBEDDED_LINUX)
+#if defined(RUN_ON_EMBEDDED_LINUX) && !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
         if (host_comm)
         {
             char err_msg[] = "Fail to frame_process_thread init\nPls check device side log for detailed info!";
@@ -259,6 +266,7 @@ void MainWindow::onThreadEnd(int stop_request_code)
         case STOP_REQUEST_QUIT:
 #if !defined(CONSOLE_APP_WITHOUT_GUI)
             this->close();
+            qApp->exit(0); // exit from the application
 #endif
             break;
 
@@ -340,7 +348,7 @@ void MainWindow::unixSignalHandler(int signal)
             {
                 frame_process_thread->stop(STOP_REQUEST_STOP);
             }
-#if defined(RUN_ON_EMBEDDED_LINUX)
+#if defined(RUN_ON_EMBEDDED_LINUX) && !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
             if (host_comm)
             {
                 char err_msg[] = "User Signal 1 recieved, some error happened\nPls check kernel log for detailed info!";
@@ -358,7 +366,7 @@ void MainWindow::unixSignalHandler(int signal)
             {
                 frame_process_thread->stop(STOP_REQUEST_STOP);
             }
-#if defined(RUN_ON_EMBEDDED_LINUX)
+#if defined(RUN_ON_EMBEDDED_LINUX) && !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
             if (host_comm)
             {
                 char err_msg[] = "User Signal 2 recieved, some error happened\nPls check kernel log for detailed info!";
@@ -369,7 +377,7 @@ void MainWindow::unixSignalHandler(int signal)
 
         case SIGINT:
             DBG_NOTICE("CTRL-C recieved, graceful close() is executed!");
-#if defined(RUN_ON_EMBEDDED_LINUX)
+#if defined(RUN_ON_EMBEDDED_LINUX) && !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
             if (host_comm)
             {
                 char err_msg[] = "The device-side application was terminated by the user.\nStream capture is aborted!";
@@ -383,7 +391,7 @@ void MainWindow::unixSignalHandler(int signal)
         case SIGBUS:
         case SIGTERM:
             DBG_ERROR("graceful close() is executed!");
-#if defined(RUN_ON_EMBEDDED_LINUX)
+#if defined(RUN_ON_EMBEDDED_LINUX) && !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
             if (host_comm)
             {
                 char err_msg[] = "some crytical error happened\nStream capture is aborted!";
@@ -411,7 +419,7 @@ void MainWindow::on_stopCapture()
     }
 }
 
-#if defined(RUN_ON_EMBEDDED_LINUX)
+#if defined(RUN_ON_EMBEDDED_LINUX) && !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
 void MainWindow::on_capture_options_set(capture_req_param_t* param)
 {
     switch (param->work_mode) 

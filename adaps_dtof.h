@@ -81,6 +81,14 @@ typedef bool(*PROCESSFRAME)(
       WrapperDepthOutput     outputs[]);
 #endif
 
+// Frame loss checking state structure
+typedef struct {
+    unsigned char last_id;      // ID of the last frame
+    int first_frame;            // Flag indicating first frame (initial state)
+    unsigned int total_frames;  // Total frame count
+    unsigned int dropped_frames;// Count of dropped frames
+} FrameLossChecker;
+
 class ADAPS_DTOF
 {
 
@@ -92,13 +100,14 @@ public:
     void GetDepth4watchSpot(const u16 depth16_buffer[], const int outImgWidth, u8 x, u8 y, u16 *distance, u8 *confidence);
     void ConvertDepthToColoredMap(const u16 depth16_buffer[], u8 depth_colored_map[], u8 depth_confidence_map[], const int outImgWidth, const int outImgHeight);
     void ConvertGreyscaleToColoredMap(u16 depth16_buffer[], u8 depth_colored_map[], int outImgWidth, int outImgHeight);
-    int dtof_frame_decode(unsigned char *frm_rawdata, int buf_len, u16 depth16_buffer[], enum sensor_workmode swk);
+    int dtof_frame_decode(unsigned int frm_sequence, unsigned char *frm_rawdata, int buf_len, u16 depth16_buffer[], enum sensor_workmode swk);
     void adaps_dtof_release();
 #if 0 //defined(ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT)
     int DepthBufferMerge(u16 merged_depth16_buffer[], const u16 to_merge_depth16_buffer[], int outImgWidth, int outImgHeight);
 #endif
     int dumpSpotCount(const u16 depth16_buffer[], const int outImgWidth, const int outImgHeight, const uint32_t frm_sequence, const uint32_t out_frame_cnt, int decodeRet, int callline);
     int depthMapDump(const u16 depth16_buffer[], const int outImgWidth, const int outImgHeight, const uint32_t out_frame_cnt, int callline);
+    int dump_frame_headinfo(unsigned int frm_sequence, unsigned char *frm_rawdata, int frm_rawdata_size, enum sensor_workmode swk);
 
 private:
     Misc_Device *p_misc_device;
@@ -125,13 +134,21 @@ private:
 #endif
     bool m_conversionLibInited;
     uint32_t m_decoded_frame_cnt;
+    uint32_t m_decoded_success_frame_cnt;
+    uint32_t dump_walkerror_param_cnt;
+    WrapperDepthOutput depthOutputs[MAX_DEPTH_OUTPUT_FORMATS];
+    WrapperDepthInput depthInput;
+    WrapperDepthCamConfig depthConfig;
+    FrameLossChecker checker;
+    void* loaded_roi_sram_data;
+    uint32_t loaded_roi_sram_size;
 
 #if 0 //defined(ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT)
     bool trace_calib_sram_switch;
 #endif
     u8 frameCoordinatesMap[OUTPUT_HEIGHT_4_DTOF_SENSOR][OUTPUT_WIDTH_4_DTOF_SENSOR];
 
-    int FillSetWrapperParamFromEepromInfo(uint8_t* pEEPROMData, SetWrapperParam* setparam);
+    int FillSetWrapperParamFromEepromInfo(uint8_t* pEEPROMData, SetWrapperParam* setparam, WrapperDepthInitInputParams* initInputParams);
     int initParams(WrapperDepthInitInputParams* initInputParams, WrapperDepthInitOutputParams* initOutputParams);
     void PrepareFrameParam(WrapperDepthCamConfig *wrapper_depth_map_config);
     u8 normalizeGreyscale(u16 range);
@@ -139,6 +156,9 @@ private:
     int hexdump_param(void* param_ptr, int param_size, const char *param_name, int callline);
     int roiCoordinatesDumpCheck(uint8_t* roi_sram_data, int outImgWidth, int outImgHeight, int roisram_group_index);
     int multipleRoiCoordinatesDumpCheck(uint8_t* multiple_roi_sram_data, u16 length, int outImgWidth, int outImgHeight);
+    void init_frame_checker(FrameLossChecker *checker);
+    int check_frame_loss(FrameLossChecker *checker, const unsigned char *buffer, size_t buffer_size);
+    float get_frame_loss_rate(const FrameLossChecker *checker);
 };
 
 #endif // ADAPS_DTOF_H
