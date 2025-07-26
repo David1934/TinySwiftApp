@@ -18,13 +18,25 @@
     <property name="geometry">
      <rect>
       <x>0</x>
-      <y>750</y>
-      <width>1520</width>
-      <height>250</height>
+      <y>680</y>
+      <width>971</width>
+      <height>261</height>
      </rect>
     </property>
+    <property name="font">
+     <font>
+      <pointsize>25</pointsize>
+      <weight>75</weight>
+      <bold>true</bold>
+      <underline>true</underline>
+      <strikeout>false</strikeout>
+     </font>
+    </property>
     <property name="title">
-     <string>real time status</string>
+     <string>REAL TIME STATUS</string>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignCenter</set>
     </property>
     <property name="flat">
      <bool>false</bool>
@@ -32,37 +44,41 @@
     <widget class="QLabel" name="cur_expected_vop_label">
      <property name="geometry">
       <rect>
-       <x>535</x>
-       <y>60</y>
+       <x>20</x>
+       <y>170</y>
        <width>338</width>
        <height>35</height>
       </rect>
      </property>
      <property name="font">
       <font>
-       <pointsize>22</pointsize>
+       <pointsize>20</pointsize>
        <weight>75</weight>
        <bold>true</bold>
+       <underline>false</underline>
+       <strikeout>false</strikeout>
       </font>
      </property>
      <property name="text">
-      <string>Cur expected Vop:</string>
+      <string>Cur expected vop:</string>
      </property>
     </widget>
     <widget class="QLabel" name="framerate_label">
      <property name="geometry">
       <rect>
-       <x>29</x>
-       <y>140</y>
+       <x>20</x>
+       <y>90</y>
        <width>320</width>
        <height>35</height>
       </rect>
      </property>
      <property name="font">
       <font>
-       <pointsize>22</pointsize>
+       <pointsize>20</pointsize>
        <weight>75</weight>
        <bold>true</bold>
+       <underline>false</underline>
+       <strikeout>false</strikeout>
       </font>
      </property>
      <property name="text">
@@ -72,15 +88,19 @@
     <widget class="QLabel" name="cur_module_type_value">
      <property name="geometry">
       <rect>
-       <x>350</x>
-       <y>20</y>
-       <width>170</width>
+       <x>830</x>
+       <y>50</y>
+       <width>140</width>
        <height>35</height>
       </rect>
      </property>
      <property name="font">
       <font>
-       <pointsize>22</pointsize>
+       <pointsize>18</pointsize>
+       <weight>50</weight>
+       <bold>false</bold>
+       <underline>false</underline>
+       <strikeout>false</strikeout>
       </font>
      </property>
      <property name="text">
@@ -90,15 +110,19 @@
     <widget class="QLabel" name="framerate_value">
      <property name="geometry">
       <rect>
-       <x>350</x>
-       <y>140</y>
-       <width>200</width>
+       <x>340</x>
+       <y>90</y>
+       <width>170</width>
        <height>35</height>
       </rect>
      </property>
      <property name="font">
       <font>
-       <pointsize>22</pointsize>
+       <pointsize>18</pointsize>
+       <weight>50</weight>
+       <bold>false</bold>
+       <underline>false</underline>
+       <strikeout>false</strikeout>
       </font>
      </property>
      <property name="text">
@@ -108,15 +132,19 @@
     <widget class="QLabel" name="cur_exp_pvdd_value">
      <property name="geometry">
       <rect>
-       <x>873</x>
-       <y>100</y>
+       <x>340</x>
+       <y>210</y>
        <width>135</width>
        <height>35</height>
       </rect>
      </property>
      <property name="font">
       <font>
-       <pointsize>22</pointsize>
+       <pointsize>18</pointsize>
+       <weight>50</weight>
+       <bold>false</bold>
+       <underline>false</underline>
+       <strikeout>false</strikeout>
       </font>
      </property>
      <property name="text">
@@ -126,17 +154,19 @@
     <widget class="QLabel" name="strmTimeLabel">
      <property name="geometry">
       <rect>
-       <x>29</x>
-       <y>100</y>
+       <x>20</x>
+       <y>50</y>
        <width>320</width>
        <height>35</height>
       </rect>
      </property>
      <property name="font">
       <font>
-       <pointsize>22</pointsize>
+       <pointsize>20</pointsize>
        <weight>75</weight>
        <bold>true</bold>
+       <underline>false</underline>
+       <strikeout>false</strikeout>
       </font>
      </property>
      <property name="text">
@@ -146,15 +176,19 @@
     <widget class="QLabel" name="cur_measurement_value">
      <property name="geometry">
       <rect>
-       <x>1365</x>
-       <y>60</y>
-       <width>135</width>
+       <x>830</x>
+       <y>170</y>
+       <width>140</width>
        <height>35</height>
       </rect>
      </property>
      <property name="font">
       <font>
-       <pointsize>22</pointsize>
+       <pointsize>18</pointsize>
+       <weight>50</weight>
+       <bold>false</bold>
+       <underline>false</underline>
+       <strikeout>false</strikeout>
       </font>
      </property>
      <property name="text">
@@ -164,15 +198,19 @@
     <widget class="QLabel" name="cur_temperature_value">
      <property name="geometry">
       <rect>
-       <x>873</x>
-       <y>20</y>
+       <x>340</x>
+       <y>130</y>
        <width>135</width>
        <height>35</height>
       </rect>
      </property>
      <property name="font">
       <font>
-       <pointsize>22</pointsize>
+       <pointsize>18</pointsize>
+       <weight>50</weight>
+       <bold>false</bold>
+       <underline>false</underline>
+       <strikeout>false</strikeout>
       </font>
      </property>
      <property name="text">
@@ -182,15 +220,19 @@
     <widget class="QLabel" name="cur_work_mode_value">
      <property name="geometry">
       <rect>
-       <x>350</x>
-       <y>60</y>
-       <width>170</width>
+       <x>830</x>
+       <y>90</y>
+       <width>140</width>
        <height>35</height>
       </rect>
      </property>
      <property name="font">
       <font>
-       <pointsize>22</pointsize>
+       <pointsize>18</pointsize>
+       <weight>50</weight>
+       <bold>false</bold>
+       <underline>false</underline>
+       <strikeout>false</strikeout>
       </font>
      </property>
      <property name="text">
@@ -200,17 +242,19 @@
     <widget class="QLabel" name="cur_module_type_label">
      <property name="geometry">
       <rect>
-       <x>29</x>
-       <y>20</y>
+       <x>510</x>
+       <y>50</y>
        <width>320</width>
        <height>35</height>
       </rect>
      </property>
      <property name="font">
       <font>
-       <pointsize>22</pointsize>
+       <pointsize>20</pointsize>
        <weight>75</weight>
        <bold>true</bold>
+       <underline>false</underline>
+       <strikeout>false</strikeout>
       </font>
      </property>
      <property name="text">
@@ -220,35 +264,41 @@
     <widget class="QLabel" name="pvddLabel">
      <property name="geometry">
       <rect>
-       <x>535</x>
-       <y>100</y>
+       <x>20</x>
+       <y>210</y>
        <width>338</width>
        <height>35</height>
       </rect>
      </property>
      <property name="font">
       <font>
-       <pointsize>22</pointsize>
+       <pointsize>20</pointsize>
        <weight>75</weight>
        <bold>true</bold>
+       <underline>false</underline>
+       <strikeout>false</strikeout>
       </font>
      </property>
      <property name="text">
-      <string>Cur expected PVDD:</string>
+      <string>Cur expected pvdd:</string>
      </property>
     </widget>
     <widget class="QLabel" name="cur_environment_value">
      <property name="geometry">
       <rect>
-       <x>1365</x>
-       <y>20</y>
-       <width>135</width>
+       <x>830</x>
+       <y>130</y>
+       <width>140</width>
        <height>35</height>
       </rect>
      </property>
      <property name="font">
       <font>
-       <pointsize>22</pointsize>
+       <pointsize>18</pointsize>
+       <weight>50</weight>
+       <bold>false</bold>
+       <underline>false</underline>
+       <strikeout>false</strikeout>
       </font>
      </property>
      <property name="text">
@@ -258,15 +308,19 @@
     <widget class="QLabel" name="cur_exp_vop_value">
      <property name="geometry">
       <rect>
-       <x>873</x>
-       <y>60</y>
+       <x>340</x>
+       <y>170</y>
        <width>135</width>
        <height>35</height>
       </rect>
      </property>
      <property name="font">
       <font>
-       <pointsize>22</pointsize>
+       <pointsize>18</pointsize>
+       <weight>50</weight>
+       <bold>false</bold>
+       <underline>false</underline>
+       <strikeout>false</strikeout>
       </font>
      </property>
      <property name="text">
@@ -276,17 +330,19 @@
     <widget class="QLabel" name="cur_measurement_label">
      <property name="geometry">
       <rect>
-       <x>1025</x>
-       <y>60</y>
+       <x>510</x>
+       <y>170</y>
        <width>338</width>
        <height>35</height>
       </rect>
      </property>
      <property name="font">
       <font>
-       <pointsize>22</pointsize>
+       <pointsize>20</pointsize>
        <weight>75</weight>
        <bold>true</bold>
+       <underline>false</underline>
+       <strikeout>false</strikeout>
       </font>
      </property>
      <property name="text">
@@ -296,17 +352,19 @@
     <widget class="QLabel" name="strmTime_value">
      <property name="geometry">
       <rect>
-       <x>350</x>
-       <y>100</y>
+       <x>340</x>
+       <y>50</y>
        <width>170</width>
        <height>35</height>
       </rect>
      </property>
      <property name="font">
       <font>
-       <pointsize>22</pointsize>
+       <pointsize>18</pointsize>
        <weight>50</weight>
        <bold>false</bold>
+       <underline>false</underline>
+       <strikeout>false</strikeout>
       </font>
      </property>
      <property name="text">
@@ -316,57 +374,63 @@
     <widget class="QLabel" name="cur_work_mode_label">
      <property name="geometry">
       <rect>
-       <x>29</x>
-       <y>60</y>
+       <x>510</x>
+       <y>90</y>
        <width>320</width>
        <height>35</height>
       </rect>
      </property>
      <property name="font">
       <font>
-       <pointsize>22</pointsize>
+       <pointsize>20</pointsize>
        <weight>75</weight>
        <bold>true</bold>
+       <underline>false</underline>
+       <strikeout>false</strikeout>
       </font>
      </property>
      <property name="text">
       <string>Cur work mode:</string>
      </property>
     </widget>
-    <widget class="QLabel" name="AutoTestTimes_label">
+    <widget class="QLabel" name="cur_powermode_label">
      <property name="geometry">
       <rect>
-       <x>1025</x>
-       <y>100</y>
+       <x>510</x>
+       <y>210</y>
        <width>338</width>
        <height>35</height>
       </rect>
      </property>
      <property name="font">
       <font>
-       <pointsize>22</pointsize>
+       <pointsize>20</pointsize>
        <weight>75</weight>
        <bold>true</bold>
+       <underline>false</underline>
+       <strikeout>false</strikeout>
       </font>
      </property>
      <property name="text">
-      <string>Auto test times:</string>
+      <string>Cur power mode:</string>
      </property>
     </widget>
     <widget class="QLabel" name="cur_temperature_label">
      <property name="geometry">
       <rect>
-       <x>535</x>
-       <y>20</y>
+       <x>20</x>
+       <y>130</y>
        <width>338</width>
        <height>35</height>
       </rect>
      </property>
      <property name="font">
       <font>
-       <pointsize>22</pointsize>
+       <pointsize>20</pointsize>
        <weight>75</weight>
        <bold>true</bold>
+       <underline>false</underline>
+       <strikeout>false</strikeout>
       </font>
      </property>
      <property name="text">
@@ -376,47 +440,74 @@
     <widget class="QLabel" name="cur_environment_label">
      <property name="geometry">
       <rect>
-       <x>1025</x>
-       <y>20</y>
+       <x>510</x>
+       <y>130</y>
        <width>338</width>
        <height>35</height>
       </rect>
      </property>
      <property name="font">
       <font>
-       <pointsize>22</pointsize>
+       <pointsize>20</pointsize>
        <weight>75</weight>
        <bold>true</bold>
+       <underline>false</underline>
+       <strikeout>false</strikeout>
       </font>
      </property>
      <property name="text">
       <string>Cur environment:</string>
      </property>
     </widget>
-    <widget class="QLabel" name="AutoTestTimes_value">
+    <widget class="QLabel" name="cur_powermode_value">
      <property name="geometry">
       <rect>
-       <x>1365</x>
-       <y>100</y>
-       <width>135</width>
+       <x>830</x>
+       <y>210</y>
+       <width>140</width>
        <height>35</height>
       </rect>
      </property>
      <property name="font">
       <font>
-       <pointsize>22</pointsize>
+       <pointsize>18</pointsize>
+       <weight>50</weight>
+       <bold>false</bold>
+       <underline>false</underline>
+       <strikeout>false</strikeout>
       </font>
      </property>
      <property name="text">
-      <string>0/0</string>
+      <string>NA</string>
+     </property>
+    </widget>
+    <widget class="QLCDNumber" name="rtcTime">
+     <property name="geometry">
+      <rect>
+       <x>720</x>
+       <y>0</y>
+       <width>240</width>
+       <height>50</height>
+      </rect>
+     </property>
+     <property name="minimumSize">
+      <size>
+       <width>240</width>
+       <height>50</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>19</pointsize>
+      </font>
      </property>
     </widget>
    </widget>
-   <widget class="QLabel" name="mainlabel">
+   <widget class="QLabel" name="depth_view">
     <property name="geometry">
      <rect>
-      <x>50</x>
-      <y>60</y>
+      <x>60</x>
+      <y>30</y>
       <width>840</width>
       <height>640</height>
      </rect>
@@ -436,10 +527,10 @@
    <widget class="QWidget" name="verticalLayoutWidget">
     <property name="geometry">
      <rect>
-      <x>930</x>
-      <y>1</y>
-      <width>570</width>
-      <height>750</height>
+      <x>980</x>
+      <y>0</y>
+      <width>531</width>
+      <height>871</height>
      </rect>
     </property>
     <layout class="QVBoxLayout" name="verticalLayout">
@@ -470,7 +561,7 @@
          <widget class="QRadioButton" name="radioButton_fhr">
           <property name="font">
            <font>
-            <pointsize>16</pointsize>
+            <pointsize>11</pointsize>
            </font>
           </property>
           <property name="text">
@@ -485,7 +576,7 @@
          <widget class="QRadioButton" name="radioButton_pcm">
           <property name="font">
            <font>
-            <pointsize>16</pointsize>
+            <pointsize>11</pointsize>
            </font>
           </property>
           <property name="text">
@@ -497,7 +588,7 @@
          <widget class="QRadioButton" name="radioButton_phr">
           <property name="font">
            <font>
-            <pointsize>16</pointsize>
+            <pointsize>11</pointsize>
            </font>
           </property>
           <property name="text">
@@ -523,7 +614,7 @@
          <widget class="QRadioButton" name="radioButton_yuyv">
           <property name="font">
            <font>
-            <pointsize>16</pointsize>
+            <pointsize>11</pointsize>
            </font>
           </property>
           <property name="text">
@@ -538,7 +629,7 @@
          <widget class="QRadioButton" name="radioButton_nv12">
           <property name="font">
            <font>
-            <pointsize>16</pointsize>
+            <pointsize>11</pointsize>
            </font>
           </property>
           <property name="text">
@@ -564,7 +655,7 @@
          <widget class="QRadioButton" name="radioButton_indoor">
           <property name="font">
            <font>
-            <pointsize>16</pointsize>
+            <pointsize>11</pointsize>
            </font>
           </property>
           <property name="text">
@@ -579,7 +670,7 @@
          <widget class="QRadioButton" name="radioButton_outdoor">
           <property name="font">
            <font>
-            <pointsize>16</pointsize>
+            <pointsize>11</pointsize>
            </font>
           </property>
           <property name="text">
@@ -605,7 +696,7 @@
          <widget class="QRadioButton" name="radioButton_15fps">
           <property name="font">
            <font>
-            <pointsize>16</pointsize>
+            <pointsize>11</pointsize>
            </font>
           </property>
           <property name="text">
@@ -617,7 +708,7 @@
          <widget class="QRadioButton" name="radioButton_25fps">
           <property name="font">
            <font>
-            <pointsize>16</pointsize>
+            <pointsize>11</pointsize>
            </font>
           </property>
           <property name="text">
@@ -629,7 +720,7 @@
          <widget class="QRadioButton" name="radioButton_30fps">
           <property name="font">
            <font>
-            <pointsize>16</pointsize>
+            <pointsize>11</pointsize>
            </font>
           </property>
           <property name="text">
@@ -644,7 +735,7 @@
          <widget class="QRadioButton" name="radioButton_60fps">
           <property name="font">
            <font>
-            <pointsize>16</pointsize>
+            <pointsize>11</pointsize>
            </font>
           </property>
           <property name="text">
@@ -653,6 +744,80 @@
          </widget>
         </item>
        </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="groupBox_dtof_powermode">
+       <property name="font">
+        <font>
+         <pointsize>12</pointsize>
+        </font>
+       </property>
+       <property name="title">
+        <string>Power mode for dToF</string>
+       </property>
+       <layout class="QHBoxLayout" name="horizontalLayout_dtof_powermode">
+        <item>
+         <widget class="QRadioButton" name="radioButton_div1">
+          <property name="font">
+           <font>
+            <pointsize>11</pointsize>
+           </font>
+          </property>
+          <property name="text">
+           <string>Div1</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="radioButton_div2">
+          <property name="font">
+           <font>
+            <pointsize>11</pointsize>
+           </font>
+          </property>
+          <property name="text">
+           <string>Div2</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="radioButton_div3">
+          <property name="font">
+           <font>
+            <pointsize>11</pointsize>
+           </font>
+          </property>
+          <property name="text">
+           <string>Div3</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="confidence_view">
+       <property name="minimumSize">
+        <size>
+         <width>420</width>
+         <height>320</height>
+        </size>
+       </property>
+       <property name="font">
+        <font>
+         <pointsize>28</pointsize>
+        </font>
+       </property>
+       <property name="text">
+        <string>Confidence Bitmap is NA</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
+       </property>
       </widget>
      </item>
      <item>
@@ -694,57 +859,44 @@
        </layout>
       </widget>
      </item>
-     <item>
-      <widget class="QLabel" name="confidence_bitmap">
-       <property name="minimumSize">
-        <size>
-         <width>420</width>
-         <height>320</height>
-        </size>
-       </property>
-       <property name="font">
-        <font>
-         <pointsize>28</pointsize>
-        </font>
-       </property>
-       <property name="text">
-        <string>Confidence Bitmap is NA</string>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignCenter</set>
-       </property>
-      </widget>
-     </item>
     </layout>
+    <zorder>groupBox_push_button</zorder>
+    <zorder>groupBox_dtof_powermode</zorder>
+    <zorder>groupBox_dtof_wkmode</zorder>
+    <zorder>groupBox_rgb_wkmode</zorder>
+    <zorder>groupBox_dtof_environment</zorder>
+    <zorder>groupBox_dtof_framerate</zorder>
+    <zorder>confidence_view</zorder>
    </widget>
-   <widget class="QLCDNumber" name="rtcTime">
+   <widget class="QLabel" name="AutoTestTimes_value">
     <property name="geometry">
      <rect>
-      <x>660</x>
-      <y>0</y>
-      <width>240</width>
-      <height>50</height>
+      <x>1380</x>
+      <y>890</y>
+      <width>135</width>
+      <height>35</height>
      </rect>
-    </property>
-    <property name="minimumSize">
-     <size>
-      <width>240</width>
-      <height>50</height>
-     </size>
     </property>
     <property name="font">
      <font>
-      <pointsize>19</pointsize>
+      <pointsize>22</pointsize>
+      <weight>50</weight>
+      <bold>false</bold>
+      <underline>false</underline>
+      <strikeout>false</strikeout>
      </font>
     </property>
+    <property name="text">
+     <string>0/0</string>
+    </property>
    </widget>
-   <widget class="QLabel" name="spot_depth">
+   <widget class="QLabel" name="AutoTestTimes_label">
     <property name="geometry">
      <rect>
-      <x>350</x>
-      <y>710</y>
-      <width>568</width>
-      <height>50</height>
+      <x>1040</x>
+      <y>890</y>
+      <width>338</width>
+      <height>35</height>
      </rect>
     </property>
     <property name="font">
@@ -752,13 +904,12 @@
       <pointsize>22</pointsize>
       <weight>75</weight>
       <bold>true</bold>
+      <underline>false</underline>
+      <strikeout>false</strikeout>
      </font>
     </property>
     <property name="text">
-     <string>P(xxx,yyy):YYYY mm (High)</string>
-    </property>
-    <property name="alignment">
-     <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+     <string>Auto test times:</string>
     </property>
    </widget>
   </widget>

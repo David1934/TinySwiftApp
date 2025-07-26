@@ -21,10 +21,10 @@ ADAPS_DTOF::ADAPS_DTOF(struct sensor_params params)
     m_conversionLibInited = false;
     m_decoded_frame_cnt = 0;
     m_decoded_success_frame_cnt = 0;
+    copied_roisram_4_anchorX = NULL_POINTER;
 #if 0 //defined(ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT)
     trace_calib_sram_switch = Utils::is_env_var_true(ENV_VAR_TRACE_ROI_SRAM_SWITCH);
 #endif
-    dump_walkerror_param_cnt = Utils::get_env_var_intvalue(ENV_VAR_DUMP_WALKERROR_PARAM_COUNT);
     p_misc_device = qApp->get_misc_dev_instance();
     init_frame_checker(&checker);
 }
@@ -35,11 +35,13 @@ ADAPS_DTOF::~ADAPS_DTOF()
     DBG_NOTICE("------decode statistics------work_mode: %d, decoded_frame_cnt: %d, m_decoded_success_frame_cnt: %d---\n",
         set_param.work_mode, m_decoded_frame_cnt, m_decoded_success_frame_cnt);
     p_misc_device = NULL_POINTER;
+    free(copied_roisram_4_anchorX);
+    copied_roisram_4_anchorX = NULL_POINTER;
 }
 
 int ADAPS_DTOF::dump_frame_headinfo(unsigned int frm_sequence, unsigned char *frm_rawdata, int frm_rawdata_size, enum sensor_workmode swk)
 {
-    if (frm_rawdata == NULL || frm_rawdata_size < 3) {
+    if (frm_rawdata == NULL_POINTER || frm_rawdata_size < 3) {
         return -1;  // Invalid input
     }
 
@@ -280,13 +282,42 @@ int ADAPS_DTOF::roiCoordinatesDumpCheck(uint8_t* roi_sram_data, int outImgWidth,
     return 0;
 }
 
+void ADAPS_DTOF::roisram_anchor_preproccess(uint8_t *roisram_buf, uint32_t roisram_buf_size)
+{
+    // Calculate the top-left corner of the spot.
+    // if spod size is 8 * 3, then rowOffset = 1, colOffset = 5.
+    u8 rowOffset;
+    u8 colOffset;
+    uint32_t i;
+
+    qApp->get_anchorOffset(&rowOffset, &colOffset);
+    DBG_NOTICE("---anchorX = %d, anchorY = %d---\n", colOffset, rowOffset);
+
+    if ((0 == rowOffset) && (0 == colOffset))
+        return; // nothing to do
+
+    for (i = 0; i < roisram_buf_size;) {
+      if (roisram_buf[i] > rowOffset) {
+        roisram_buf[i] -= rowOffset;
+      }
+      if (roisram_buf[i + 1] > colOffset) {
+        roisram_buf[i + 1] -= colOffset;
+      }
+      i += 2;
+    }
+}
+
 int ADAPS_DTOF::FillSetWrapperParamFromEepromInfo(uint8_t* pEEPROMData, SetWrapperParam* setparam, WrapperDepthInitInputParams* initInputParams)
 {
     int result = 0;
     Utils *utils;
-    int dump_roi_sram_size = 0;
+    int dump_roi_sram_size = Utils::get_env_var_intvalue(ENV_VAR_DUMP_ROI_SRAM_SIZE);
+    uint32_t dump_offsetdata_param_cnt = Utils::get_env_var_intvalue(ENV_VAR_DUMP_OFFSETDATA_PARAM_COUNT);
+    uint32_t dump_walkerror_param_cnt = Utils::get_env_var_intvalue(ENV_VAR_DUMP_WALKERROR_PARAM_COUNT);
 #if !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
     Host_Communication *host_comm = Host_Communication::getInstance();
+    reference_distance_data_param_t* pRefDistanceParam = NULL_POINTER;
+    lens_intrinsic_data_param_t* pLensIntrinsicParam = NULL_POINTER;
 #endif
 
     if (NULL_POINTER == pEEPROMData) {
@@ -294,19 +325,24 @@ int ADAPS_DTOF::FillSetWrapperParamFromEepromInfo(uint8_t* pEEPROMData, SetWrapp
         return -1;
     }
 
-#if 0
-    DBG_NOTICE("sizeof(swift_eeprom_data_t)=%ld", sizeof(swift_eeprom_data_t));
-    DBG_NOTICE("AD4001_EEPROM_VERSION_INFO_OFFSET: %d\n", AD4001_EEPROM_VERSION_INFO_OFFSET);
-    DBG_NOTICE("AD4001_EEPROM_MODULE_INFO_OFFSET: %d\n", AD4001_EEPROM_MODULE_INFO_OFFSET);
-    DBG_NOTICE("AD4001_EEPROM_INTRINSIC_OFFSET: %d\n", AD4001_EEPROM_INTRINSIC_OFFSET);
-    DBG_NOTICE("AD4001_EEPROM_INTRINSIC_SIZE: %d\n", AD4001_EEPROM_INTRINSIC_SIZE);
+    if (true == qApp->is_capture_req_from_host() && NULL_POINTER != host_comm)
+    {
+        pLensIntrinsicParam = (lens_intrinsic_data_param_t*) host_comm->get_loaded_lens_intrinsic_data();
+    }
 
-    utils = new Utils();
-    utils->hexdump((unsigned char *) pRawData, 180, "1st 180 bytes of EEPROM");
-    delete utils;
-#endif
+    if (NULL_POINTER != pLensIntrinsicParam) {
+        setparam->adapsLensIntrinsicData  = pLensIntrinsicParam->intrinsic;
+    }
+    else {
+        if (MODULE_TYPE_FLOOD != qApp->get_module_type())
+        {
+            setparam->adapsLensIntrinsicData  = reinterpret_cast<float*>(pEEPROMData + ADS6401_EEPROM_INTRINSIC_OFFSET);
+        }
+        else {
+            setparam->adapsLensIntrinsicData  = reinterpret_cast<float*>(pEEPROMData + FLOOD_EEPROM_INTRINSIC_OFFSET);
+        }
+    }
 
-    setparam->adapsLensIntrinsicData  = reinterpret_cast<float*>(pEEPROMData + AD4001_EEPROM_INTRINSIC_OFFSET);
     if (Utils::is_env_var_true(ENV_VAR_DUMP_LENS_INTRINSIC))
     {
         for (int i = 0; i < 9; i++)
@@ -320,8 +356,6 @@ int ADAPS_DTOF::FillSetWrapperParamFromEepromInfo(uint8_t* pEEPROMData, SetWrapp
     if (0 != loaded_roi_sram_size && NULL != loaded_roi_sram_data)
     {
         setparam->spot_cali_data = (uint8_t* ) loaded_roi_sram_data;
-        //initInputParams->pRawData = (uint8_t*) p_eeprominfo;
-        //initInputParams->rawDataSize = sizeof(swift_eeprom_data_t);
         initInputParams->pRawData = set_param.spot_cali_data;
         initInputParams->rawDataSize = loaded_roi_sram_size;
 
@@ -331,64 +365,146 @@ int ADAPS_DTOF::FillSetWrapperParamFromEepromInfo(uint8_t* pEEPROMData, SetWrapp
         }
     }
     else {
-        setparam->spot_cali_data          = pEEPROMData + AD4001_EEPROM_ROISRAM_DATA_OFFSET;
-        //initInputParams->pRawData = (uint8_t*) p_eeprominfo;
-        //initInputParams->rawDataSize = sizeof(swift_eeprom_data_t);
-        initInputParams->pRawData = set_param.spot_cali_data;
-        initInputParams->rawDataSize = AD4001_EEPROM_ROISRAM_DATA_SIZE;
+        if (MODULE_TYPE_FLOOD != qApp->get_module_type())
+        {
+            if (NULL_POINTER == copied_roisram_4_anchorX)
+            {
+                copied_roisram_4_anchorX = (u8 *) malloc(ADS6401_EEPROM_ROISRAM_DATA_SIZE);
+                if (NULL_POINTER == copied_roisram_4_anchorX) {
+                    DBG_ERROR("Fail to malloc for copied_roisram_4_anchorX.\n");
+                    return -1;
+                }
+            }
+
+            // create another buffer copy for anchorX operation to keep the original mmaped ROI sram data not be changed.
+            memcpy(copied_roisram_4_anchorX, pEEPROMData + ADS6401_EEPROM_ROISRAM_DATA_OFFSET, ADS6401_EEPROM_ROISRAM_DATA_SIZE);
+            setparam->spot_cali_data = copied_roisram_4_anchorX;
+            //initInputParams->pRawData = (uint8_t*) p_eeprominfo;
+            //initInputParams->rawDataSize = sizeof(swift_eeprom_data_t);
+            initInputParams->pRawData = set_param.spot_cali_data;
+            initInputParams->rawDataSize = ADS6401_EEPROM_ROISRAM_DATA_SIZE;
+            if (MODULE_TYPE_SPOT == qApp->get_module_type())
+            {
+                roisram_anchor_preproccess(setparam->spot_cali_data, initInputParams->rawDataSize);
+            }
+        }
+        else {
+            setparam->spot_cali_data          = pEEPROMData + FLOOD_EEPROM_ROISRAM_DATA_OFFSET;
+            initInputParams->pRawData = set_param.spot_cali_data;
+            initInputParams->rawDataSize = FLOOD_EEPROM_ROISRAM_DATA_SIZE;
+        }
 
         if (true == Utils::is_env_var_true(ENV_VAR_ROI_SRAM_COORDINATES_CHECK))
         {
             roiCoordinatesDumpCheck(setparam->spot_cali_data, m_sns_param.out_frm_width, m_sns_param.out_frm_height, 0);
-            if (AD4001_EEPROM_ROISRAM_DATA_SIZE >= (2 * PER_CALIB_SRAM_ZONE_SIZE * ZONE_COUNT_PER_SRAM_GROUP))
+            if (ADS6401_EEPROM_ROISRAM_DATA_SIZE >= (2 * PER_CALIB_SRAM_ZONE_SIZE * ZONE_COUNT_PER_SRAM_GROUP))
             {
                 roiCoordinatesDumpCheck(setparam->spot_cali_data + PER_CALIB_SRAM_ZONE_SIZE * ZONE_COUNT_PER_SRAM_GROUP, m_sns_param.out_frm_width, m_sns_param.out_frm_height, 1);
             }
         }
     }
 
+    if (dump_roi_sram_size)
+    {
+        utils = new Utils();
+        utils->hexdump(setparam->spot_cali_data, dump_roi_sram_size, "ROI SRAM data dump to Algo lib");
+        delete utils;
+    }
+
     setparam->adapsSpodOffsetData     = qApp->get_loaded_spotoffset_data();
+#if !defined(ENABLE_COMPATIABLE_WITH_OLD_ALGO_LIB)
     setparam->adapsSpodOffsetDataLength = qApp->get_loaded_spotoffset_data_size();
 
     if (0 != setparam->adapsSpodOffsetDataLength && NULL != setparam->adapsSpodOffsetData)
     {
     }
     else {
-#if (ADS6401_MODULE_SPOT == SWIFT_MODULE_TYPE)
-        setparam->adapsSpodOffsetData     = reinterpret_cast<float*>(pEEPROMData + AD4001_EEPROM_SPOTOFFSET_OFFSET);
-        setparam->adapsSpodOffsetDataLength = AD4001_EEPROM_SPOTOFFSET_SIZE;
-#else
-        setparam->adapsSpodOffsetData     = reinterpret_cast<float*>(pEEPROMData + AD4001_EEPROM_SPOTOFFSET_OFFSET+ONE_SPOD_OFFSET_BYTE_SIZE);  //pointer to offset0
-        setparam->adapsSpodOffsetDataLength = AD4001_EEPROM_SPOTOFFSET_SIZE;
-#endif
+        if (MODULE_TYPE_FLOOD != qApp->get_module_type())
+        {
+            setparam->adapsSpodOffsetData     = reinterpret_cast<float*>(pEEPROMData + ADS6401_EEPROM_SPOTOFFSET_OFFSET);
+            setparam->adapsSpodOffsetDataLength = ADS6401_EEPROM_SPOTOFFSET_SIZE;
+        }
+        else {
+            setparam->adapsSpodOffsetData     = reinterpret_cast<float*>(pEEPROMData + FLOOD_EEPROM_SPOTOFFSET_OFFSET + FLOOD_ONE_SPOD_OFFSET_BYTE_SIZE);  //pointer to offset0
+            setparam->adapsSpodOffsetDataLength = FLOOD_EEPROM_SPOTOFFSET_SIZE;
+        }
     }
-
-#if (ADS6401_MODULE_SPOT == SWIFT_MODULE_TYPE)
-    setparam->proximity_hist          = pEEPROMData + AD4001_EEPROM_PROX_HISTOGRAM_OFFSET;
-    //setparam->accurateSpotPosData     = reinterpret_cast<float*>(pEEPROMData + AD4001_EEPROM_ACCURATESPODPOS_OFFSET);
 #else
-    setparam->proximity_hist          = NULL_POINTER;
-    //setparam->accurateSpotPosData     = NULL_POINTER;
-#endif
-
-
-    dump_roi_sram_size = Utils::get_env_var_intvalue(ENV_VAR_DUMP_ROI_SRAM_SIZE);
-    if (dump_roi_sram_size)
+    if (NULL != setparam->adapsSpodOffsetData)
     {
-        utils = new Utils();
-        utils->hexdump((unsigned char *) setparam->spot_cali_data, dump_roi_sram_size, "ROI SRAM data dump to Algo lib");
-        delete utils;
+    }
+    else {
+        if (MODULE_TYPE_FLOOD != qApp->get_module_type())
+        {
+            setparam->adapsSpodOffsetData     = reinterpret_cast<float*>(pEEPROMData + ADS6401_EEPROM_SPOTOFFSET_OFFSET);
+        }
+        else {
+            setparam->adapsSpodOffsetData     = reinterpret_cast<float*>(pEEPROMData + FLOOD_EEPROM_SPOTOFFSET_OFFSET + FLOOD_ONE_SPOD_OFFSET_BYTE_SIZE);  //pointer to offset0
+        }
+    }
+#endif
+
+    if (dump_offsetdata_param_cnt > 0 && NULL != setparam->adapsSpodOffsetData)
+    {
+        uint32_t i;
+
+        DBG_PRINTK("First %d offset data dump to Algo lib\n", dump_offsetdata_param_cnt);
+        for (i = 0; i < dump_offsetdata_param_cnt; i++)
+        {
+            DBG_PRINTK("   %4d      %f\n", i, setparam->adapsSpodOffsetData[i]);
+        }
     }
 
-    setparam->cali_ref_tempe[AdapsEnvTypeIndoor - 1]  = *reinterpret_cast<float*>(pEEPROMData + AD4001_EEPROM_INDOOR_CALIBTEMPERATURE_OFFSET);
-    setparam->cali_ref_tempe[AdapsEnvTypeOutdoor - 1] = *reinterpret_cast<float*>(pEEPROMData + AD4001_EEPROM_OUTDOOR_CALIBTEMPERATURE_OFFSET);
-    setparam->cali_ref_depth[AdapsEnvTypeIndoor - 1]  = *reinterpret_cast<float*>(pEEPROMData + AD4001_EEPROM_INDOOR_CALIBREFDISTANCE_OFFSET);
-    setparam->cali_ref_depth[AdapsEnvTypeOutdoor - 1] = *reinterpret_cast<float*>(pEEPROMData + AD4001_EEPROM_OUTDOOR_CALIBREFDISTANCE_OFFSET);
+    if (MODULE_TYPE_FLOOD != qApp->get_module_type())
+    {
+        setparam->proximity_hist          = pEEPROMData + ADS6401_EEPROM_PROX_HISTOGRAM_OFFSET;
+        //setparam->accurateSpotPosData     = reinterpret_cast<float*>(pEEPROMData + ADS6401_EEPROM_ACCURATESPODPOS_OFFSET);
+    }
+    else {
+        setparam->proximity_hist          = NULL_POINTER;
+        //setparam->accurateSpotPosData     = NULL_POINTER;
+    }
+
+    if (true == qApp->is_capture_req_from_host() && NULL_POINTER != host_comm)
+    {
+        pRefDistanceParam = (reference_distance_data_param_t*) host_comm->get_loaded_ref_distance_data();
+    }
+
+    if (NULL_POINTER != pRefDistanceParam) {
+        setparam->cali_ref_tempe[AdapsEnvTypeIndoor - 1]  = pRefDistanceParam->indoorCalibTemperature;
+        setparam->cali_ref_tempe[AdapsEnvTypeOutdoor - 1] = pRefDistanceParam->outdoorCalibTemperature;
+        setparam->cali_ref_depth[AdapsEnvTypeIndoor - 1]  = pRefDistanceParam->indoorCalibRefDistance;
+        setparam->cali_ref_depth[AdapsEnvTypeOutdoor - 1] = pRefDistanceParam->outdoorCalibRefDistance;
+    }
+    else {
+        if (MODULE_TYPE_FLOOD != qApp->get_module_type())
+        {
+            setparam->cali_ref_tempe[AdapsEnvTypeIndoor - 1]  = *reinterpret_cast<float*>(pEEPROMData + ADS6401_EEPROM_INDOOR_CALIBTEMPERATURE_OFFSET);
+            setparam->cali_ref_tempe[AdapsEnvTypeOutdoor - 1] = *reinterpret_cast<float*>(pEEPROMData + ADS6401_EEPROM_OUTDOOR_CALIBTEMPERATURE_OFFSET);
+            setparam->cali_ref_depth[AdapsEnvTypeIndoor - 1]  = *reinterpret_cast<float*>(pEEPROMData + ADS6401_EEPROM_INDOOR_CALIBREFDISTANCE_OFFSET);
+            setparam->cali_ref_depth[AdapsEnvTypeOutdoor - 1] = *reinterpret_cast<float*>(pEEPROMData + ADS6401_EEPROM_OUTDOOR_CALIBREFDISTANCE_OFFSET);
+        }
+        else {
+            setparam->cali_ref_tempe[AdapsEnvTypeIndoor - 1]  = *reinterpret_cast<float*>(pEEPROMData + FLOOD_EEPROM_INDOOR_CALIBTEMPERATURE_OFFSET);
+            setparam->cali_ref_tempe[AdapsEnvTypeOutdoor - 1] = *reinterpret_cast<float*>(pEEPROMData + FLOOD_EEPROM_OUTDOOR_CALIBTEMPERATURE_OFFSET);
+            setparam->cali_ref_depth[AdapsEnvTypeIndoor - 1]  = *reinterpret_cast<float*>(pEEPROMData + FLOOD_EEPROM_INDOOR_CALIBREFDISTANCE_OFFSET);
+            setparam->cali_ref_depth[AdapsEnvTypeOutdoor - 1] = *reinterpret_cast<float*>(pEEPROMData + FLOOD_EEPROM_OUTDOOR_CALIBREFDISTANCE_OFFSET);
+        }
+    }
+
+    if (Utils::is_env_var_true(ENV_VAR_DUMP_CALIB_REFERENCE_DISTANCE))
+    {
+        DBG_PRINTK("indoorCalibTemperature = %f", setparam->cali_ref_tempe[AdapsEnvTypeIndoor - 1]);
+        DBG_PRINTK("indoorCalibRefDistance = %f", setparam->cali_ref_depth[AdapsEnvTypeIndoor - 1]);
+
+        DBG_PRINTK("outdoorCalibTemperature = %f", setparam->cali_ref_tempe[AdapsEnvTypeOutdoor - 1]);
+        DBG_PRINTK("outdoorCalibRefDistance = %f", setparam->cali_ref_depth[AdapsEnvTypeOutdoor - 1]);
+    }
 
 #if !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
     if (true == qApp->is_capture_req_from_host() && NULL_POINTER != host_comm)
     {
-        set_param.walkerror = (0 != host_comm->get_req_walkerror_version());
+        set_param.walkerror = (0 != host_comm->get_req_walkerror_enable());
     }
     else 
 #endif
@@ -400,37 +516,62 @@ int ADAPS_DTOF::FillSetWrapperParamFromEepromInfo(uint8_t* pEEPROMData, SetWrapp
     {
         if (true == Utils::is_env_var_true(ENV_VAR_DISABLE_WALK_ERROR))
         {
+#if defined(ENABLE_COMPATIABLE_WITH_OLD_ALGO_LIB)
+            setparam->walkerror = false;
+            setparam->walk_error_para_list = NULL_POINTER;
+#else
             setparam->walkerror = false;
             setparam->calibrationInfo = NULL_POINTER;
             setparam->walk_error_para_list = NULL_POINTER;
             setparam->walk_error_para_list_length = 0;
+#endif
             DBG_NOTICE("force walk error to FALSE by environment variable 'disable_walk_error'.");
         }
         else {
+#if defined(ENABLE_COMPATIABLE_WITH_OLD_ALGO_LIB)
+            setparam->walk_error_para_list = qApp->get_loaded_walkerror_data();
+#else
             setparam->calibrationInfo = NULL_POINTER;
             setparam->walk_error_para_list = qApp->get_loaded_walkerror_data();
             setparam->walk_error_para_list_length = qApp->get_loaded_walkerror_data_size();
+#endif
 
-            if (0 != setparam->walk_error_para_list_length && NULL != setparam->walk_error_para_list)
+            if (
+#if !defined(ENABLE_COMPATIABLE_WITH_OLD_ALGO_LIB)
+                0 != setparam->walk_error_para_list_length && 
+#endif
+                NULL != setparam->walk_error_para_list)
             {
                 DBG_NOTICE("walk error to true since walkerror parameter is loaded.");
                 setparam->walkerror = true;
             }
             else {
-#if (ADS6401_MODULE_SPOT == SWIFT_MODULE_TYPE)
-                DBG_NOTICE("walk error to true since walkerror parameter exist in eeprom.");
-                setparam->walkerror = true;
-                setparam->calibrationInfo = pEEPROMData + AD4001_EEPROM_VERSION_INFO_OFFSET;
-                setparam->walk_error_para_list = pEEPROMData + AD4001_EEPROM_WALK_ERROR_OFFSET;
-                setparam->walk_error_para_list_length = AD4001_EEPROM_WALK_ERROR_SIZE;
+                if (MODULE_TYPE_SPOT == qApp->get_module_type())
+                {
+                    DBG_NOTICE("walk error to true since walkerror parameter exist in eeprom.");
+#if defined(ENABLE_COMPATIABLE_WITH_OLD_ALGO_LIB)
+                    setparam->walkerror = true;
+                    setparam->walk_error_para_list = pEEPROMData + ADS6401_EEPROM_WALK_ERROR_OFFSET;
 #else
-                // PAY ATTETION: No walk error parameters in eeprom for flood module
-                setparam->walkerror = false;
-                setparam->calibrationInfo = NULL_POINTER;
-                setparam->walk_error_para_list = NULL_POINTER;
-                setparam->walk_error_para_list_length = 0;
-                DBG_NOTICE("force walk error to FALSE since swift flood module has no walkerror parameters in eeprom.");
+                    setparam->walkerror = true;
+                    setparam->calibrationInfo = pEEPROMData + ADS6401_EEPROM_VERSION_INFO_OFFSET;
+                    setparam->walk_error_para_list = pEEPROMData + ADS6401_EEPROM_WALK_ERROR_OFFSET;
+                    setparam->walk_error_para_list_length = ADS6401_EEPROM_WALK_ERROR_SIZE;
 #endif
+                }
+                else {
+                    // PAY ATTETION: No walk error parameters in eeprom for flood module
+#if defined(ENABLE_COMPATIABLE_WITH_OLD_ALGO_LIB)
+                        setparam->walkerror = false;
+                        setparam->walk_error_para_list = NULL_POINTER;
+#else
+                    setparam->walkerror = false;
+                    setparam->calibrationInfo = NULL_POINTER;
+                    setparam->walk_error_para_list = NULL_POINTER;
+                    setparam->walk_error_para_list_length = 0;
+#endif
+                    DBG_NOTICE("force walk error to FALSE since swift flood module has no walkerror parameters in eeprom.");
+                }
             }
     
             if (dump_walkerror_param_cnt > 0 && NULL != setparam->walk_error_para_list)
@@ -438,10 +579,10 @@ int ADAPS_DTOF::FillSetWrapperParamFromEepromInfo(uint8_t* pEEPROMData, SetWrapp
                 uint32_t i;
                 WalkErrorParam_t *pWalkErrParam = (WalkErrorParam_t *) setparam->walk_error_para_list;
             
-                printf("ParamIndex zoneId   spotId      x    y    paramD        paramX      paramY      paramZ      param0    sizeof(WalkErrorParam_t): %ld\n", sizeof(WalkErrorParam_t));
+                DBG_PRINTK("ParamIndex zoneId   spotId      x    y    paramD        paramX      paramY      paramZ      param0    sizeof(WalkErrorParam_t): %ld\n", sizeof(WalkErrorParam_t));
                 for (i = 0; i < dump_walkerror_param_cnt; i++)
                 {
-                    printf("   %4d      %d      %4d     <%3d, %3d>  %f     %f    %f    %f    %f\n", 
+                    DBG_PRINTK("   %4d      %d      %4d     <%3d, %3d>  %f     %f    %f    %f    %f\n", 
                         i, pWalkErrParam[i].zoneId, pWalkErrParam[i].spotId, pWalkErrParam[i].x, pWalkErrParam[i].y,
                         pWalkErrParam[i].paramD, pWalkErrParam[i].paramX, pWalkErrParam[i].paramY, pWalkErrParam[i].paramZ, pWalkErrParam[i].param0);
                 }
@@ -546,7 +687,7 @@ int ADAPS_DTOF::initParams(WrapperDepthInitInputParams* initInputParams, Wrapper
     DepthMapWrapperGetVersion(m_DepthLibversion);
     set_param.OutAlgoVersion = (uint8_t*)m_DepthLibversion;
 
-    p_eeprominfo = (swift_eeprom_data_t *) p_misc_device->get_dtof_calib_eeprom_param();
+    p_eeprominfo = p_misc_device->get_dtof_calib_eeprom_param();
     if (NULL_POINTER == p_eeprominfo) {
         DBG_ERROR("p_eeprominfo is NULL for EEPROMInfo");
         return 0 - __LINE__;
@@ -582,8 +723,13 @@ int ADAPS_DTOF::initParams(WrapperDepthInitInputParams* initInputParams, Wrapper
 
     DBG_INFO("initParams set_param.compose_subframe=%d set_param.expand_pixel=%d set_param.mirror_frame.mirror_x=%d  set_param.mirror_frame.mirror_y=%d\n",
            set_param.compose_subframe,set_param.expand_pixel,set_param.mirror_frame.mirror_x,set_param.mirror_frame.mirror_y);
-    DBG_NOTICE("initParams success, algo lib version: %s, roi_sram_rotate: %d, walkerror: %d, loaded_roi_sram_size: %d, adapsSpodOffsetDataLength: %d, work_mode=%d env_type=%d  measure_type=%d", 
-        m_DepthLibversion, qApp->is_roi_sram_rotate(), set_param.walkerror, loaded_roi_sram_size, set_param.adapsSpodOffsetDataLength, set_param.work_mode,set_param.env_type,set_param.measure_type);
+#if defined(ENABLE_COMPATIABLE_WITH_OLD_ALGO_LIB)
+    DBG_NOTICE("initParams success, algo lib version: %s, roi_sram_size: %d, roi_sram_rolling: %d, walkerror: %d, loaded_roi_sram_size: %d, work_mode=%d env_type=%d  measure_type=%d", 
+        m_DepthLibversion, initInputParams->rawDataSize, qApp->is_roi_sram_rolling(), set_param.walkerror, loaded_roi_sram_size, set_param.work_mode,set_param.env_type,set_param.measure_type);
+#else
+    DBG_NOTICE("initParams success, algo lib version: %s, roi_sram_size: %d, roi_sram_rolling: %d, walkerror: %d, loaded_roi_sram_size: %d, adapsSpodOffsetDataLength: %d, walk_error_para_list_length: %d, work_mode=%d env_type=%d  measure_type=%d", 
+        m_DepthLibversion, initInputParams->rawDataSize, qApp->is_roi_sram_rolling(), set_param.walkerror, loaded_roi_sram_size, set_param.adapsSpodOffsetDataLength, set_param.walk_error_para_list_length, set_param.work_mode,set_param.env_type,set_param.measure_type);
+#endif
 
     return 0;
 }
@@ -607,12 +753,14 @@ int ADAPS_DTOF::adaps_dtof_initilize()
         return result;
     }
 
+#if !defined(ENABLE_COMPATIABLE_WITH_OLD_ALGO_LIB)
     CircleForMask circleForMask;
     circleForMask.CircleMaskCenterX = m_sns_param.out_frm_width;
     circleForMask.CircleMaskCenterY = m_sns_param.out_frm_height;
     circleForMask.CircleMaskR = 0.0f;
 
     DepthMapWrapperSetCircleMask(m_handlerDepthLib,circleForMask);
+#endif
 
     DBG_NOTICE("Adaps depth lib initialize okay, m_handlerDepthLib: %p.", m_handlerDepthLib);
 
@@ -1118,52 +1266,6 @@ int ADAPS_DTOF::dtof_frame_decode(unsigned int frm_sequence, unsigned char *frm_
         return -1;
     }
 
-#if 0
-    if (host_comm)
-    {
-        if ((0 != (host_comm->get_req_out_data_type() & FRAME_DECODED_DEPTH16)) && (0 != (host_comm->get_req_out_data_type() & FRAME_DECODED_POINT_CLOUD)))
-        {
-            depthOutputs[0].format                    = WRAPPER_CAM_FORMAT_DEPTH16;
-            depthOutputs[0].out_image_length          = m_sns_param.out_frm_width*m_sns_param.out_frm_height*sizeof(u16);
-            depthOutputs[0].formatParams.bitsPerPixel = 16;
-            depthOutputs[0].formatParams.strideBytes  = m_sns_param.out_frm_width;
-            depthOutputs[0].formatParams.sliceHeight  = m_sns_param.out_frm_height;
-            depthOutputs[0].out_depth_image = (uint8_t*) depth16_buffer;
-
-            depthOutputs[1].format                    = WRAPPER_CAM_FORMAT_DEPTH_POINT_CLOUD;
-            depthOutputs[1].count_pt_cloud          = m_sns_param.out_frm_width*m_sns_param.out_frm_height*sizeof(u16);
-            depthOutputs[1].formatParams.bitsPerPixel = 16;
-            depthOutputs[1].formatParams.strideBytes  = m_sns_param.out_frm_width*2;
-            depthOutputs[1].formatParams.sliceHeight  = m_sns_param.out_frm_height;
-            depthOutputs[1].out_pcloud_image = m_out_put_pointcloud_buffer;
-
-            req_output_stream_cnt = 2;
-        }
-        else if (0 != (host_comm->get_req_out_data_type() & FRAME_DECODED_DEPTH16))
-        {
-            depthOutputs[0].format                    = WRAPPER_CAM_FORMAT_DEPTH16;
-            depthOutputs[0].out_image_length          = m_sns_param.out_frm_width*m_sns_param.out_frm_height*sizeof(u16);
-            depthOutputs[0].formatParams.bitsPerPixel = 16;
-            depthOutputs[0].formatParams.strideBytes  = m_sns_param.out_frm_width;
-            depthOutputs[0].formatParams.sliceHeight  = m_sns_param.out_frm_height;
-            depthOutputs[0].out_depth_image = (uint8_t*) depth16_buffer;
-
-            req_output_stream_cnt = 1;
-        }
-        else if (0 != (host_comm->get_req_out_data_type() & FRAME_DECODED_POINT_CLOUD))
-        {
-            depthOutputs[0].format                    = WRAPPER_CAM_FORMAT_DEPTH_POINT_CLOUD;
-            depthOutputs[0].out_image_length          = m_sns_param.out_frm_width*m_sns_param.out_frm_height*sizeof(u16);
-            depthOutputs[0].formatParams.bitsPerPixel = 16;
-            depthOutputs[0].formatParams.strideBytes  = m_sns_param.out_frm_width;
-            depthOutputs[0].formatParams.sliceHeight  = m_sns_param.out_frm_height;
-            depthOutputs[0].out_depth_image = (uint8_t*) depth16_buffer;
-
-            req_output_stream_cnt = 1;
-        }
-    }
-    else 
-#endif
     {
         depthOutputs[0].format                    = WRAPPER_CAM_FORMAT_DEPTH16;
         depthOutputs[0].formatParams.bitsPerPixel = 16;
@@ -1178,10 +1280,12 @@ int ADAPS_DTOF::dtof_frame_decode(unsigned int frm_sequence, unsigned char *frm_
     depthInput.formatParams.bitsPerPixel = 8;
     depthInput.formatParams.strideBytes  = m_sns_param.raw_width;
     depthInput.formatParams.sliceHeight  = m_sns_param.raw_height;
+#if !defined(ENABLE_COMPATIABLE_WITH_OLD_ALGO_LIB)
     depthInput.in_image_size    = frm_rawdata_size;
+#endif
     //DBG_INFO( "raw_width: %d raw_height: %d out_width: %d out_height: %d\n", m_sns_param.raw_width, m_sns_param.raw_height, m_sns_param.out_frm_width, m_sns_param.out_frm_height);
 
-    if (true == Utils::is_env_var_true(ENV_VAR_FRAME_DROP_CHECK_ENABLE))
+    if ((WK_DTOF_PCM != swk) && (true == Utils::is_env_var_true(ENV_VAR_FRAME_DROP_CHECK_ENABLE)))
     {
         int lost = check_frame_loss(&checker, frm_rawdata, frm_rawdata_size);
         if (lost > 0) {
@@ -1225,11 +1329,17 @@ int ADAPS_DTOF::dtof_frame_decode(unsigned int frm_sequence, unsigned char *frm_
     if (true == done)
     {
         m_decoded_success_frame_cnt++;
-        //DBG_ERROR("DepthMapWrapperProcessFrame() return true, frm_sequence: %d\n", frm_sequence);
+        if (true == Utils::is_env_var_true(ENV_VAR_DEBUG_ALGO_LIB_RET_VALUE))
+        {
+            DBG_NOTICE("DepthMapWrapperProcessFrame() return TRUE for mipi frame: %d\n", frm_sequence);
+        }
         result = 0;
     }
     else {
-        //DBG_ERROR("DepthMapWrapperProcessFrame() return false, frm_sequence: %d\n", frm_sequence);
+        if (true == Utils::is_env_var_true(ENV_VAR_DEBUG_ALGO_LIB_RET_VALUE))
+        {
+            DBG_NOTICE("DepthMapWrapperProcessFrame() return false for mipi frame: %d, swk: %d\n", frm_sequence, swk);
+        }
         result = -1;
     }
 

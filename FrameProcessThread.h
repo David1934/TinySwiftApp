@@ -57,15 +57,12 @@ private:
     unsigned char *confidence_map_buffer;
     uint32_t outputed_frame_cnt;
     int stop_req_code;
-    #if !defined(CONSOLE_APP_WITHOUT_GUI)
-        QPoint watchSpot;
-    #endif
     bool save_frame(unsigned int frm_sequence, void *frm_buf, int buf_size, int frm_w, int frm_h, struct timeval frm_timestamp, enum frame_data_type);
     void save_depth_txt_file(void *frm_buf,unsigned int frm_sequence,int frm_len);
 
 private slots:
 
-#if !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
+#if defined(RUN_ON_EMBEDDED_LINUX) && !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
     bool new_frame_handle(unsigned int frm_sequence, void *frm_buf, int buf_len, struct timeval frm_timestamp, enum frame_data_type, int total_bytes_per_line, frame_buffer_param_t frmBufParam);
 #else
     bool new_frame_handle(unsigned int frm_sequence, void *frm_buf, int buf_len, struct timeval frm_timestamp, enum frame_data_type, int total_bytes_per_line);
@@ -77,7 +74,6 @@ signals:
 
     #if !defined(CONSOLE_APP_WITHOUT_GUI)
         void newFrameReady4Display(QImage image, QImage img4confidence);
-        void updateWatchSpotInfo(QPoint spot, enum frame_data_type ftype, watchPointInfo_t wpi);
     #endif
     bool update_runtime_display(status_params2 param2);
     void threadLoopExit();

@@ -114,33 +114,26 @@ private:
     struct sensor_params m_sns_param;
     uint64_t m_exposure_time;
     int32_t  m_sensitivity;
-    swift_eeprom_data_t *p_eeprominfo;
+    void* p_eeprominfo;
     SetWrapperParam set_param;
 
     struct BGRColor m_basic_colors[5];
     u16 m_LimitedMaxDistance;
     u16 m_rangeHigh;
     u16 m_rangeLow;
-#if 1
+
     void *m_handlerDepthLib;
     char m_DepthLibversion[32];
     char m_DepthLibConfigXmlPath[128];
-#else
-    CHILIBRARYHANDLE       m_hDepthLib;
-    CREATEDEPTHMAPWRAPPER  m_createDepthMapWrapper;
-    DESTROYDEPTHMAPWRAPPER m_destroyDepthMapWrapper;
-    PROCESSFRAME           m_processFrame;
-    DepthMapWrapper*      m_DepthMapWrapper;
-#endif
     bool m_conversionLibInited;
     uint32_t m_decoded_frame_cnt;
     uint32_t m_decoded_success_frame_cnt;
-    uint32_t dump_walkerror_param_cnt;
     WrapperDepthOutput depthOutputs[MAX_DEPTH_OUTPUT_FORMATS];
     WrapperDepthInput depthInput;
     WrapperDepthCamConfig depthConfig;
     FrameLossChecker checker;
     void* loaded_roi_sram_data;
+    uint8_t* copied_roisram_4_anchorX;
     uint32_t loaded_roi_sram_size;
 
 #if 0 //defined(ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT)
@@ -148,6 +141,7 @@ private:
 #endif
     u8 frameCoordinatesMap[OUTPUT_HEIGHT_4_DTOF_SENSOR][OUTPUT_WIDTH_4_DTOF_SENSOR];
 
+    void roisram_anchor_preproccess(uint8_t *roisram_buf, uint32_t roisram_buf_size);
     int FillSetWrapperParamFromEepromInfo(uint8_t* pEEPROMData, SetWrapperParam* setparam, WrapperDepthInitInputParams* initInputParams);
     int initParams(WrapperDepthInitInputParams* initInputParams, WrapperDepthInitOutputParams* initOutputParams);
     void PrepareFrameParam(WrapperDepthCamConfig *wrapper_depth_map_config);

@@ -56,7 +56,7 @@ struct sensor_data
     enum frame_data_type ftype;
 };
 
-#if !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
+#if defined(RUN_ON_EMBEDDED_LINUX) && !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
 Q_DECLARE_METATYPE(frame_buffer_param_t);
 #endif
 
@@ -76,6 +76,7 @@ public:
     void Get_frame_size_4_curr_wkmode(int *in_width, int *in_height, int *out_width, int *out_height);
     bool get_power_on_state();
     bool get_stream_on_state();
+    int get_videodev_fd();
 
 
 private:
@@ -107,7 +108,7 @@ private:
 #if defined(RUN_ON_EMBEDDED_LINUX)
     bool            script_loaded;
     bool            roi_sram_loaded;
-    bool            roi_sram_rotate;
+    bool            roi_sram_rolling;
     char        sd_devnode_4_dtof[DEV_NODE_LEN];
     int         fd_4_dtof;
 #if !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
@@ -129,7 +130,7 @@ private:
 
 signals:
 
-#if !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
+#if defined(RUN_ON_EMBEDDED_LINUX) && !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
     void rx_new_frame(unsigned int frm_sequence, void *frm_buf, int frm_len, struct timeval frm_timestamp, enum frame_data_type ftype, int total_bytes_per_line, frame_buffer_param_t frmBufParam);
 #else
     void rx_new_frame(unsigned int frm_sequence, void *frm_buf, int frm_len, struct timeval frm_timestamp, enum frame_data_type ftype, int total_bytes_per_line);

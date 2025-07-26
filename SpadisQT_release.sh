@@ -9,8 +9,6 @@ CURRENT_USER=$(whoami)
 
 # Define the list of files to be copied
 FILES_LST=(
-#    "ads6401_roi_sram_test_data.h"
-#    "Makefile"
     "adapsdepthsettings.xml"
     "adaps_dtof.cpp"
     "adaps_dtof.h"
@@ -40,9 +38,12 @@ FILES_LST=(
     "utils.h"
     "v4l2.cpp"
     "v4l2.h"
+    "License.LGPL"
+    "README.md"
+    "README_zh_CN.md"
 )
 
-Readme_content="SpadisQT App for adaps ADS6401 dToF sensor
+Release_content="SpadisQT App for adaps ADS6401 dToF sensor
 Release version: $1
 Release time: $RELEASE_TIME2
 Released by: $CURRENT_USER
@@ -54,47 +55,8 @@ Released by: $CURRENT_USER
   
   Please make sure your develop board support QT before building and running the SpadisQT app,
   you should study it yourself, we can't answer this kind of questions,-^-;
-
-  There are two kinds of dToF modules from ads6401 chip, one is SPOT module, the other is FLOOD module;
-
-  You can select the proper type in SpadisQT.pro:
-    please comment 'DEFINES += CONFIG_ADAPS_SWIFT_FLOOD' line if you'd like to use ads6401 as a SPOT module;
-    please uncomment 'DEFINES += CONFIG_ADAPS_SWIFT_FLOOD' line if you'd like to use ads6401 as a FLOOD module;
-
-  Once you built the app sucessfully, you can use the following steps to deployment SpadisQT to your develop board:
-
-  Step 1: create some directories with the below commands
-    mkdir /vendor
-    mkdir /vendor/lib64
-    mkdir /vendor/etc
-    mkdir /vendor/etc/camera
-    mkdir /data
-    mkdir /data/vendor
-    mkdir /data/vendor/camera
-
-  Step 2A: copy some files to develop board from the build directory if you develop board support ssh login;
-    scp Z:\for_docker\david\rk_build2025\app\SpadisQT_hostComm\libadaps_swift_decode.so root@[fe80::5047:afff:fe7a:1234]:/vendor/lib64/libadaps_swift_decode.so
-    scp Z:\for_docker\david\rk_build2025\app\SpadisQT_hostComm\libAdapsSender.so root@[fe80::5047:afff:fe7a:1234]:/vendor/lib64/libAdapsSender.so
-    scp Z:\for_docker\david\rk_build2025\app\SpadisQT_hostComm\adapsdepthsettings.xml root@[fe80::5047:afff:fe7a:1234]:/vendor/etc/camera/adapsdepthsettings.xml
-    scp Z:\for_docker\david\rk_build2025\app\SpadisQT_hostComm\SpadisQT root@[fe80::5047:afff:fe7a:1234]:/usr/bin/SpadisQT
-    scp Z:\for_docker\david\rk_build2025\app\SpadisQT_hostComm\SpadisQT_console root@[fe80::5047:afff:fe7a:1234]:/usr/bin/SpadisQT_console
-
-  (Note: Replace 'Z:\rk_build\app\SpadisQT' with your real path, 
-      and replace '[fe80::5047:afff:fe7a:1234]' with your real ip address;)
-
-  Step 2B: copy some files to develop board from the build directory if you develop board support adb push;
-    adb push Z:\rk_build\app\SpadisQT\libadaps_swift_decode.so /vendor/lib64/.
-    adb push Z:\rk_build\app\SpadisQT\libAdapsSender.so /vendor/lib64/.
-    adb push Z:\rk_build\app\SpadisQT\adapsdepthsettings.xml /vendor/etc/camera/.
-    adb push Z:\rk_build\app\SpadisQT\SpadisQT /usr/bin/.
-
-  (Note: Replace 'Z:\rk_build\app\SpadisQT' with your real path;)
-
-  Step 3: add the executable attribute for SpadisQT file
-    chmod +x /usr/bin/SpadisQT
-    chmod +x /usr/bin/SpadisQT_console
   
-  If you have any questions, please feel free to contact us (https://adapsphotonics.com/).
+  Contact us (https://adapsphotonics.com/).
 "
 
 # Function to copy files
@@ -139,8 +101,8 @@ mkdir -p "$RELEASE_FOLDER"
 # copy original files to the release folder
 copy_file_list_from_src_to_dest "$CURRENT_DIR" "$RELEASE_FOLDER" "${FILES_LST[@]}"
 
-# generate Readme file
-echo "$Readme_content" > "$RELEASE_FOLDER/Readme.txt"
+# generate Release file
+echo "$Release_content" > "$RELEASE_FOLDER/Release.txt"
 
 # Use the zip command to package the release folder into a zip file
 zip -r "${RELEASE_FOLDER}.zip" "$RELEASE_FOLDER"

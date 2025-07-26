@@ -1,3 +1,4 @@
+#include <poll.h>
 #include <mainwindow.h>
 #include <globalapplication.h>
 
@@ -28,21 +29,10 @@ FrameProcessThread::FrameProcessThread()
     if (SENSOR_TYPE_DTOF == sns_param.sensor_type)
     {
         sns_param.work_mode = qApp->get_wk_mode();
-    #if 0
-        if (WK_DTOF_FHR == sns_param.work_mode)
-        {
-            sns_param.env_type = AdapsEnvTypeOutdoor;
-            sns_param.measure_type = AdapsMeasurementTypeFull;
-        }
-        else {
-            sns_param.env_type = AdapsEnvTypeIndoor; // PCM mode can't use Outdoor mode, othersize the temperature maybe increase very fast.
-            sns_param.measure_type = AdapsMeasurementTypeNormal;
-        }
-    #else
         sns_param.env_type = qApp->get_environment_type();
         sns_param.measure_type = qApp->get_measurement_type();
         sns_param.framerate_type = qApp->get_framerate_type();
-    #endif
+        sns_param.power_mode = qApp->get_power_mode();
 
         utils = new Utils();
         v4l2 = new V4L2(sns_param);
@@ -51,7 +41,6 @@ FrameProcessThread::FrameProcessThread()
         DBG_INFO( "raw_width: %d raw_height: %d, env_type: %d, measure_type: %d, framerate_type: %d\n",
             sns_param.raw_width, sns_param.raw_height, sns_param.env_type, sns_param.measure_type, sns_param.framerate_type);
         adaps_dtof = new ADAPS_DTOF(sns_param);
-        //host_comm = Host_Communication::getInstance();
     }
     else 
 #endif
@@ -61,12 +50,13 @@ FrameProcessThread::FrameProcessThread()
         v4l2->Get_frame_size_4_curr_wkmode(&sns_param.raw_width, &sns_param.raw_height, &sns_param.out_frm_width, &sns_param.out_frm_height);
     }
     qApp->register_v4l2_instance(v4l2);
-#if !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
+
+#if defined(RUN_ON_EMBEDDED_LINUX) && !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
     qRegisterMetaType<frame_buffer_param_t>("frame_buffer_param_t");
     connect(v4l2, SIGNAL(rx_new_frame(unsigned int, void *, int, struct timeval, enum frame_data_type, int, frame_buffer_param_t)),
             this, SLOT(new_frame_handle(unsigned int, void *, int, struct timeval, enum frame_data_type, int, frame_buffer_param_t)), Qt::DirectConnection);
 #else
-    connect(v4l2, SIGNAL(rx_new_frame(unsigned int, void *, int, struct timeval, enum frame_data_type)),
+    connect(v4l2, SIGNAL(rx_new_frame(unsigned int, void *, int, struct timeval, enum frame_data_type, int)),
             this, SLOT(new_frame_handle(unsigned int, void *, int, struct timeval, enum frame_data_type, int)), Qt::DirectConnection);
 #endif
 
@@ -203,6 +193,7 @@ bool FrameProcessThread::info_update(status_params1 param1)
     param2.curr_exp_pvdd = param1.curr_exp_pvdd;
     param2.env_type = sns_param.env_type;
     param2.measure_type = sns_param.measure_type;
+    param2.curr_power_mode = sns_param.power_mode;
 #endif
 
     emit update_runtime_display(param2);
@@ -217,7 +208,7 @@ bool FrameProcessThread::new_frame_handle(
     struct timeval frm_timestamp, 
     enum frame_data_type ftype, 
     int total_bytes_per_line
-#if !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
+#if defined(RUN_ON_EMBEDDED_LINUX) && !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
     , frame_buffer_param_t frmBufParam
 #endif
     )
@@ -371,17 +362,6 @@ bool FrameProcessThread::new_frame_handle(
                 else {
                     decodeRet = adaps_dtof->dtof_frame_decode(frm_sequence, (unsigned char *)frm_rawdata, buf_len, depth_buffer, sns_param.work_mode);
 
-#if 0 // Don't check md5 for the decoded sub-frame buffer.
-                    if (NULL_POINTER != expected_md5_string)
-                    {
-                        utils->MD5Calculate((const unsigned char *) depth_buffer, 
-                            depth_buffer_size,
-                            __FUNCTION__,
-                            frm_sequence
-                            );
-                    }
-#endif
-
 #if 0 //defined(ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT)
                     if (frm_sequence < 80 && frm_sequence > 34)
                     {
@@ -484,27 +464,6 @@ bool FrameProcessThread::new_frame_handle(
                         }
 #endif
 
-#if !defined(CONSOLE_APP_WITHOUT_GUI)
-                        if (0 != watchSpot.x() && 0 != watchSpot.y())
-                        {
-                            u16 distance;
-                            u8 confidence;
-                            watchPointInfo_t wpi;
-                            static int dbg_times = 0;
-
-                            adaps_dtof->GetDepth4watchSpot(depth_buffer, sns_param.out_frm_width,
-                                watchSpot.x(), watchSpot.y(), &distance, &confidence);
-                            wpi.distance = distance;
-                            wpi.confidence = confidence;
-                            if (dbg_times < 5)
-                            {
-                                DBG_INFO("spot (%d, %d) distance: %d mm, confidence: %d", watchSpot.x(), watchSpot.y(), distance, confidence);
-                            }
-                            emit updateWatchSpotInfo(watchSpot, ftype, wpi);
-                            dbg_times++;
-                        }
-#endif
-
                         if (sns_param.save_frame_cnt > 0)
                         {
                             if (true == Utils::is_env_var_true(ENV_VAR_SAVE_FRAME_ENABLE))
@@ -548,20 +507,6 @@ bool FrameProcessThread::new_frame_handle(
             if (v4l2)
             {
                 utils->yuyv_2_rgb((unsigned char *)frm_rawdata,rgb_buffer,sns_param.out_frm_width,sns_param.out_frm_height);
-#if !defined(CONSOLE_APP_WITHOUT_GUI)
-                if (0 != watchSpot.x() && 0 != watchSpot.y())
-                {
-                    u8 r,g,b;
-                    watchPointInfo_t wpi;
-
-                    utils->GetRgb4watchPoint(rgb_buffer, sns_param.out_frm_width,
-                        watchSpot.x(), watchSpot.y(), &r, &g, &b);
-                    wpi.red = r;
-                    wpi.green = g;
-                    wpi.blue = b;
-                    emit updateWatchSpotInfo(watchSpot, ftype, wpi);
-                }
-#endif
             }
             break;
 
@@ -569,20 +514,6 @@ bool FrameProcessThread::new_frame_handle(
             if (v4l2)
             {
                 utils->nv12_2_rgb((unsigned char *)frm_rawdata,rgb_buffer,sns_param.out_frm_width,sns_param.out_frm_height);
-#if !defined(CONSOLE_APP_WITHOUT_GUI)
-                if (0 != watchSpot.x() && 0 != watchSpot.y())
-                {
-                    u8 r,g,b;
-                    watchPointInfo_t wpi;
-                
-                    utils->GetRgb4watchPoint(rgb_buffer, sns_param.out_frm_width,
-                        watchSpot.x(), watchSpot.y(), &r, &g, &b);
-                    wpi.red = r;
-                    wpi.green = g;
-                    wpi.blue = b;
-                    emit updateWatchSpotInfo(watchSpot, ftype, wpi);
-                }
-#endif
             }
         break;
 
@@ -666,23 +597,6 @@ void FrameProcessThread::onThreadLoopExit()
 
     emit threadEnd(stop_req_code);
 }
-
-#if !defined(CONSOLE_APP_WITHOUT_GUI)
-void FrameProcessThread::setWatchSpot(QSize img_widget_size, QPoint point)
-{
-    u8 spotX, spotY;
-    int rateX = img_widget_size.width()/sns_param.out_frm_width;
-    int rateY = img_widget_size.height()/sns_param.out_frm_height;
-
-    spotX = (point.x() + rateX)/rateX;
-    spotY = (point.y() + rateY)/rateY;
-
-    watchSpot.setX(spotX);
-    watchSpot.setY(spotY);
-    DBG_INFO("pos (%d, %d) -> spot (%d, %d)", 
-        point.x(), point.y(), watchSpot.x(), watchSpot.y());
-}
-#endif
 
 void FrameProcessThread::stop(int stop_request_code)
 {
@@ -774,39 +688,64 @@ void FrameProcessThread::run()
 {
     int ret = 0;
     /// static int run_times = 0;
+    int fd = v4l2->get_videodev_fd();
+
+    // 使用poll监听设备fd，设置100ms超时，避免ioctl无限阻塞
+     struct pollfd fds[1];
+     fds[0].fd = fd;
+     fds[0].events = POLLIN; // 等待数据可读
 
     if(majorindex != -1)
     {
         while(!stopped)
         {
-            if (this->isInterruptionRequested()) {
-                 DBG_NOTICE("Thread is interrupted, cleaning up...");
-                 break;
-             }
-
             if(!stopped)
             {
                 /// if (run_times < 1)
                 /// {
                 ///     utils->GetPidTid(__FUNCTION__, __LINE__);
                 /// }
-                ret=v4l2->Capture_frame();
+
+                 ret = poll(fds, 1, 100); // 超时100ms
+                 if (ret <= 0) {
+                     if (ret < 0)
+                     {
+                         qWarning() << "poll error:" << strerror(errno);
+                         break;
+                     }
+                     if (stopped)
+                     {
+                        stop(STOP_REQUEST_STOP);
+                        break; // 被信号中断，且需要退出
+                     }
+
+                     //continue;
+                 }
+                 else {
+                     // 确认有数据可读，再调用DQBUF
+                     if (fds[0].revents & POLLIN)
+                     {
+                         ret=v4l2->Capture_frame();
+
+                         if(ret < 0)
+                         {
+                             stopped = true;
+                         }
+                         else {
+                             if ((0 != qApp->get_save_cnt()) && (0 == sns_param.save_frame_cnt)) // if already capture expected frames, try to quit.
+                             {
+                                 stop(STOP_REQUEST_STOP);
+                                 //break;
+                             }
+                         }
+                     }
+                 }
+                
                 sleeping = true;
-                QThread::usleep(FRAME_INTERVAL_US);
+                QThread::usleep(FRAME_PROCESS_THREAD_INTERVAL_US);
                 sleeping = false;
             }
 
-            if(ret < 0)
-            {
-                stopped = true;
-            }
-            else {
-                if ((0 != qApp->get_save_cnt()) && (0 == sns_param.save_frame_cnt)) // if already capture expected frames, try to quit.
-                {
-                    stop(STOP_REQUEST_STOP);
-                    //break;
-                }
-            }
 
             /// run_times++;
         }

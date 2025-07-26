@@ -1,12 +1,14 @@
 #ifndef HOST_DEVICE_COMM_TYPES_H
 #define HOST_DEVICE_COMM_TYPES_H
 
+#include <sys/time.h>
+
 #define SCRIPT_FILE_SIZE                        (4 * 1024)  //4K
 #define ERROR_MSG_MAX_LENGTH                    128
 #define PER_ROI_SRAM_MAX_SIZE                   512     //unit is bytes, actual use size is 480 bytes, the remaining 32 bytes is 0
 #define ZONE_COUNT_PER_SRAM_GROUP               4
 #define MAX_CALIB_SRAM_ROTATION_GROUP_CNT       9
-#define SENSOR_SN_LENGTH                        12
+#define SWIFT_PRODUCT_ID_SIZE                   12
 #define FW_VERSION_LENGTH                       12
 
 #if !defined(BOOLEAN)
@@ -37,6 +39,10 @@ typedef enum
     CMD_HOST_SIDE_SET_WALKERROR_ENABLE              = 0x000C,
     CMD_HOST_SIDE_SET_EEPROM_DATA                   = 0x000D,
     CMD_HOST_SIDE_SET_DEVICE_REBOOT                 = 0x000E,
+    CMD_HOST_SIDE_SET_RTC_TIME                      = 0x000F,
+    CMD_HOST_SIDE_SET_EXPOSURE_TIME                 = 0x0010,
+    CMD_HOST_SIDE_SET_REF_DISTANCE_DATA             = 0x0011,
+    CMD_HOST_SIDE_SET_LENS_INTRINSIC_DATA           = 0x0012,
 
     // from device side to PC side
     CMD_DEVICE_SIDE_REPORT_MODULE_STATIC_DATA       = 0x1000, // Device side sends the static_module data as requested by the client's CMD_HOST_SIDE_GET_MODULE_STATIC_DATA command
@@ -64,6 +70,7 @@ typedef enum
     CMD_DEVICE_SIDE_ERROR_FAIL_TO_UPDATE_EEPROM     = 0x000A,
     CMD_DEVICE_SIDE_ERROR_INVALID_EEPROM_UPD_PARAM  = 0x000B,
     CMD_DEVICE_SIDE_ERROR_INVALID_REBOOT_REASON     = 0x000C,
+    CMD_DEVICE_SIDE_ERROR_CHKSUM_MISMATCH_IN_EEPROM = 0x000D,
 } error_code_t;
 
 typedef enum
@@ -101,12 +108,18 @@ enum {
     ADS6401_ROI_REG_FE,
 };
 
-typedef struct expose_param_s
+typedef struct exposure_time_param_s
 {
     UINT8 grayExposure;
     UINT8 coarseExposure;
     UINT8 fineExposure;
-} expose_param_t;
+} exposure_time_param_t;
+
+typedef struct rtc_time_param_s
+{
+    struct timeval strUtcTime;
+    struct timezone strTimeZone;
+} rtc_time_param_t;
 
 typedef struct colormap_range_param
 {
@@ -123,7 +136,7 @@ typedef struct walkerror_enable_param
 
 typedef struct roisram_data_param
 {
-    BOOLEAN                 roi_sram_rotate;
+    BOOLEAN                 roi_sram_rolling;
     UINT32                  roisram_data_size;      // roi sram buffer size to be loaded, it should be an integer multiple of (PER_ROI_SRAM_MAX_SIZE * ZONE_COUNT_PER_SRAM_GROUP) or 0, 
                                                     // it shoud <= (PER_ROI_SRAM_MAX_SIZE * ZONE_COUNT_PER_SRAM_GROUP * MAX_CALIB_SRAM_ROTATION_GROUP_CNT) 
     CHAR                    roisram_data[0];        // loaded roi sram buffer, No this member if roisram_data_size == 0
@@ -148,6 +161,19 @@ typedef struct eeprom_data_update_param
     CHAR                    eeprom_data[0];        // eeprom data buffer to be updated, No this member if length == 0
 } eeprom_data_update_param_t;
 
+typedef struct lens_intrinsic_data_param
+{
+    float           intrinsic[9]; // 36 bytes
+} lens_intrinsic_data_param_t;
+
+typedef struct reference_distance_data_param
+{
+    float           indoorCalibTemperature; // Calibration temperature.
+    float           outdoorCalibTemperature; // Calibration temperature.
+    float           indoorCalibRefDistance; // Calibration reference distance.
+    float           outdoorCalibRefDistance; // Calibration reference distance.
+} reference_distance_data_param_t;
+
 typedef struct capture_req_param
 {
     UINT8                   work_mode;              // refer to swift_workmode_t of adaps_types.h
@@ -155,7 +181,7 @@ typedef struct capture_req_param
     UINT8                   measure_type;           // refer to AdapsMeasurementType of adaps_types.h
     UINT8                   framerate_type;         // refer to AdapsFramerateType of adaps_types.h
     UINT8                   power_mode;             // refer to AdapsPowerMode of adaps_types.h
-    UINT8                   walkerror_version;      // refer to ???
+    UINT8                   walkerror_enable;
     UINT8                   req_out_data_type;      // refer to enum swift_data_type of this .h file
     BOOLEAN                 compose_subframe;
     BOOLEAN                 expand_pixel;
@@ -167,7 +193,7 @@ typedef struct capture_req_param
     UINT8                   colSearchingRange;
     UINT8                   rowOffset;
     UINT8                   colOffset;
-    expose_param_t          expose_param;
+    exposure_time_param_t   expose_param;
     BOOLEAN                 script_loaded;
     UINT32                  script_size;            // set to 0 if script_loaded == false
     CHAR                    script_buffer[0];       // file content from the script file, No this member if script_loaded == false
@@ -202,12 +228,12 @@ typedef struct frame_buffer_param_s
 typedef struct module_static_data_s
 {
     UINT8                   data_type;              // refer to enum swift_data_type of this .h file
-    UINT32                  module_type;            // refer to ADS6401_MODULE_SPOT and ADS6401_MODULE_FLOOD of adaps_types.h file
+    UINT32                  module_type;            // refer to ADS6401_MODULE_SPOT,ADS6401_MODULE_FLOOD and ADS6401_MODULE_BIG_FOV_FLOOD of adaps_types.h file
     UINT32                  eeprom_capacity;        // unit is byte
     UINT16                  otp_vbe25;
     UINT16                  otp_vbd;        // unit is 10mv, or the related V X 100
     UINT16                  otp_adc_vref;
-    CHAR                    serialNumber[SENSOR_SN_LENGTH];  // read out from ads6401 e-fuse data
+    CHAR                    chip_product_id[SWIFT_PRODUCT_ID_SIZE];  // read out from ads6401 e-fuse data
     CHAR                    sensor_drv_version[FW_VERSION_LENGTH];
     CHAR                    algo_lib_version[FW_VERSION_LENGTH];
     CHAR                    sender_lib_version[FW_VERSION_LENGTH];

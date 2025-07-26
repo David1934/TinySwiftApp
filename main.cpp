@@ -91,7 +91,7 @@ int main(int argc, char *argv[])
 
     if (!lockFile.tryLock(100))
     {
-#if !defined(CONSOLE_APP_WITHOUT_GUI)
+#if 0 //!defined(CONSOLE_APP_WITHOUT_GUI)
         QMessageBox msgBox;
         msgBox.setIcon(QMessageBox::Warning);
         msgBox.setText("The application is already running.\n"

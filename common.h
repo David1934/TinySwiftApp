@@ -9,13 +9,12 @@
 #if defined(RUN_ON_EMBEDDED_LINUX)
 #define MAX_CALIB_SRAM_DATA_GROUP_CNT           9
 
-#define ROI_SRAM_DATA_INJECTION_4_ROISRAM_ROTATE_TEST
 #endif
 
 #define VERSION_MAJOR                           3
-#define VERSION_MINOR                           1
-#define VERSION_REVISION                        1
-#define LAST_MODIFIED_TIME                      "202500725A"
+#define VERSION_MINOR                           2
+#define VERSION_REVISION                        9
+#define LAST_MODIFIED_TIME                      "202500819A"
 
 #define DEFAULT_DTOF_FRAMERATE                  AdapsFramerateType30FPS // AdapsFramerateType60FPS
 
@@ -23,7 +22,7 @@
 #define DATA_SAVE_PATH                          "/tmp/" // "/sdcard/"
 #define DEFAULT_SAVE_FRAME_CNT                  0
 #define RTCTIME_DISPLAY_FMT                     "hh:mm:ss"  // "yyyy/MM/dd hh:mm:ss"
-#define FRAME_INTERVAL_US                       10   // unit is us
+#define FRAME_PROCESS_THREAD_INTERVAL_US        10   // unit is us
 
 // query the video node by the command 'v4l2-ctl --list-devices' or 'media-ctl -p -d /dev/media0'
 
@@ -55,19 +54,15 @@
 #define WAIT_TIME_4_THREAD_EXIT                 10  // unit is  milliseconds
 
 #if defined(RUN_ON_EMBEDDED_LINUX)
-    #define DEFAULT_CFG_4_COWORK_WITH_HOST      true
     #define DEFAULT_SENSOR_TYPE                 SENSOR_TYPE_DTOF
     #define DEFAULT_ENVIRONMENT_TYPE            AdapsEnvTypeIndoor
     #define DEFAULT_MEASUREMENT_TYPE            AdapsMeasurementTypeFull
 
-    #if (ADS6401_MODULE_SPOT == SWIFT_MODULE_TYPE)
-        #define SWIFT_MODULE_TYPE_NAME          "Spot"
-    #else
-        #define SWIFT_MODULE_TYPE_NAME          "Flood"
-    #endif
+    #define SPOT_MODULE_TYPE_NAME               "Spot"
+    #define FLOOD_MODULE_TYPE_NAME              "Flood"
+    #define BIG_FOV_FLOOD_MODULE_TYPE_NAME      "Big_FoV_Flood"
 #else
     #define DEFAULT_SENSOR_TYPE                 SENSOR_TYPE_RGB
-    #define DEFAULT_CFG_4_COWORK_WITH_HOST      false
 #endif
 
 #define WKMODE_4_RGB_SENSOR                     WK_RGB_YUYV    // On DELL notebook, it is WK_MODE_YUYV, on Apple notebook it is WK_MODE_NV12?
@@ -89,13 +84,20 @@
 #define ENV_VAR_DEVELOP_DEBUGGING               "develop_debugging"
 #define ENV_VAR_TEST_PATTERN_TYPE               "test_pattern_type"
 #define ENV_VAR_ROI_SRAM_COORDINATES_CHECK      "roi_sram_coordinates_check"
-#define ENV_VAR_ROI_SRAM_DATA_INJECTION         "roi_sram_data_injection"
 #define ENV_VAR_RAW_FILE_REPLAY_ENABLE          "raw_file_replay_enable"
 #define ENV_VAR_DEPTH16_FILE_REPLAY_ENABLE      "depth16_file_replay_enable"
 #define ENV_VAR_FRAME_DROP_CHECK_ENABLE         "frame_drop_check_enable"
 
+#define ENV_VAR_ROI_SRAM_DATA_INJECTION         "roi_sram_data_injection"
+#define ENV_VAR_FORCE_ROW_SEARCH_RANGE          "force_row_search_range"
+#define ENV_VAR_FORCE_COLUMN_SEARCH_RANGE       "force_column_search_range"
+#define ENV_VAR_FORCE_COARSE_EXPOSURE           "force_coarseExposure"
+#define ENV_VAR_FORCE_FINE_EXPOSURE             "force_fineExposure"
+#define ENV_VAR_FORCE_GRAY_EXPOSURE             "force_grayExposure"
+
 #define ENV_VAR_DBGINFO_ENABLE                  "debug_info_enable"
 #define ENV_VAR_TRACE_ROI_SRAM_SWITCH           "trace_roi_sram_switch"
+#define ENV_VAR_DEBUG_ALGO_LIB_RET_VALUE        "debug_algo_lib_ret_value"
 
 #define ENV_VAR_DUMP_LENS_INTRINSIC             "dump_lens_intrinsic"
 #define ENV_VAR_DUMP_ROI_SRAM_SIZE              "dump_roi_sram_size"
@@ -111,6 +113,8 @@
 #define ENV_VAR_DUMP_SPOT_STATISTICS_TIMES      "dump_spot_statistics_times"
 #define ENV_VAR_DUMP_PTM_FRAME_HEADINFO_TIMES   "dump_ptm_frame_headinfo_times"
 #define ENV_VAR_DUMP_WALKERROR_PARAM_COUNT      "dump_walkerror_param_count"
+#define ENV_VAR_DUMP_OFFSETDATA_PARAM_COUNT     "dump_offsetdata_param_count"
+#define ENV_VAR_DUMP_CALIB_REFERENCE_DISTANCE   "dump_calib_reference_distance"
 
 #define __tostr(x)                          #x
 #define __stringify(x)                      __tostr(x)
@@ -127,11 +131,7 @@
 
 #define APP_VERSION_CODE                 (VERSION_MAJOR << 16 | VERSION_MINOR << 8 | VERSION_REVISION)
 
-#if defined(RUN_ON_EMBEDDED_LINUX)
-#define APP_VERSION                      VERSION_STRING "_LM" LAST_MODIFIED_TIME "_For_" SWIFT_MODULE_TYPE_NAME "_Module"
-#else
 #define APP_VERSION                      VERSION_STRING "_LM" LAST_MODIFIED_TIME
-#endif
 
 #define NULL_POINTER                            nullptr
 
@@ -222,6 +222,13 @@ typedef signed short s16;
 typedef unsigned int u32;
 typedef unsigned long long u64;
 
+enum moduletype{
+    MODULE_TYPE_UNINITIALIZED = 0x0,
+    MODULE_TYPE_SPOT = ADS6401_MODULE_SPOT,
+    MODULE_TYPE_FLOOD = ADS6401_MODULE_FLOOD,
+    MODULE_TYPE_BIG_FOV_FLOOD = ADS6401_MODULE_BIG_FOV_FLOOD
+};
+
 enum stop_request_code{
     STOP_REQUEST_RGB,
     STOP_REQUEST_PHR,
@@ -258,21 +265,6 @@ enum sensor_workmode{
     WK_COUNT = WK_UNINITIALIZED,
 };
 
-typedef union watchPointInfo
-{
-    struct
-    {
-        u8 red;
-        u8 green;
-        u8 blue;
-    };
-    struct
-    {
-        u16 distance;
-        u8 confidence;
-    };
-} watchPointInfo_t;
-
 struct sensor_params
 {
     enum sensortype sensor_type;
@@ -285,6 +277,7 @@ struct sensor_params
     AdapsEnvironmentType env_type;
     AdapsMeasurementType measure_type;
     AdapsFramerateType framerate_type;
+    AdapsPowerMode  power_mode;
     AdapsEnvironmentType advisedEnvType;
     AdapsMeasurementType advisedMeasureType;
 #if defined(RUN_ON_EMBEDDED_LINUX)
@@ -315,13 +308,13 @@ struct status_params2
     unsigned int curr_exp_pvdd;
     unsigned int env_type;
     unsigned int measure_type;
+    AdapsPowerMode  curr_power_mode;
 #endif
 };
 
 Q_DECLARE_METATYPE(struct status_params1);
 Q_DECLARE_METATYPE(struct status_params2);
 Q_DECLARE_METATYPE(enum frame_data_type);
-Q_DECLARE_METATYPE(watchPointInfo_t);
 
 #endif // COMMON_H
 

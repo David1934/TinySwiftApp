@@ -1,14 +1,14 @@
-# 基础配置
-QT       -= gui            # 禁用GUI模块
-QT       += core  # 仅链接必要模块
-CONFIG   += c++17 release  # 启用C++17和发布模式
-TARGET    = SpadisQT_console   # 输出名称
-TEMPLATE  = app
+# Basic Configuration
+QT -= gui # Disable GUI module
+QT += core # Link only necessary modules
+CONFIG += c++17 release # Enable C++17 and release mode
+TARGET = SpadisQT_console # Output name
+TEMPLATE = app
 
-# 编译器优化标志（Linux/GCC示例）
+# Compiler optimization flags (Linux/GCC example)
 QMAKE_CXXFLAGS_RELEASE += -O3 -flto -fno-exceptions
-QMAKE_LFLAGS_RELEASE   += -flto -Wl,--gc-sections
-# QMAKE_CXXFLAGS += -g -O0  # 保留调试信息，关闭优化
+QMAKE_LFLAGS_RELEASE += -flto -Wl,--gc-sections
+# QMAKE_CXXFLAGS += -g -O0 # Keep debug information, disable optimization
 # QMAKE_CFLAGS += -g
 # QMAKE_LFLAGS += -rdynamic
 
@@ -37,7 +37,6 @@ contains(DEFINES, RUN_ON_EMBEDDED_LINUX) {
     DEFINES += CONFIG_VIDEO_ADS6401
     DEFINES += CONSOLE_APP_WITHOUT_GUI
 #    DEFINES += STANDALONE_APP_WITHOUT_HOST_COMMUNICATION
-#    DEFINES += CONFIG_ADAPS_SWIFT_FLOOD
 
     QMAKE_LFLAGS += -Wl,-rpath,/vendor/lib64/
     SOURCES += adaps_dtof.cpp

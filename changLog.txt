@@ -1,5 +1,50 @@
+11. @2025/08/19 -- version update to 3.2.9_LM202500819A
+    redmine_2487: swift rk3568小型化下位机bug fix
+    http://gerrit.adaps.corp/c/SpadisQT/+/5098
+
+    patch set 2: improve code to enable register read and write function from SpadisApp;
+             add '#pragma pack(1)' in adaps_types.h to match sizeof(register_op_data_t) with PC SpadisApp;
+    patch set 3: run time support SPOT and FLOOD module with one SpadisQT binary file;
+    patch set 4: pass rowOffset/colOffset/rowSearchingRange/colSearchingRange to ads6401.c driver;
+             add CMD_HOST_SIDE_SET_RTC_TIME command to sync rtc time of device side;
+    patch set 5: add roisram_anchor_preproccess() before passing to algo lib;
+    patch set 6: unbind environment type and power mode, pass power mode SpadisApp => SpadisQT => ads6401 driver;
+    patch set 7: only spot module need anchor preprocess, according to XiaLing's comment;
+    patch set 8: add power mode display, remove watchpoint display for status info;
+    patch set 9: sync depthmapwrapper.h change with algo lib;
+    patch set 11: add environment variables to force change rowSearchingRange and colSearchingRange;
+    patch set 12: rename serialNumber to chip_product_id;
+    patch set 13: add README.md, README_zh_CN.md and License.LGPL files for public release;
+    patch set 14: improve UI and bugfix for no video display on PC deepin Linux;
+    patch set 16: update libadaps_swift_decode.so to v3.5.2 to support ROI rotation;
+    patch set 17: set default anchor Offset (in case no host_comm) for spot module;
+    patch set 18: add poll() call to query whether POLLIN is available before ioctl(fd, VIDIOC_DQBUF) to avoid 
+      the thread blocking exit for CTRL-C;
+    patch set 19: improve code to dump the loaded roisram/offset/walkerror data for roi rotation function;
+    patch set 21: improve code to dump the reference distance in eeprom calibrate data;
+    patch set 22: create another buffer copy for anchorX operation to keep the original mmaped ROI sram data not be changed.
+    patch set 24: add big FoV flood module support, add CMD_HOST_SIDE_SET_REF_DISTANCE_DATA 
+       and CMD_HOST_SIDE_SET_LENS_INTRINSIC_DATA commands;
+    patch set 25: add 'eeprom_crc_matched' member to report eeprom checksum match status to SpadisApp;
+    patch set 26 - 27: manual configure Coarse/Fine/Gray exposure value with some special environment variables;
+    patch set 28: rename roi_sram_rotate to roi_sram_rolling to align with SpadisApp;
+    patch set 29: add buid option 'ENABLE_COMPATIABLE_WITH_OLD_ALGO_LIB' to keep compatiable with algo lib v3.3.2;
+
+    1. bugfix: 解决读写swift寄存器失败的问题
+    2. improve: 实现同一版本支持散点和面阵模组（需要更新驱动到v3.1.1_LM20250728A或更新版本）；
+    3. feature: 增加命令CMD_HOST_SIDE_SET_RTC_TIME用于让SpadisApp更新下位机的时间（下位机开机时间为2017年，debug查看log不友好）
+    4. improve: 在驱动初始配置时，同时下发AnchorX/AnchorY配置，以及Coarse & Fine Mask寄存器配置；
+    5. improve: 解耦原来下位机的power mode(div1/div3)对环境类型(indoor/outdoor)依赖的绑定, 改由SpadisApp来设置；
+    6. improve: 使用环境变量临时修改rowSearchingRange和colSearchingRange
+    7. bugfix: 修复ROI sram数据被多次减anchorX的bug
+    8. improve: 增加命令CMD_HOST_SIDE_SET_REF_DISTANCE_DATA及CMD_HOST_SIDE_SET_LENS_INTRINSIC_DATA用于让SpadisApp配置reference distance 
+        和Lens内参
+    9. 开始增加欢畅大FoV Flood面阵模组类型（类型值为0x6401C)初始支持（eeprom数据结构待定义和完善）
+    10. 使用环境变量，临时修改Coarse/Fine/Gray exposure寄存器配置。
+
 10. @2025/07/24 -- version update to 3.1.0_LM20250724A
     redmine_2487: swift rk3568小型化下位机bug fix
+    http://gerrit.adaps.corp/c/SpadisQT/+/4983
 
     patch set 1 - 5: add replay function for frame raw and depth16 files by the environment variables;
     patch set 6: add build switch STANDALONE_APP_WITHOUT_HOST_COMMUNICATION;
@@ -26,6 +71,7 @@
 
 9. @2025/06/24 -- version update to 3.0.0_LM20250624A
     redmine_2487: swift rk3568小型化下位机bug fix
+    http://gerrit.adaps.corp/c/SpadisQT/+/4931
 
     patch set 1: 散点模组小型化整机，PC端SpadisApp首次链接下位机回放正常，第2次试图链接，显示黑屏。
     patch set 2: improve roiCoordinatesDumpCheck() and multipleRoiCoordinatesDumpCheck(), reduce the array size of frameCoordinatesMap;

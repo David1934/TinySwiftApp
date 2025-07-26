@@ -30,6 +30,7 @@ GlobalApplication::GlobalApplication(int argc, char *argv[]):QCoreApplication(ar
 #if defined(RUN_ON_EMBEDDED_LINUX)
     QCommandLineOption environment_type_opt(QStringList() << "e" << "etype", "Type of the environment (Indoor Outdoor)", "etype");
     QCommandLineOption measurement_type_opt(QStringList() << "M" << "mtype", "Type of the measurement (Normal Short Full)", "mtype");
+    QCommandLineOption power_mode_opt(QStringList() << "p" << "pmode", "Power mode for the sensor (Div1 Div3)", "pmode");
     //QCommandLineOption no_host_comm_opt(QStringList() << "nohostcomm", "local run mode without host communication");
     //QCommandLineOption output_data_type_opt(QStringList() << "o" << "otype", "Type of the output data type (Raw Grayscale Depth16 Depth16XY PointCloud) to host", "otype");
 #endif
@@ -42,6 +43,7 @@ GlobalApplication::GlobalApplication(int argc, char *argv[]):QCoreApplication(ar
 #if defined(RUN_ON_EMBEDDED_LINUX)
     parser.addOption(environment_type_opt);
     parser.addOption(measurement_type_opt);
+    parser.addOption(power_mode_opt);
     //parser.addOption(no_host_comm_opt);
     //parser.addOption(output_data_type_opt);
 #endif
@@ -58,6 +60,7 @@ GlobalApplication::GlobalApplication(int argc, char *argv[]):QCoreApplication(ar
     v4l2_instance = nullptr;
 
 #if defined(RUN_ON_EMBEDDED_LINUX)
+    misc_dev_instance = nullptr;
     GrayScaleMinMappedRange = 50;
     GrayScaleMaxMappedRange = 2000;
     RealDistanceMinMappedRange = 0.0f;
@@ -65,11 +68,22 @@ GlobalApplication::GlobalApplication(int argc, char *argv[]):QCoreApplication(ar
     selected_e_type = DEFAULT_ENVIRONMENT_TYPE;
     selected_m_type = DEFAULT_MEASUREMENT_TYPE;
     selected_framerate_type = DEFAULT_DTOF_FRAMERATE;
+    selected_power_mode = AdapsPowerModeNormal;
     capture_req_from_host = false;
-    roi_sram_rotate = false;
+    roi_sram_rolling = false;
     loaded_walkerror_data = nullptr;
+    loaded_walkerror_data_size = 0;
     loaded_spotoffset_data = nullptr;
+    loaded_spotoffset_data_size = 0;
     walkerror_enable = false;
+    selected_module_type = MODULE_TYPE_SPOT;
+    anchor_colOffset = 0;
+    anchor_rowOffset = 0;
+    rowSearchingRange = 2;
+    colSearchingRange = 2;
+    usrCfgGrayExposure = 0;
+    usrCfgCoarseExposure = 0;
+    usrCfgFineExposure = 0;
 #endif
 
     //DBG_INFO( "---------------");
@@ -93,6 +107,11 @@ GlobalApplication::GlobalApplication(int argc, char *argv[]):QCoreApplication(ar
     if (parser.isSet(measurement_type_opt)) {
         option2Value = parser.value(measurement_type_opt);
         selected_m_type = string_2_measurementtype(option2Value);
+    }
+
+    if (parser.isSet(power_mode_opt)) {
+        option2Value = parser.value(power_mode_opt);
+        selected_power_mode = string_2_powermode(option2Value);
     }
 #endif
 
@@ -201,16 +220,16 @@ int GlobalApplication::set_capture_req_from_host(bool val)
     return ret;
 }
 
-bool GlobalApplication::is_roi_sram_rotate()
+bool GlobalApplication::is_roi_sram_rolling()
 {
-    return roi_sram_rotate;
+    return roi_sram_rolling;
 }
 
-int GlobalApplication::set_roi_sram_rotate(bool val)
+int GlobalApplication::set_roi_sram_rolling(bool val)
 {
     int ret = 0;
 
-    roi_sram_rotate = val;
+    roi_sram_rolling = val;
 
     return ret;
 }
@@ -241,6 +260,26 @@ int GlobalApplication::set_framerate_type(int framerate_type)
     if (framerate_type >= AdapsFramerateType15FPS && framerate_type <= AdapsFramerateType60FPS)
     {
         selected_framerate_type = (AdapsFramerateType) framerate_type;
+    }
+    else {
+        ret = -1;
+    }
+
+    return ret;
+}
+
+AdapsPowerMode GlobalApplication::get_power_mode()
+{
+    return selected_power_mode;
+}
+
+int GlobalApplication::set_power_mode(int power_mode)
+{
+    int ret = 0;
+
+    if (power_mode >= AdapsPowerModeNormal && power_mode <= AdapsPowerModeDiv3)
+    {
+        selected_power_mode = (AdapsPowerMode) power_mode;
     }
     else {
         ret = -1;
@@ -401,6 +440,82 @@ int GlobalApplication::set_loaded_spotoffset_data_size(UINT32 value)
     return ret;
 }
 
+moduletype GlobalApplication::get_module_type()
+{
+    return selected_module_type;
+}
+
+int GlobalApplication::set_module_type(int module_type)
+{
+    int ret = 0;
+
+    selected_module_type = (moduletype) module_type;
+
+    return ret;
+}
+
+int GlobalApplication::get_anchorOffset(UINT8 *rowOffset, UINT8 *colOffset)
+{
+    int ret = 0;
+
+    *colOffset = anchor_colOffset;
+    *rowOffset = anchor_rowOffset;
+
+    return ret;
+}
+
+int GlobalApplication::set_anchorOffset(UINT8 rowOffset, UINT8 colOffset)
+{
+    int ret = 0;
+
+    anchor_colOffset = colOffset;
+    anchor_rowOffset = rowOffset;
+
+    return ret;
+}
+
+int GlobalApplication::get_spotSearchingRange(UINT8 *rowRange, UINT8 *colRange)
+{
+    int ret = 0;
+
+    *rowRange = rowSearchingRange;
+    *colRange = colSearchingRange;
+
+    return ret;
+}
+
+int GlobalApplication::set_spotSearchingRange(UINT8 rowRange, UINT8 colRange)
+{
+    int ret = 0;
+
+    rowSearchingRange = rowRange;
+    colSearchingRange = colRange;
+
+    return ret;
+}
+
+int GlobalApplication::get_usrCfgExposureValues(UINT8 *coarseExposure, UINT8 *fineExposure, UINT8 *grayExposure)
+{
+    int ret = 0;
+
+    *coarseExposure = usrCfgCoarseExposure;
+    *fineExposure = usrCfgFineExposure;
+    *grayExposure = usrCfgGrayExposure;
+
+    return ret;
+}
+
+int GlobalApplication::set_usrCfgExposureValues(UINT8 coarseExposure, UINT8 fineExposure, UINT8 grayExposure)
+{
+    int ret = 0;
+
+    usrCfgCoarseExposure = coarseExposure;
+    usrCfgFineExposure = fineExposure;
+    usrCfgGrayExposure = grayExposure;
+
+    return ret;
+}
+
 #endif
 
 sensortype GlobalApplication::get_sensor_type()
@@ -463,6 +578,16 @@ AdapsMeasurementType GlobalApplication::string_2_measurementtype(QString& str)
         return AdapsMeasurementTypeNormal;
     else
         return AdapsMeasurementTypeFull;
+}
+
+AdapsPowerMode GlobalApplication::string_2_powermode(QString& str)
+{
+    if (!str.compare("Div1"))
+        return AdapsPowerModeNormal;
+    else if (!str.compare("Div3"))
+        return AdapsPowerModeDiv3;
+    else
+        return AdapsPowerModeNormal;
 }
 #endif
 

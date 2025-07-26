@@ -71,7 +71,7 @@ public:
     int read_dtof_exposure_param(void);
     int write_dtof_initial_param(struct adaps_dtof_intial_param *param);
     int get_dtof_module_static_data(void **pp_module_static_data, void **pp_eeprom_data_buffer, uint32_t *eeprom_data_size);
-    int send_down_external_config(const UINT8 workMode, const uint32_t script_buf_size, const uint8_t* script_buf, const uint32_t roi_sram_size, const uint8_t* roi_sram_data, const bool roi_sram_rotate);
+    int send_down_external_config(const UINT8 workMode, const uint32_t script_buf_size, const uint8_t* script_buf, const uint32_t roi_sram_size, const uint8_t* roi_sram_data, const bool roi_sram_rolling);
     int get_loaded_roi_sram_data_info(void **pp_roisram_data_buffer, uint32_t *roisram_data_size);
     int update_eeprom_data(UINT8 *buf, UINT32 offset, UINT32 length);
 
@@ -83,28 +83,25 @@ private:
 
     char        devnode_4_misc[DEV_NODE_LEN];
     int         fd_4_misc;
-    swift_eeprom_data_t *p_eeprominfo;
+    swift_spot_module_eeprom_data_t *p_spot_module_eeprom;
+    swift_flood_module_eeprom_data_t *p_flood_module_eeprom;
     struct adaps_dtof_module_static_data module_static_data;
     struct adaps_dtof_runtime_status_param last_runtime_status_param;
     struct adaps_dtof_exposure_param exposureParam;
-    int eeprom_data_size;
     u8* mapped_eeprom_data_buffer;
     u8* mapped_script_sensor_settings;
     uint16_t sensor_reg_setting_cnt;
     uint16_t vcsel_reg_setting_cnt;
-#if (ADS6401_MODULE_SPOT == SWIFT_MODULE_TYPE)
-    u8* mapped_script_vcsel_opn7020_settings;
-#else
-    u8* mapped_script_vcsel_PhotonIC5015_settings;
-#endif
+    u8* mapped_script_vcsel_settings;           // opn7020 for spot module, PhotonIC5015 for flood module
     u8* mapped_roi_sram_data;
     u32 loaded_roi_sram_size;
-    bool loaded_roi_sram_rotate;
+    bool loaded_roi_sram_rolling;
 
     int read_dtof_module_static_data(void);
-    int check_crc32_4_dtof_calib_eeprom_param(void);
+    int check_crc32_4_flood_calib_eeprom_param(void);
     bool save_dtof_calib_eeprom_param(void *buf, int len);
-    bool check_crc_4_eeprom_item(uint8_t *pEEPROMData, uint32_t offset, uint32_t length, uint8_t savedCRC, const char *tag);
+    bool check_crc8_4_eeprom_item(uint8_t *pEEPROMData, uint32_t offset, uint32_t length, uint8_t savedCRC, const char *tag);
+    int check_crc8_4_spot_calib_eeprom_param(void);
     int get_next_line(const uint8_t *buffer, size_t buffer_len, size_t *pos, char *line, size_t line_len);
     int LoadItemsFromBuffer(const uint32_t ulBufferLen, const uint8_t* pucBuffer, ScriptItem* items, uint32_t* number);
     int parse_items(const uint32_t ulItemsCount, const ScriptItem *pstrItems);

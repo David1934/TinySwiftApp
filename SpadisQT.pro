@@ -4,7 +4,6 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 TARGET = SpadisQT
 TEMPLATE = app
 
-# 编译器优化标志（Linux/GCC示例）
 QMAKE_CXXFLAGS_RELEASE += -O3 -flto -fno-exceptions
 QMAKE_LFLAGS_RELEASE   += -flto -Wl,--gc-sections
 
@@ -31,8 +30,8 @@ LIBS += -lssl -lcrypto -lz
 contains(DEFINES, RUN_ON_EMBEDDED_LINUX) {
     DEFINES += RUN_ON_RK3568
     DEFINES += CONFIG_VIDEO_ADS6401
+#    DEFINES += ENABLE_COMPATIABLE_WITH_OLD_ALGO_LIB
 #    DEFINES += STANDALONE_APP_WITHOUT_HOST_COMMUNICATION
-#    DEFINES += CONFIG_ADAPS_SWIFT_FLOOD
 
     QMAKE_LFLAGS += -Wl,-rpath,/vendor/lib64/
     SOURCES += adaps_dtof.cpp

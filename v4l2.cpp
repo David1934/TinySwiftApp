@@ -16,10 +16,10 @@ V4L2::V4L2(struct sensor_params params)
     host_comm = Host_Communication::getInstance();
 #endif
     utils = new Utils();
+    p_misc_device = NULL_POINTER;
 #endif
     buffers = NULL_POINTER;
     sensordata = NULL_POINTER;
-    p_misc_device = NULL_POINTER;
     fd = 0;
     firstFrameTimeUsec = 0;
     rxFrameCnt = 0;
@@ -164,6 +164,11 @@ bool V4L2::get_power_on_state()
 bool V4L2::get_stream_on_state()
 {
     return stream_on;
+}
+
+int V4L2::get_videodev_fd()
+{
+    return fd;
 }
 
 int V4L2::get_devnode_from_sysfs(struct media_entity_desc *entity_desc, char *p_devname)
@@ -499,7 +504,7 @@ int V4L2::V4l2_initilize(void)
         }
 
         script_loaded = false;
-        qApp->set_roi_sram_rotate(false);
+        qApp->set_roi_sram_rolling(false);
 
 #if !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
         if (host_comm)
@@ -510,19 +515,19 @@ int V4L2::V4l2_initilize(void)
             UINT32 backuped_roisram_data_sz;
             UINT8 *backuped_roisram_data;
 
-            host_comm->get_backuped_external_config_info(&backuped_wkmode, &backuped_script_buffer, &backuped_script_buf_sz, &backuped_roisram_data, &backuped_roisram_data_sz, &roi_sram_rotate);
-            DBG_INFO("backuped_script_buf_sz: %d, backuped_roisram_data_sz: %d, roi_sram_rotate: %d...\n", backuped_script_buf_sz, backuped_roisram_data_sz, roi_sram_rotate);
+            host_comm->get_backuped_external_config_info(&backuped_wkmode, &backuped_script_buffer, &backuped_script_buf_sz, &backuped_roisram_data, &backuped_roisram_data_sz, &roi_sram_rolling);
+            DBG_INFO("backuped_wkmode: %d, backuped_script_buf_sz: %d, backuped_roisram_data_sz: %d, roi_sram_rolling: %d...\n", backuped_wkmode, backuped_script_buf_sz, backuped_roisram_data_sz, roi_sram_rolling);
 
             roi_sram_loaded = (backuped_roisram_data_sz > 0) ? true: false;
             if (backuped_roisram_data_sz <= ALL_ROISRAM_GROUP_SIZE)
             {
-                roi_sram_rotate = false;
+                roi_sram_rolling = false;
             }
-            qApp->set_roi_sram_rotate(roi_sram_rotate);
+            qApp->set_roi_sram_rolling(roi_sram_rolling);
 
             if (backuped_script_buf_sz || backuped_roisram_data_sz)
             {
-                int ret = p_misc_device->send_down_external_config(backuped_wkmode, backuped_script_buf_sz, (const uint8_t* ) backuped_script_buffer, backuped_roisram_data_sz, (const uint8_t* ) backuped_roisram_data, roi_sram_rotate);
+                int ret = p_misc_device->send_down_external_config(backuped_wkmode, backuped_script_buf_sz, (const uint8_t* ) backuped_script_buffer, backuped_roisram_data_sz, (const uint8_t* ) backuped_roisram_data, roi_sram_rolling);
                 if (0 > ret)
                 {
                     char err_msg[] = "work_mode and the register config in script buffer is mismatched";
@@ -542,6 +547,10 @@ int V4L2::V4l2_initilize(void)
         param.measure_type = snr_param.measure_type;
         param.framerate_type = snr_param.framerate_type;
         param.vcselzonecount_type = AdapsVcselZoneCount4;
+        param.power_mode = snr_param.power_mode;
+        qApp->get_anchorOffset(&param.rowOffset, &param.colOffset);
+        qApp->get_spotSearchingRange(&param.rowSearchingRange, &param.colSearchingRange);
+        qApp->get_usrCfgExposureValues(&param.coarseExposure, &param.fineExposure, &param.grayExposure);
 
         if (0 > p_misc_device->write_dtof_initial_param(&param))
         {
@@ -804,7 +813,7 @@ int V4L2::Capture_frame()
         param.env_type = snr_param.env_type;
         param.measure_type = snr_param.measure_type;
         param.framerate_type = snr_param.framerate_type;
-        param.power_mode = AdapsPowerModeNormal; // todo: get the real power mode
+        param.power_mode = snr_param.power_mode;
         param.curr_pvdd = p_runtime_status_param->expected_pvdd_x100;
         param.curr_vop_abs = p_runtime_status_param->expected_vop_abs_x100;
         param.curr_inside_temperature = p_runtime_status_param->inside_temperature_x100;
@@ -824,7 +833,7 @@ int V4L2::Capture_frame()
     if (true != Utils::is_env_var_true(ENV_VAR_SKIP_FRAME_PROCESS))
     {
         emit update_info(param1);
-#if !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
+#if defined(RUN_ON_EMBEDDED_LINUX) && !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
         emit rx_new_frame(v4l2_buf.sequence, buffers[v4l2_buf.index].start, bytesused, v4l2_buf.timestamp, frm_type, total_bytes_per_line, param);
 #else
         emit rx_new_frame(v4l2_buf.sequence, buffers[v4l2_buf.index].start, bytesused, v4l2_buf.timestamp, frm_type, total_bytes_per_line);

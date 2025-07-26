@@ -49,7 +49,6 @@ private slots:
         void simulateButtonClick();
         void onCtrl_X_Pressed(void);
         void onCtrl_S_Pressed(void);
-        void watchSpotInfoUpdate(  QPoint spot, enum frame_data_type ftype, watchPointInfo_t wpi);
     #endif
     void Quit(void);
     void onThreadEnd(int stop_request_code);

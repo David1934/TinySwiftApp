@@ -85,7 +85,8 @@ MainWindow::MainWindow()
     ui->groupBox_dtof_wkmode->setVisible(false);
     ui->groupBox_dtof_environment->setVisible(false);
     ui->groupBox_dtof_framerate->setVisible(false);
-    ui->confidence_bitmap->setVisible(false);
+    ui->confidence_view->setVisible(false);
+    ui->groupBox_dtof_powermode->setVisible(false);
 #endif
 #endif
 
@@ -195,7 +196,7 @@ void MainWindow::startFrameProcessThread(void)
 
         DBG_ERROR("Fail to frame_process_thread init()...");
 #if !defined(CONSOLE_APP_WITHOUT_GUI)
-        ui->mainlabel->setText("Fail to frame_process_thread init(),\nPlease check camera is ready or not?");
+        ui->depth_view->setText("Fail to frame_process_thread init(),\nPlease check camera is ready or not?");
 #endif
         delete frame_process_thread;
         frame_process_thread = NULL_POINTER;
@@ -207,9 +208,6 @@ void MainWindow::startFrameProcessThread(void)
 
 #if !defined(CONSOLE_APP_WITHOUT_GUI)
     qRegisterMetaType<enum frame_data_type>("enum frame_data_type");
-    qRegisterMetaType<watchPointInfo_t>("watchPointInfo_t");
-    connect(frame_process_thread, SIGNAL(updateWatchSpotInfo(QPoint , enum frame_data_type, watchPointInfo_t)), 
-        this, SLOT(watchSpotInfoUpdate(QPoint , enum frame_data_type, watchPointInfo_t)));
     connect(frame_process_thread, SIGNAL(newFrameReady4Display(QImage, QImage)),
             this, SLOT(new_frame_display(QImage, QImage)));
     qRegisterMetaType<status_params2>("status_params2");
@@ -223,7 +221,7 @@ void MainWindow::startFrameProcessThread(void)
     QShortcut *shortcut_ctrlS = new QShortcut(QKeySequence(Qt::CTRL + Qt::Key_S), this);
     connect(shortcut_ctrlS, &QShortcut::activated, this, &MainWindow::onCtrl_S_Pressed);
 
-    ui->mainlabel->installEventFilter(this); // for eventFilter()
+    ui->depth_view->installEventFilter(this); // for eventFilter()
 
     tested_times = 0;
     to_test_times = qApp->get_timer_test_times();
@@ -274,14 +272,14 @@ void MainWindow::onThreadEnd(int stop_request_code)
             delete frame_process_thread;
             frame_process_thread = NULL_POINTER;
 #if !defined(CONSOLE_APP_WITHOUT_GUI)
-            ui->mainlabel->setText("Device is stopped");
-            ui->confidence_bitmap->setText("Confidence bitmap is NA");
+            ui->depth_view->setText("Device is stopped");
+            ui->confidence_view->setText("Confidence bitmap is NA");
 #endif
         break;
 
         default:
 #if !defined(CONSOLE_APP_WITHOUT_GUI)
-            ui->mainlabel->setText("Device is ready");
+            ui->depth_view->setText("Device is ready");
 #endif
             break;
     }
@@ -342,7 +340,7 @@ void MainWindow::unixSignalHandler(int signal)
         case SIGUSR1:
             DBG_ERROR("User Signal 1 recieved, some error happened\nPls check kernel log for detailed info!");
 #if !defined(CONSOLE_APP_WITHOUT_GUI)
-            ui->mainlabel->setText("User Signal 1 recieved, some error happened\nPls check kernel log for detailed info!");
+            ui->depth_view->setText("User Signal 1 recieved, some error happened\nPls check kernel log for detailed info!");
 #endif
             if (NULL_POINTER != frame_process_thread)
             {
@@ -360,7 +358,7 @@ void MainWindow::unixSignalHandler(int signal)
         case SIGUSR2:
             DBG_ERROR("User Signal 2 recieved, some error happened\nPls check kernel log for detailed info!");
 #if !defined(CONSOLE_APP_WITHOUT_GUI)
-            ui->mainlabel->setText("User Signal 2 recieved, some error happened\nPls check kernel log for detailed info!");
+            ui->depth_view->setText("User Signal 2 recieved, some error happened\nPls check kernel log for detailed info!");
 #endif
             if (NULL_POINTER != frame_process_thread)
             {
@@ -451,6 +449,27 @@ void MainWindow::on_capture_options_set(capture_req_param_t* param)
 #endif
     }
 
+    switch (param->power_mode) 
+    {
+#if 0 //!defined(CONSOLE_APP_WITHOUT_GUI)
+        case AdapsPowerModeDiv3:
+            ui->radioButton_pmode_div3->setChecked(true);
+            break;
+
+        default:
+            ui->radioButton_pmode_div1->setChecked(true);
+            break;
+#else
+        case AdapsPowerModeDiv3:
+            qApp->set_power_mode(AdapsPowerModeDiv3);
+            break;
+
+        default:
+            qApp->set_power_mode(AdapsPowerModeNormal);
+            break;
+#endif
+    }
+
     switch (param->env_type) 
     {
 #if !defined(CONSOLE_APP_WITHOUT_GUI)
@@ -531,6 +550,14 @@ void MainWindow::on_startCapture()
                 qApp->set_wk_mode(WK_DTOF_PHR);
             }
 
+#if 0
+            if(ui->radioButton_pmode_div3->isChecked()) {
+                qApp->set_power_mode(AdapsPowerModeDiv3);
+            } else {
+                qApp->set_power_mode(AdapsPowerModeNormal);
+            }
+#endif
+
             if(ui->radioButton_outdoor->isChecked()) {
                 qApp->set_environment_type(AdapsEnvTypeOutdoor);
             } else {
@@ -563,6 +590,21 @@ void MainWindow::on_startCapture()
         }
 #endif
 
+#if defined(RUN_ON_EMBEDDED_LINUX)
+#if !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
+        if (false == qApp->is_capture_req_from_host())
+#endif
+        {
+            // For flood module on Hisilicon platform, PCM mode always use Div3 since too high temperature
+            if (MODULE_TYPE_FLOOD == qApp->get_module_type()
+                 && WK_DTOF_PCM == qApp->get_wk_mode()
+                )
+            {
+                qApp->set_power_mode(AdapsPowerModeDiv3);
+            }
+        }
+#endif
+
         //qApp->set_wk_mode(WK_DTOF_FHR);
         startFrameProcessThread();
     }
@@ -570,47 +612,16 @@ void MainWindow::on_startCapture()
 
 
 #if !defined(CONSOLE_APP_WITHOUT_GUI)
-void MainWindow::watchSpotInfoUpdate(  QPoint spot, enum frame_data_type ftype, watchPointInfo_t wpi)
-{
-    char temp_string[64];
-    const char *confidence_level_names[] =
-    {
-        "High",
-        "Low",
-        "Un-defined",
-        "Medium",
-    };
-
-    switch (ftype) 
-    {
-        case FDATA_TYPE_YUYV:
-        case FDATA_TYPE_NV12:
-            sprintf(temp_string, "P(%d, %d) r: %d, g: %d, b: %d", 
-                spot.x(), spot.y(), wpi.red, wpi.green, wpi.blue);
-            break;
-
-        case FDATA_TYPE_DTOF_RAW_DEPTH:
-            sprintf(temp_string, "P(%d, %d): %d mm (%s)", 
-                spot.x(), spot.y(), wpi.distance, confidence_level_names[wpi.confidence]);
-            break;
-
-        default:
-            break;
-    }
-
-    ui->spot_depth->setText(temp_string);
-}
-
 bool MainWindow::eventFilter(QObject *obj, QEvent *event)
 {
-    if (obj == ui->mainlabel && event->type() == QEvent::MouseButtonPress)
+    if (obj == ui->depth_view && event->type() == QEvent::MouseButtonPress)
     {
-        QSize labelSize = ui->mainlabel->size();
+        QSize labelSize = ui->depth_view->size();
         QMouseEvent *mouseEvent = static_cast<QMouseEvent*>(event);
         QPoint pos = mouseEvent->pos();
         DBG_INFO("pos (%d, %d) label.size(): %d X %d", 
             pos.x(), pos.y(), labelSize.width(), labelSize.height());
-        frame_process_thread->setWatchSpot(labelSize, pos);
+        //frame_process_thread->setWatchSpot(labelSize, pos);
 
         return true;
     }
@@ -666,14 +677,14 @@ bool MainWindow::update_status_info(status_params2 param2)
         "Full",
     };
 
-#if 0
     const char *power_mode_names[] =
     {
         "Unknown",
         "Div1",
+        "Div2",
         "Div3",
     };
-#endif
+
 #endif
 
     unsigned int streamed_time_seconds = param2.streamed_time_us / 1000000;
@@ -698,7 +709,16 @@ bool MainWindow::update_status_info(status_params2 param2)
         ui->cur_module_type_value->setText("RGB");
     }
     else {
-        ui->cur_module_type_value->setText(SWIFT_MODULE_TYPE_NAME);
+        if (MODULE_TYPE_SPOT == qApp->get_module_type())
+        {
+            ui->cur_module_type_value->setText(SPOT_MODULE_TYPE_NAME);
+        }
+        else if (MODULE_TYPE_FLOOD == qApp->get_module_type()) {
+            ui->cur_module_type_value->setText(FLOOD_MODULE_TYPE_NAME);
+        }
+        else {
+            ui->cur_module_type_value->setText(BIG_FOV_FLOOD_MODULE_TYPE_NAME);
+        }
 
     #if defined(CONFIG_ADAPS_SWIFT_FLOOD)
         ui->pvddLabel->setVisible(false);
@@ -721,6 +741,14 @@ bool MainWindow::update_status_info(status_params2 param2)
     }
     else {
         ui->cur_environment_value->setText("Unknown");
+    }
+
+    if (param2.curr_power_mode >= AdapsPowerModeNormal && param2.curr_power_mode <= AdapsPowerModeDiv3)
+    {
+        ui->cur_powermode_value->setText(power_mode_names[param2.curr_power_mode]);
+    }
+    else {
+        ui->cur_powermode_value->setText("Unknown");
     }
 
     if (param2.measure_type >= AdapsMeasurementTypeNormal && param2.measure_type <= AdapsMeasurementTypeFull)
@@ -769,25 +797,25 @@ bool MainWindow::new_frame_display(QImage image, QImage img4confidence)
     long currTimeUsec;
     unsigned long streamed_timeUs;
 
-    ui->mainlabel->clear();
+    ui->depth_view->clear();
     if(image.isNull())
     {
-        ui->mainlabel->setText("NO IMAGE TO BE DISPLAYED!");
+        ui->depth_view->setText("NO IMAGE TO BE DISPLAYED!");
     }
     else
     {
-        image = image.scaled(ui->mainlabel->width(),ui->mainlabel->height(),Qt::IgnoreAspectRatio,Qt::SmoothTransformation);
+        image = image.scaled(ui->depth_view->width(),ui->depth_view->height(),Qt::IgnoreAspectRatio,Qt::SmoothTransformation);
         QPixmap pix = QPixmap::fromImage(image,Qt::AutoColor);
-        ui->mainlabel->setPixmap(pix);
+        ui->depth_view->setPixmap(pix);
 
         if(false == img4confidence.isNull())
         {
-            img4confidence = img4confidence.scaled(ui->confidence_bitmap->width(),ui->confidence_bitmap->height(),Qt::IgnoreAspectRatio,Qt::SmoothTransformation);
+            img4confidence = img4confidence.scaled(ui->confidence_view->width(),ui->confidence_view->height(),Qt::IgnoreAspectRatio,Qt::SmoothTransformation);
             QPixmap pix = QPixmap::fromImage(img4confidence,Qt::AutoColor);
-            ui->confidence_bitmap->setPixmap(pix);
+            ui->confidence_view->setPixmap(pix);
         }
         else {
-            ui->confidence_bitmap->setText("Confidence bitmap is NA");
+            ui->confidence_view->setText("Confidence bitmap is NA");
         }
 
         gettimeofday(&tv,NULL);

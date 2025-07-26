@@ -13,7 +13,7 @@
 #include "host_comm.h"
 #include "depthmapwrapper.h"    // to use DepthMapWrapperGetVersion()
 
-#if defined(ROI_SRAM_DATA_INJECTION_4_ROISRAM_ROTATE_TEST)
+#if defined(ROI_SRAM_DATA_INJECTION_4_ROISRAM_ROLLING_TEST)
 #include "ads6401_roi_sram_test_data.h"
 #endif
 
@@ -48,8 +48,10 @@ Host_Communication::Host_Communication() {
     loaded_walkerror_data_size = 0;
     loaded_spotoffset_data = NULL_POINTER;
     loaded_spotoffset_data_size = 0;
+    loaded_ref_distance_data = NULL_POINTER;
+    loaded_lens_intrinsic_data = NULL_POINTER;
     backuped_wkmode = 0;
-    backuped_roi_sram_rotate = false;
+    backuped_roi_sram_rolling = false;
     p_misc_device = NULL_POINTER;
     memset(&backuped_capture_req_param, 0, sizeof(capture_req_param_t));
     txRawdataFrameCnt = 0;
@@ -59,10 +61,10 @@ Host_Communication::Host_Communication() {
     eeprom_capacity = 0;
     adaps_sender_init();
 
-#if defined(ROI_SRAM_DATA_INJECTION_4_ROISRAM_ROTATE_TEST)
+#if defined(ROI_SRAM_DATA_INJECTION_4_ROISRAM_ROLLING_TEST)
     if (true == Utils::is_env_var_true(ENV_VAR_ROI_SRAM_DATA_INJECTION))
     {
-        roi_sram_rotate_data_injection();
+        roi_sram_rolling_data_injection();
     }
 #endif
 }
@@ -78,28 +80,40 @@ Host_Communication::~Host_Communication()
             backuped_script_buffer = NULL_POINTER;
             backuped_script_buffer_size = 0;
         }
-        
+
         if (NULL_POINTER != backuped_roisram_data)
         {
             free(backuped_roisram_data);
             backuped_roisram_data = NULL_POINTER;
             backuped_roisram_data_size = 0;
         }
-        
+
         if (NULL_POINTER != loaded_walkerror_data)
         {
             free(loaded_walkerror_data);
             loaded_walkerror_data = NULL_POINTER;
             loaded_walkerror_data_size = 0;
         }
-        
+
         if (NULL_POINTER != loaded_spotoffset_data)
         {
             free(loaded_spotoffset_data);
             loaded_spotoffset_data = NULL_POINTER;
             loaded_spotoffset_data_size = 0;
         }
-        
+
+        if (NULL_POINTER != loaded_ref_distance_data)
+        {
+            free(loaded_ref_distance_data);
+            loaded_ref_distance_data = NULL_POINTER;
+        }
+
+        if (NULL_POINTER != loaded_lens_intrinsic_data)
+        {
+            free(loaded_lens_intrinsic_data);
+            loaded_lens_intrinsic_data = NULL_POINTER;
+        }
+
         sender_destroy();
         delete instance;
         instance = NULL_POINTER;
@@ -131,9 +145,19 @@ BOOLEAN Host_Communication::get_req_mirror_y()
     return backuped_capture_req_param.mirror_y;
 }
 
-UINT8 Host_Communication::get_req_walkerror_version()
+UINT8 Host_Communication::get_req_walkerror_enable()
 {
-    return backuped_capture_req_param.walkerror_version;
+    return backuped_capture_req_param.walkerror_enable;
+}
+
+void* Host_Communication::get_loaded_ref_distance_data()
+{
+    return loaded_ref_distance_data;
+}
+
+void* Host_Communication::get_loaded_lens_intrinsic_data()
+{
+    return loaded_lens_intrinsic_data;
 }
 
 int Host_Communication::dump_buffer_data(void* dump_buf, const char *buffer_name, int callline)
@@ -396,17 +420,13 @@ int Host_Communication::report_frame_raw_data(void* pFrameData, uint32_t frameDa
 
 int Host_Communication::dump_module_static_data(module_static_data_t *pStaticDataParam)
 {
-    //CHAR                    serialNumber[SENSOR_SN_LENGTH+1] = {0};
-
-    //memcpy(serialNumber, pStaticDataParam->serialNumber, SENSOR_SN_LENGTH);
-
     LOG_DEBUG("UINT8            data_type = 0x%x;               // refer to enum swift_data_type of this .h file", pStaticDataParam->data_type);
     LOG_DEBUG("UINT32           module_type = 0x%x;             // refer to ADS6401_MODULE_SPOT and ADS6401_MODULE_FLOOD of adaps_types.h file", pStaticDataParam->module_type);
     LOG_DEBUG("UINT32           eeprom_capacity = %d;           // unit is byte", pStaticDataParam->eeprom_capacity);
     LOG_DEBUG("UINT16           otp_vbe25 = 0x%04x;", pStaticDataParam->otp_vbe25);
     LOG_DEBUG("UINT16           otp_vbd = 0x%04x;", pStaticDataParam->otp_vbd);
     LOG_DEBUG("UINT16           otp_adc_vref = 0x%04x;", pStaticDataParam->otp_adc_vref);
-    LOG_DEBUG("CHAR             serialNumber = [%s];", pStaticDataParam->serialNumber);
+    LOG_DEBUG("CHAR             chip_product_id = [%s];", pStaticDataParam->chip_product_id);
     LOG_DEBUG("CHAR             sensor_drv_version = [%s];", pStaticDataParam->sensor_drv_version);
     LOG_DEBUG("CHAR             algo_lib_version = [%s];", pStaticDataParam->algo_lib_version);
     LOG_DEBUG("CHAR             sender_lib_version = [%s];", pStaticDataParam->sender_lib_version);
@@ -422,7 +442,7 @@ int Host_Communication::report_module_static_data()
     uint32_t ulBufSize;
     void *async_buf;
     void* pEEPROM_buffer;
-    uint32_t EEPROM_size;
+    uint32_t eeprom_data_size;
     void *module_static_data_addr;
     struct adaps_dtof_module_static_data *module_static_data;
     module_static_data_t *pStaticDataParam;
@@ -442,9 +462,10 @@ int Host_Communication::report_module_static_data()
         return -1;
     }
 
-    p_misc_device->get_dtof_module_static_data(&module_static_data_addr, &pEEPROM_buffer, &EEPROM_size);
+    qApp->set_capture_req_from_host(true);
+    p_misc_device->get_dtof_module_static_data(&module_static_data_addr, &pEEPROM_buffer, &eeprom_data_size);
     module_static_data = (struct adaps_dtof_module_static_data *) module_static_data_addr;
-    ulBufSize = ulCmdDataLen + EEPROM_size;
+    ulBufSize = ulCmdDataLen + eeprom_data_size;
 
     async_buf = sender_async_buf_alloc(ulBufSize);
     if (NULL_POINTER == async_buf) {
@@ -462,7 +483,7 @@ int Host_Communication::report_module_static_data()
     pStaticDataParam->otp_vbe25 = module_static_data->otp_vbe25;
     pStaticDataParam->otp_vbd = module_static_data->otp_vbd;
     pStaticDataParam->otp_adc_vref = module_static_data->otp_adc_vref;
-    memcpy(pStaticDataParam->serialNumber, module_static_data->serialNumber, SENSOR_SN_LENGTH);
+    memcpy(pStaticDataParam->chip_product_id, module_static_data->chip_product_id, SWIFT_PRODUCT_ID_SIZE);
 
     memcpy(pStaticDataParam->sensor_drv_version, module_static_data->sensor_drv_version, FW_VERSION_LENGTH);
     DepthMapWrapperGetVersion(pStaticDataParam->algo_lib_version);
@@ -470,8 +491,9 @@ int Host_Communication::report_module_static_data()
     sprintf(pStaticDataParam->spadisQT_version, "%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_REVISION);
 
     pStaticDataParam->data_type = MODULE_STATIC_DATA;
-    pStaticDataParam->eeprom_data_size = EEPROM_size;
-    memcpy(pStaticDataParam->eeprom_data, pEEPROM_buffer, EEPROM_size);
+    pStaticDataParam->eeprom_data_size = eeprom_data_size;
+    memcpy(pStaticDataParam->eeprom_data, pEEPROM_buffer, eeprom_data_size);
+    dump_buffer_data(pStaticDataParam->eeprom_data, "eeprom_data_to_PC", __LINE__);
     dump_module_static_data(pStaticDataParam);
 
     int result = sender_async_send_msg(async_buf, ulBufSize, 0);
@@ -483,33 +505,36 @@ int Host_Communication::report_module_static_data()
     }
     LOG_DEBUG("%s() sucessfully, send_buffer_size: %d.\n", __FUNCTION__, ulBufSize);
 
+    if (false == module_static_data->eeprom_crc_matched) {
+        char err_msg[] = "There is a/some mismatched CRC checksum for eeprom data, please consider to correct it.";
+        report_status(CMD_HOST_SIDE_GET_MODULE_STATIC_DATA, CMD_DEVICE_SIDE_ERROR_CHKSUM_MISMATCH_IN_EEPROM, err_msg, strlen(err_msg));
+    }
     return 0;
 }
 
 int Host_Communication::dump_capture_req_param(capture_req_param_t* pCaptureReqParam)
 {
-    LOG_DEBUG("UINT8            work_mode = %d;             // refer to swift_workmode_t of adaps_types.h", pCaptureReqParam->work_mode);
-    LOG_DEBUG("UINT8            env_type = %d;              // refer to AdapsEnvironmentType of adaps_types.h", pCaptureReqParam->env_type);
-    LOG_DEBUG("UINT8            measure_type = %d;          // refer to AdapsMeasurementType of adaps_types.h", pCaptureReqParam->measure_type);
-    LOG_DEBUG("UINT8            framerate_type = %d;        // refer to AdapsFramerateType of adaps_types.h", pCaptureReqParam->framerate_type);
-    LOG_DEBUG("UINT8            power_mode = %d;            // refer to AdapsPowerMode of adaps_types.h", pCaptureReqParam->power_mode);
-    LOG_DEBUG("UINT8            walkerror_version = %d;     // refer to ???", pCaptureReqParam->walkerror_version);
-    LOG_DEBUG("UINT8            req_out_data_type = %d;     // refer to enum swift_data_type of this .h file", pCaptureReqParam->req_out_data_type);
-    LOG_DEBUG("BOOLEAN          compose_subframe = %d;", pCaptureReqParam->compose_subframe);
-    LOG_DEBUG("BOOLEAN          expand_pixel = %d;", pCaptureReqParam->expand_pixel);
-    LOG_DEBUG("BOOLEAN          mirror_x = %d;", pCaptureReqParam->mirror_x);
-    LOG_DEBUG("BOOLEAN          mirror_y = %d;", pCaptureReqParam->mirror_y);
-    LOG_DEBUG("BOOLEAN          laserEnable = %d;", pCaptureReqParam->laserEnable);
-    LOG_DEBUG("BOOLEAN          vopAdjustEnable = %d;", pCaptureReqParam->vopAdjustEnable);
-    LOG_DEBUG("UINT8            rowSearchingRange = %d;", pCaptureReqParam->rowSearchingRange);
-    LOG_DEBUG("UINT8            colSearchingRange = %d;", pCaptureReqParam->colSearchingRange);
-    LOG_DEBUG("UINT8            rowOffset = %d;", pCaptureReqParam->rowOffset);
-    LOG_DEBUG("UINT8            colOffset = %d;", pCaptureReqParam->colOffset);
-    LOG_DEBUG("expose_param_t   expose_param = (0x%02x, 0x%02x, 0x%02x);", 
+    LOG_DEBUG("UINT8                    work_mode = %d;             // refer to swift_workmode_t of adaps_types.h", pCaptureReqParam->work_mode);
+    LOG_DEBUG("UINT8                    env_type = %d;              // refer to AdapsEnvironmentType of adaps_types.h", pCaptureReqParam->env_type);
+    LOG_DEBUG("UINT8                    measure_type = %d;          // refer to AdapsMeasurementType of adaps_types.h", pCaptureReqParam->measure_type);
+    LOG_DEBUG("UINT8                    framerate_type = %d;        // refer to AdapsFramerateType of adaps_types.h", pCaptureReqParam->framerate_type);
+    LOG_DEBUG("UINT8                    power_mode = %d;            // refer to AdapsPowerMode of adaps_types.h", pCaptureReqParam->power_mode);
+    LOG_DEBUG("UINT8                    walkerror_enable = %d;", pCaptureReqParam->walkerror_enable);
+    LOG_DEBUG("UINT8                    req_out_data_type = %d;     // refer to enum swift_data_type of this .h file", pCaptureReqParam->req_out_data_type);
+    LOG_DEBUG("BOOLEAN                  compose_subframe = %d;", pCaptureReqParam->compose_subframe);
+    LOG_DEBUG("BOOLEAN                  expand_pixel = %d;", pCaptureReqParam->expand_pixel);
+    LOG_DEBUG("BOOLEAN                  mirror_x = %d;", pCaptureReqParam->mirror_x);
+    LOG_DEBUG("BOOLEAN                  mirror_y = %d;", pCaptureReqParam->mirror_y);
+    LOG_DEBUG("BOOLEAN                  laserEnable = %d;", pCaptureReqParam->laserEnable);
+    LOG_DEBUG("BOOLEAN                  vopAdjustEnable = %d;", pCaptureReqParam->vopAdjustEnable);
+    LOG_DEBUG("UINT8                    rowSearchingRange = %d;", pCaptureReqParam->rowSearchingRange);
+    LOG_DEBUG("UINT8                    colSearchingRange = %d;", pCaptureReqParam->colSearchingRange);
+    LOG_DEBUG("UINT8                    rowOffset = %d;", pCaptureReqParam->rowOffset);
+    LOG_DEBUG("UINT8                    colOffset = %d;", pCaptureReqParam->colOffset);
+    LOG_DEBUG("exposure_time_param_t    exposure_param = (0x%02x, 0x%02x, 0x%02x);", 
             pCaptureReqParam->expose_param.coarseExposure, pCaptureReqParam->expose_param.fineExposure, pCaptureReqParam->expose_param.grayExposure);
-    LOG_DEBUG("BOOLEAN          script_loaded = %d;", pCaptureReqParam->script_loaded);
-    LOG_DEBUG("UINT32           script_size = %d;           // set to 0 if script_loaded == false", pCaptureReqParam->script_size);
-//    LOG_DEBUG("UINT8            blkwrite_reg_count = %d;    // set to 0 if no block_write register is included in script file", pCaptureReqParam->blkwrite_reg_count);
+    LOG_DEBUG("BOOLEAN                  script_loaded = %d;", pCaptureReqParam->script_loaded);
+    LOG_DEBUG("UINT32                   script_size = %d;           // set to 0 if script_loaded == false", pCaptureReqParam->script_size);
     LOG_DEBUG("sizeof(capture_req_param_t) = %ld", sizeof(capture_req_param_t));
 
     return 0;
@@ -551,10 +576,10 @@ void Host_Communication::adaps_set_walkerror_enable(CommandData_t* pCmdData, uin
 
 void Host_Communication::backup_roi_sram_data(roisram_data_param_t* pRoiSramParam)
 {
-    LOG_DEBUG("------roi_sram_rotate: %d, roisram_data_size: %d-----\n", pRoiSramParam->roi_sram_rotate, pRoiSramParam->roisram_data_size);
+    LOG_DEBUG("------roi_sram_rolling: %d, roisram_data_size: %d-----\n", pRoiSramParam->roi_sram_rolling, pRoiSramParam->roisram_data_size);
 
     backuped_roisram_data_size = pRoiSramParam->roisram_data_size;
-    backuped_roi_sram_rotate = pRoiSramParam->roi_sram_rotate;
+    backuped_roi_sram_rolling = pRoiSramParam->roi_sram_rolling;
 
     if (NULL_POINTER == backuped_roisram_data)
     {
@@ -601,7 +626,7 @@ void Host_Communication::adaps_load_roi_sram(CommandData_t* pCmdData, uint32_t r
 void Host_Communication::adaps_load_walkerror_data(CommandData_t* pCmdData, uint32_t rxDataLen)
 {
     spot_walkerror_data_param_t* pWalkerrorParam;
-    char msg[] = "Walk error loaded successfully.";
+    char msg[] = "Walkerror data loaded successfully.";
 
     if (rxDataLen < (sizeof(CommandData_t) + sizeof(spot_walkerror_data_param_t)))
     {
@@ -628,7 +653,7 @@ void Host_Communication::adaps_load_walkerror_data(CommandData_t* pCmdData, uint
         memcpy(loaded_walkerror_data, &pWalkerrorParam->walkerror_data, loaded_walkerror_data_size);
         qApp->set_loaded_walkerror_data(loaded_walkerror_data);
         qApp->set_loaded_walkerror_data_size(loaded_walkerror_data_size);
-        LOG_DEBUG("------loaded_spotoffset_data %d bytes-----\n", loaded_spotoffset_data_size);
+        LOG_DEBUG("------loaded_walkerror_data %d bytes-----\n", loaded_walkerror_data_size);
     }
     else {
         char err_msg[128];
@@ -644,7 +669,7 @@ void Host_Communication::adaps_load_walkerror_data(CommandData_t* pCmdData, uint
 void Host_Communication::adaps_load_spotoffset_data(CommandData_t* pCmdData, uint32_t rxDataLen)
 {
     spot_offset_data_param_t* pWalkerrorParam;
-    char msg[] = "Walk error loaded successfully.";
+    char msg[] = "Offset data loaded successfully.";
 
     if (rxDataLen < (sizeof(CommandData_t) + sizeof(spot_offset_data_param_t)))
     {
@@ -734,7 +759,7 @@ void Host_Communication::adaps_update_eeprom_data(CommandData_t* pCmdData, uint3
         p_misc_device = qApp->get_misc_dev_instance();
         dump_buffer_data(update_data, "update_eeprom_data", __LINE__);
         ret = p_misc_device->update_eeprom_data(update_data, update_data_offset, update_data_size);
-        LOG_DEBUG("------update_data_size %d, offset: %d, eeprom_capacity: %d-----\n", update_data_size, update_data_offset, eeprom_capacity);
+        LOG_DEBUG("------update_eeprom_data_size %d, offset: 0x%x/%d, eeprom_capacity: %d-----\n", update_data_size, update_data_offset, update_data_offset, eeprom_capacity);
     }
     else {
         char err_msg[128];
@@ -745,19 +770,136 @@ void Host_Communication::adaps_update_eeprom_data(CommandData_t* pCmdData, uint3
 
     if (0 == ret)
     {
-        char msg[] = "EEPROM data update successfully.";
+        char msg[128];
+        sprintf(msg, "update %d bytes eeprom data successfully.", update_data_size);
         report_status(CMD_HOST_SIDE_SET_SPOT_OFFSET_DATA, CMD_DEVICE_SIDE_NO_ERROR, msg, strlen(msg));
     }
     else {
-        char msg[] = "Fail to update eeprom data, check kernel log please.";
+        char msg[128];
+        sprintf(msg, "Fail to update %d bytes eeprom data, check kernel log please.", update_data_size);
         report_status(CMD_HOST_SIDE_SET_SPOT_OFFSET_DATA, CMD_DEVICE_SIDE_ERROR_FAIL_TO_UPDATE_EEPROM, msg, strlen(msg));
     }
 
 }
 
+void Host_Communication::adaps_set_rtc_time(CommandData_t* pCmdData, uint32_t rxDataLen)
+{
+    rtc_time_param_t* pRtcTimeParam;
+    rtc_time_param_t strTimeSyncInfo;
+    struct timeval strLocalTime;
+#if 0
+    struct tm* nowTime;
+    char tmpbuf[128];
+    time_t lt;
+#endif
+
+    if (rxDataLen < (sizeof(CommandData_t) + sizeof(rtc_time_param_t)))
+    {
+        LOG_ERROR("adaps_set_rtc_time: rxDataLen %d is too short for CMD_HOST_SIDE_SET_RTC_TIME.\n", rxDataLen);
+        return;
+    }
+
+    pRtcTimeParam = (rtc_time_param_t*) pCmdData->param;
+
+    gettimeofday(&strLocalTime, NULL);
+
+    //LOG_DEBUG("local time seconds since 00:00:00, 1 Jan 1970 UTC: %ld.\n", strLocalTime.tv_sec);
+
+    memcpy(&strTimeSyncInfo, pRtcTimeParam, sizeof(rtc_time_param_t));
+
+    //LOG_DEBUG("update time seconds: %ld timezone: %d.\n", strTimeSyncInfo.strUtcTime.tv_sec, strTimeSyncInfo.strTimeZone.tz_minuteswest);
+    strTimeSyncInfo.strUtcTime.tv_sec += strTimeSyncInfo.strTimeZone.tz_minuteswest * 60;
+
+    // update system time
+    if (strTimeSyncInfo.strUtcTime.tv_sec != strLocalTime.tv_sec) {
+        if (settimeofday(&strTimeSyncInfo.strUtcTime, NULL) != 0) {
+            LOG_ERROR("call settimeofday fail: %d, %s.\n", errno, strerror(errno));
+            return;
+        }
+    }
+
+#if 0
+    time(&lt);
+    nowTime = localtime(&lt);
+    strftime(tmpbuf, 128, "%Y-%m-%d %H:%M:%S", nowTime);
+    LOG_DEBUG("Local Time: %s.\n", tmpbuf);
+#endif
+}
+
+void Host_Communication::adaps_load_ref_distance_data(CommandData_t* pCmdData, uint32_t rxDataLen)
+{
+    UINT32 loaded_ref_distance_data_size = sizeof(reference_distance_data_param_t);
+    reference_distance_data_param_t* pRefDistanceParam;
+    char msg[] = "Ref distance data loaded successfully.";
+
+    if (rxDataLen < (sizeof(CommandData_t) + sizeof(reference_distance_data_param_t)))
+    {
+        LOG_ERROR("<%s>: rxDataLen %d is too short for CMD_HOST_SIDE_SET_REF_DISTANCE_DATA.\n", __FUNCTION__, rxDataLen);
+        return;
+    }
+
+    pRefDistanceParam = (reference_distance_data_param_t*) pCmdData->param;
+
+    qApp->set_capture_req_from_host(true);
+
+    if (NULL_POINTER == loaded_ref_distance_data)
+    {
+        loaded_ref_distance_data = (float *) malloc(loaded_ref_distance_data_size);
+        if (NULL_POINTER == loaded_ref_distance_data) {
+            DBG_ERROR("Fail to malloc for loaded_ref_distance_data.\n");
+            return ;
+        }
+    }
+    
+    memcpy(loaded_ref_distance_data, pRefDistanceParam, loaded_ref_distance_data_size);
+    //qApp->set_loaded_ref_distance_data(loaded_ref_distance_data);
+    //qApp->set_loaded_ref_distance_data_size(loaded_ref_distance_data_size);
+    LOG_DEBUG("------loaded_ref_distance_data %d bytes-----\n", loaded_ref_distance_data_size);
+
+    report_status(CMD_HOST_SIDE_SET_REF_DISTANCE_DATA, CMD_DEVICE_SIDE_NO_ERROR, msg, strlen(msg));
+}
+
+void Host_Communication::adaps_load_lens_intrinsic_data(CommandData_t* pCmdData, uint32_t rxDataLen)
+{
+    UINT32 loaded_lens_intrinsic_data_size = sizeof(lens_intrinsic_data_param_t);
+    lens_intrinsic_data_param_t* pLensIntrinsicParam;
+    char msg[] = "lens intrinsic data loaded successfully.";
+
+    if (rxDataLen < (sizeof(CommandData_t) + sizeof(lens_intrinsic_data_param_t)))
+    {
+        LOG_ERROR("<%s>: rxDataLen %d is too short for CMD_HOST_SIDE_SET_LENS_INTRINSIC_DATA.\n", __FUNCTION__, rxDataLen);
+        return;
+    }
+
+    pLensIntrinsicParam = (lens_intrinsic_data_param_t*) pCmdData->param;
+
+    qApp->set_capture_req_from_host(true);
+
+    if (NULL_POINTER == loaded_lens_intrinsic_data)
+    {
+        loaded_lens_intrinsic_data = (float *) malloc(loaded_lens_intrinsic_data_size);
+        if (NULL_POINTER == loaded_lens_intrinsic_data) {
+            DBG_ERROR("Fail to malloc for loaded_lens_intrinsic_data.\n");
+            return ;
+        }
+    }
+    
+    memcpy(loaded_lens_intrinsic_data, pLensIntrinsicParam, loaded_lens_intrinsic_data_size);
+    //qApp->set_loaded_ref_distance_data(loaded_ref_distance_data);
+    //qApp->set_loaded_ref_distance_data_size(loaded_ref_distance_data_size);
+    LOG_DEBUG("------loaded_lens_intrinsic_data %d bytes-----\n", loaded_lens_intrinsic_data_size);
+
+    report_status(CMD_HOST_SIDE_SET_REF_DISTANCE_DATA, CMD_DEVICE_SIDE_NO_ERROR, msg, strlen(msg));
+}
+
 void Host_Communication::adaps_start_capture(CommandData_t* pCmdData, uint32_t rxDataLen)
 {
     capture_req_param_t* pCaptureReqParam;
+    UINT8 force_row_search_range = 0;
+    UINT8 force_column_search_range = 0;
+    UINT8 force_coarseExposure = 0;
+    UINT8 force_fineExposure = 0;
+    UINT8 force_grayExposure = 0;
 
     if (rxDataLen < (sizeof(CommandData_t) + sizeof(capture_req_param_t)))
     {
@@ -766,22 +908,63 @@ void Host_Communication::adaps_start_capture(CommandData_t* pCmdData, uint32_t r
     }
 
     pCaptureReqParam = (capture_req_param_t*) pCmdData->param;
-    LOG_DEBUG("------req_out_data_type: 0x%x-----\n", pCaptureReqParam->req_out_data_type);
-    //pCaptureReqParam->req_out_data_type = FRAME_RAW_DATA | FRAME_DECODED_DEPTH16;
+    LOG_DEBUG("---req_out_data_type: 0x%x, anchorX = %d, anchorY = %d---\n", pCaptureReqParam->req_out_data_type, pCaptureReqParam->colOffset, pCaptureReqParam->rowOffset);
+
+    force_row_search_range = Utils::get_env_var_intvalue(ENV_VAR_FORCE_ROW_SEARCH_RANGE);
+    if (force_row_search_range)
+    {
+        pCaptureReqParam->rowSearchingRange = force_row_search_range;
+    }
+
+    force_column_search_range = Utils::get_env_var_intvalue(ENV_VAR_FORCE_COLUMN_SEARCH_RANGE);
+    if (force_column_search_range)
+    {
+        pCaptureReqParam->colSearchingRange = force_column_search_range;
+    }
+
+    force_coarseExposure = Utils::get_env_var_intvalue(ENV_VAR_FORCE_COARSE_EXPOSURE);
+    if (force_coarseExposure)
+    {
+        pCaptureReqParam->expose_param.coarseExposure = force_coarseExposure;
+    }
+
+    force_fineExposure = Utils::get_env_var_intvalue(ENV_VAR_FORCE_FINE_EXPOSURE);
+    if (force_fineExposure)
+    {
+        pCaptureReqParam->expose_param.fineExposure = force_fineExposure;
+    }
+
+    force_grayExposure = Utils::get_env_var_intvalue(ENV_VAR_FORCE_GRAY_EXPOSURE);
+    if (force_grayExposure)
+    {
+        pCaptureReqParam->expose_param.grayExposure = force_grayExposure;
+    }
+
     if (true == Utils::is_env_var_true(ENV_VAR_DUMP_CAPTURE_REQ_PARAM))
     {
         dump_capture_req_param(pCaptureReqParam);
     }
 
     qApp->set_capture_req_from_host(true);
+    if (MODULE_TYPE_SPOT == qApp->get_module_type())
+    {
+        // ONLY spot module need anchor preprocess, according to XiaLing's comment
+        qApp->set_anchorOffset(pCaptureReqParam->rowOffset, pCaptureReqParam->colOffset);
+    }
+    else {
+        qApp->set_anchorOffset(0, 0); // non-spot module does not need anchor preprocess
+    }
+    qApp->set_spotSearchingRange(pCaptureReqParam->rowSearchingRange, pCaptureReqParam->colSearchingRange);
+    qApp->set_usrCfgExposureValues(pCaptureReqParam->expose_param.coarseExposure, pCaptureReqParam->expose_param.fineExposure, pCaptureReqParam->expose_param.grayExposure);
+
     memcpy(&backuped_capture_req_param, pCaptureReqParam, sizeof(capture_req_param_t));
     emit set_capture_options(pCaptureReqParam);
     //LOG_ERROR("param.env_type %d.\n", pCaptureReqParam->env_type);
     //pCaptureReqParam->env_type = AdapsEnvTypeIndoor;
+    backuped_wkmode = pCaptureReqParam->work_mode;
 
     if (pCaptureReqParam->script_loaded && pCaptureReqParam->script_size)
     {
-        backuped_wkmode = pCaptureReqParam->work_mode;
         backuped_script_buffer_size = pCaptureReqParam->script_size;
 
         if (NULL_POINTER == backuped_script_buffer)
@@ -803,14 +986,14 @@ void Host_Communication::adaps_start_capture(CommandData_t* pCmdData, uint32_t r
     emit start_capture();
 }
 
-void Host_Communication::get_backuped_external_config_info(UINT8 *workmode, UINT8 ** script_buffer, uint32_t *script_buffer_size, UINT8 ** roisram_data, uint32_t *roisram_data_size, bool *roi_sram_rotate)
+void Host_Communication::get_backuped_external_config_info(UINT8 *workmode, UINT8 ** script_buffer, uint32_t *script_buffer_size, UINT8 ** roisram_data, uint32_t *roisram_data_size, bool *roi_sram_rolling)
 {
     *workmode = backuped_wkmode;
     *script_buffer_size = backuped_script_buffer_size;
     *script_buffer = backuped_script_buffer;
     *roisram_data_size = backuped_roisram_data_size;
     *roisram_data = backuped_roisram_data;
-    *roi_sram_rotate = backuped_roi_sram_rotate;
+    *roi_sram_rolling = backuped_roi_sram_rolling;
 }
 
 void Host_Communication::read_device_register(UINT16 cmd, CommandData_t* pCmdData, uint32_t rxDataLen)
@@ -822,7 +1005,7 @@ void Host_Communication::read_device_register(UINT16 cmd, CommandData_t* pCmdDat
 
     if (rxDataLen != (sizeof(CommandData_t) + sizeof(register_op_data_t)))
     {
-        LOG_ERROR("dataLen(%u) is illegal.\n", rxDataLen);
+        LOG_ERROR("dataLen(%u) is illegal, sizeof(register_op_data_t): %ld.\n", rxDataLen, sizeof(register_op_data_t));
         return;
     }
 
@@ -850,8 +1033,8 @@ void Host_Communication::read_device_register(UINT16 cmd, CommandData_t* pCmdDat
         pCmdData->cmd       = CMD_DEVICE_SIDE_REPORT_SENSOR_REGISTER;
     }
 
-    LOG_WARN("get sensor register[0x%x] = 0x%x.\n"
-        , register_op_data->reg_addr, register_op_data->reg_val);
+    LOG_WARN("get sensor register[0x%x] = 0x%x for i2c_address: 0x%x.\n"
+        , register_op_data->reg_addr, register_op_data->reg_val, register_op_data->i2c_address);
 
     ret = sender_send_msg((void *)pCmdData, (sizeof(CommandData_t) + sizeof(register_op_data_t)));
     if (ret) {
@@ -866,8 +1049,6 @@ void Host_Communication::write_device_register(UINT16 cmd, CommandData_t* pCmdDa
     int ret = 0;
     register_op_data_t *register_op_data;
 
-    LOG_INFO("--- receive write sensor register event -----\n");
-
     if (rxDataLen != (sizeof(CommandData_t) + sizeof(register_op_data_t)))
     {
         LOG_ERROR("dataLen(%u) is illegal.\n", rxDataLen);
@@ -875,6 +1056,9 @@ void Host_Communication::write_device_register(UINT16 cmd, CommandData_t* pCmdDa
     }
 
     register_op_data = (register_op_data_t*) pCmdData->param;
+    LOG_WARN("--- receive write sensor register event, register[0x%x] = 0x%x for i2c_address: 0x%x -----\n"
+        , register_op_data->reg_addr, register_op_data->reg_val, register_op_data->i2c_address);
+
     p_misc_device = qApp->get_misc_dev_instance();
     if (NULL_POINTER == p_misc_device)
     {
@@ -917,11 +1101,16 @@ void Host_Communication::adaps_event_process(void* pRXData, uint32_t rxDataLen)
             adaps_set_walkerror_enable(pCmdData, rxDataLen);
             break;
 
+        case CMD_HOST_SIDE_SET_RTC_TIME:
+            adaps_set_rtc_time(pCmdData, rxDataLen);
+            break;
+
         case CMD_HOST_SIDE_SET_ROI_SRAM_DATA:
             adaps_load_roi_sram(pCmdData, rxDataLen);
             break;
 
         case CMD_HOST_SIDE_SET_SPOT_WALKERROR_DATA:
+            dump_buffer_data(pCmdData, "comm_para_4_SET_SPOT_WALKERROR_DATA", __LINE__);
             adaps_load_walkerror_data(pCmdData, rxDataLen);
             break;
 
@@ -979,6 +1168,14 @@ void Host_Communication::adaps_event_process(void* pRXData, uint32_t rxDataLen)
             } else {
                 LOG_WARN("cmd %u: sensor is power off.\n", pCmdData->cmd);
             }
+            break;
+
+        case CMD_HOST_SIDE_SET_REF_DISTANCE_DATA:
+            adaps_load_ref_distance_data(pCmdData, rxDataLen);
+            break;
+
+        case CMD_HOST_SIDE_SET_LENS_INTRINSIC_DATA:
+            adaps_load_lens_intrinsic_data(pCmdData, rxDataLen);
             break;
 
         default:
@@ -1062,8 +1259,8 @@ int Host_Communication::adaps_sender_init()
     return ret;
 }
 
-#if defined(ROI_SRAM_DATA_INJECTION_4_ROISRAM_ROTATE_TEST)
-int Host_Communication::roi_sram_rotate_data_injection()
+#if defined(ROI_SRAM_DATA_INJECTION_4_ROISRAM_ROLLING_TEST)
+int Host_Communication::roi_sram_rolling_data_injection()
 {
     int ret = 0;
     int multiple_roi_sram_test_data_size = sizeof(multiple_roi_sram_test_data);
@@ -1075,7 +1272,7 @@ int Host_Communication::roi_sram_rotate_data_injection()
         return 0 - __LINE__;
     }
 
-    pRoiSramParam->roi_sram_rotate = true;
+    pRoiSramParam->roi_sram_rolling = true;
     pRoiSramParam->roisram_data_size = multiple_roi_sram_test_data_size;
     memcpy(pRoiSramParam->roisram_data, multiple_roi_sram_test_data, multiple_roi_sram_test_data_size);
     backup_roi_sram_data(pRoiSramParam);
@@ -1085,6 +1282,6 @@ int Host_Communication::roi_sram_rotate_data_injection()
 
     return ret;
 }
-#endif // defined(ROI_SRAM_DATA_INJECTION_4_ROISRAM_ROTATE_TEST)
+#endif // defined(ROI_SRAM_DATA_INJECTION_4_ROISRAM_ROLLING_TEST)
 
 #endif // !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
