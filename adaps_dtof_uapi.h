@@ -20,10 +20,6 @@
 #define SOC_PLATFORM_TI                 0x1000
 #define SOC_PLATFORM_TI_AM62A           (SOC_PLATFORM_TI + 1)
 
-
-
-
-
 #if !defined(BIT)
 #define BIT(n)                  (1 << n)
 #endif
@@ -235,6 +231,14 @@ struct hawk_norflash_op_param
     __u32 len;
 }__attribute__ ((packed));
 
+struct hawk_sensor_cfg_data
+{
+    __u8 hVldSeg;
+    __u8 vRollNum;
+    __u8 hRollNum;
+    __u8 scanMode;
+}__attribute__ ((packed));
+
 #define ADTOF_ENABLE_STREAM_NUM      \
     _IOW('T', ADAPS_DTOF_PRIVATE + 2, __u32 *)
 
@@ -365,10 +369,9 @@ struct hawk_norflash_op_param
 #define ADTOF_GET_HAWK_OTP_RAW_DATA       \
     _IOR('T', ADAPS_DTOF_PRIVATE + 44, struct hawk_otp_raw_data *)          // 0x2C
 
+#define ADTOF_SET_SENSOR_CFG_DATA       \
+    _IOW('T', ADAPS_DTOF_PRIVATE + 45, struct hawk_sensor_cfg_data *)          // 0x2D
 #endif // FOR ADAPS_HAWK
-
-
-
 
 
 
@@ -722,6 +725,7 @@ struct adaps_dtof_intial_param {
     UINT8 grayExposure;
     UINT8 coarseExposure;
     UINT8 fineExposure;
+    bool roi_sram_rolling;
 };
 
 struct adaps_dtof_runtime_param{
@@ -770,9 +774,11 @@ typedef struct {
     __u8 work_mode;
     __u16 sensor_reg_setting_cnt;
     __u16 vcsel_reg_setting_cnt;
-    __u32 roi_sram_size;
-    bool roi_sram_rolling;
 } external_config_script_param_t;
+
+typedef struct {
+    __u32 roi_sram_size;
+} external_roisram_data_size_t;
 
 #define ADAPS_SET_DTOF_INITIAL_PARAM       \
     _IOW('T', ADAPS_DTOF_PRIVATE + 0, struct adaps_dtof_intial_param)
@@ -800,6 +806,9 @@ typedef struct {
 
 #define ADTOF_UPDATE_EEPROM_DATA       \
     _IOW('T', ADAPS_DTOF_PRIVATE + 8, struct adaps_dtof_update_eeprom_data)
+
+#define ADTOF_SET_EXTERNAL_ROISRAM_DATA_SIZE      \
+    _IOW('T', ADAPS_DTOF_PRIVATE + 9, external_roisram_data_size_t *)
 
 
 #endif // FOR ADAPS_SWIFT

@@ -66,6 +66,11 @@ public:
     bool is_roi_sram_rolling();
     int set_roi_sram_rolling(bool val);
 
+    UINT8* get_mmap_address_4_loaded_roisram();
+    int set_mmap_address_4_loaded_roisram(UINT8* addr);
+    UINT32 get_size_4_loaded_roisram();
+    int set_size_4_loaded_roisram(UINT32 bytes);
+
     UINT8* get_loaded_walkerror_data();
     int set_loaded_walkerror_data(UINT8* value);
     UINT32 get_loaded_walkerror_data_size();
@@ -117,6 +122,8 @@ private:
     UINT32 loaded_walkerror_data_size;
     UINT8 *loaded_spotoffset_data;
     UINT32 loaded_spotoffset_data_size;
+    UINT8 *mmap_address_4_loaded_roisram;
+    UINT32 size_4_loaded_roisram;
     Misc_Device     *misc_dev_instance;
     UINT8 anchor_rowOffset;
     UINT8 anchor_colOffset;

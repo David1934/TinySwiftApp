@@ -136,7 +136,6 @@ typedef struct walkerror_enable_param
 
 typedef struct roisram_data_param
 {
-    BOOLEAN                 roi_sram_rolling;
     UINT32                  roisram_data_size;      // roi sram buffer size to be loaded, it should be an integer multiple of (PER_ROI_SRAM_MAX_SIZE * ZONE_COUNT_PER_SRAM_GROUP) or 0, 
                                                     // it shoud <= (PER_ROI_SRAM_MAX_SIZE * ZONE_COUNT_PER_SRAM_GROUP * MAX_CALIB_SRAM_ROTATION_GROUP_CNT) 
     CHAR                    roisram_data[0];        // loaded roi sram buffer, No this member if roisram_data_size == 0
@@ -194,6 +193,7 @@ typedef struct capture_req_param
     UINT8                   rowOffset;
     UINT8                   colOffset;
     exposure_time_param_t   expose_param;
+    BOOLEAN                 roi_sram_rolling;
     BOOLEAN                 script_loaded;
     UINT32                  script_size;            // set to 0 if script_loaded == false
     CHAR                    script_buffer[0];       // file content from the script file, No this member if script_loaded == false

@@ -158,6 +158,7 @@ typedef struct {
     int32_t in_image_fd;
 #else
     int32_t in_image_size;
+    int* in_sram_id;            // just for offline re-playback, added @ V3.5.4 of libadaps_swift_decode.so
 #endif
 } WrapperDepthInput;
 

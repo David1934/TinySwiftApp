@@ -26,7 +26,7 @@ public:
 
     int report_frame_raw_data(void* pFrameData, uint32_t frameData_size, frame_buffer_param_t *pFrmBufParam);
     int report_frame_depth16_data(void* pFrameData, uint32_t frameData_size, frame_buffer_param_t *pFrmBufParam);
-    void get_backuped_external_config_info(UINT8 *workmode, UINT8 ** script_buffer, uint32_t *script_buffer_size, UINT8 ** roisram_data, uint32_t *roisram_data_size, bool *roi_sram_rolling);
+    void get_backuped_external_config_script(UINT8 *workmode, UINT8 ** script_buffer, uint32_t *script_buffer_size);
     int report_status(UINT16 responsed_cmd, UINT16 status_code, char *msg, int msg_length);
     UINT8 get_req_out_data_type();
     UINT8 get_req_walkerror_enable();
@@ -52,18 +52,15 @@ private:
     static Host_Communication* instance; // 静态成员变量声明
     bool connected;
     UINT32 backuped_script_buffer_size;
-    UINT8 *backuped_script_buffer;     // script buffer backuped from CMD_HOST_SIDE_START_CAPTURE
+    UINT8 *backuped_script_buffer = NULL_POINTER;     // script buffer backuped from CMD_HOST_SIDE_START_CAPTURE
     UINT8 backuped_wkmode;
-    UINT32 backuped_roisram_data_size;
-    UINT8 *backuped_roisram_data;     // roisram_data backuped from CMD_HOST_SIDE_SET_ROI_SRAM_DATA
-    bool backuped_roi_sram_rolling;
     capture_req_param_t backuped_capture_req_param;
     UINT32 loaded_walkerror_data_size;
-    UINT8 *loaded_walkerror_data;     // roisram_data backuped from CMD_HOST_SIDE_SET_SPOT_WALKERROR_DATA
+    UINT8 *loaded_walkerror_data = NULL_POINTER;     // roisram_data backuped from CMD_HOST_SIDE_SET_SPOT_WALKERROR_DATA
     UINT32 loaded_spotoffset_data_size;
-    UINT8 *loaded_spotoffset_data;
-    float *loaded_ref_distance_data;     // roisram_data backuped from CMD_HOST_SIDE_SET_REF_DISTANCE_DATA
-    float *loaded_lens_intrinsic_data;     // roisram_data backuped from CMD_HOST_SIDE_SET_LENS_INTRINSIC_DATA
+    UINT8 *loaded_spotoffset_data = NULL_POINTER;
+    float *loaded_ref_distance_data = NULL_POINTER;     // roisram_data backuped from CMD_HOST_SIDE_SET_REF_DISTANCE_DATA
+    float *loaded_lens_intrinsic_data = NULL_POINTER;     // roisram_data backuped from CMD_HOST_SIDE_SET_LENS_INTRINSIC_DATA
     UINT32 eeprom_capacity;       // unit is byte
     Misc_Device *p_misc_device;
 
@@ -74,6 +71,7 @@ private:
 
     Host_Communication(); // 私有构造函数（防止外部实例化）
 
+    void reset_data();
     static int adaps_sender_callback(SenderEventId_t id, void* arg_ptr, uint32_t arg_u32, ...);
 
     void adaps_start_capture(CommandData_t* pCmdData, uint32_t rxDataLen);
@@ -100,9 +98,6 @@ private:
     int dump_frame_param(frame_buffer_param_t *pDataBufferParam);
     int dump_module_static_data(module_static_data_t *pStaticDataParam);
     void backup_roi_sram_data(roisram_data_param_t* pRoiSramParam);
-#if defined(ROI_SRAM_DATA_INJECTION_4_ROLLING_ROTATE_TEST)
-    int roi_sram_rolling_data_injection();
-#endif
 
 };
 

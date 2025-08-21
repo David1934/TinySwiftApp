@@ -13,10 +13,6 @@
 #include "host_comm.h"
 #include "depthmapwrapper.h"    // to use DepthMapWrapperGetVersion()
 
-#if defined(ROI_SRAM_DATA_INJECTION_4_ROISRAM_ROLLING_TEST)
-#include "ads6401_roi_sram_test_data.h"
-#endif
-
 #ifndef SENDER_LOG_FUNC
 #define SENDER_LOG_FUNC         printf
 #endif
@@ -40,33 +36,9 @@ Host_Communication* Host_Communication::getInstance() {
 // 私有构造函数
 Host_Communication::Host_Communication() {
     connected = false;
-    backuped_script_buffer = NULL_POINTER;
-    backuped_script_buffer_size = 0;
-    backuped_roisram_data = NULL_POINTER;
-    backuped_roisram_data_size = 0;
-    loaded_walkerror_data = NULL_POINTER;
-    loaded_walkerror_data_size = 0;
-    loaded_spotoffset_data = NULL_POINTER;
-    loaded_spotoffset_data_size = 0;
-    loaded_ref_distance_data = NULL_POINTER;
-    loaded_lens_intrinsic_data = NULL_POINTER;
-    backuped_wkmode = 0;
-    backuped_roi_sram_rolling = false;
+    reset_data();
     p_misc_device = NULL_POINTER;
-    memset(&backuped_capture_req_param, 0, sizeof(capture_req_param_t));
-    txRawdataFrameCnt = 0;
-    txDepth16FrameCnt = 0;
-    firstRawdataFrameTimeUsec = 0;
-    firstDepth16FrameTimeUsec = 0;
-    eeprom_capacity = 0;
     adaps_sender_init();
-
-#if defined(ROI_SRAM_DATA_INJECTION_4_ROISRAM_ROLLING_TEST)
-    if (true == Utils::is_env_var_true(ENV_VAR_ROI_SRAM_DATA_INJECTION))
-    {
-        roi_sram_rolling_data_injection();
-    }
-#endif
 }
 
 Host_Communication::~Host_Communication()
@@ -74,50 +46,58 @@ Host_Communication::~Host_Communication()
     if (NULL_POINTER != instance) {
         DBG_NOTICE("------communication statistics------total txRawdataFrameCnt: %ld, txDepth16FrameCnt: %ld---\n",
             txRawdataFrameCnt, txDepth16FrameCnt);
-        if (NULL_POINTER != backuped_script_buffer)
-        {
-            free(backuped_script_buffer);
-            backuped_script_buffer = NULL_POINTER;
-            backuped_script_buffer_size = 0;
-        }
 
-        if (NULL_POINTER != backuped_roisram_data)
-        {
-            free(backuped_roisram_data);
-            backuped_roisram_data = NULL_POINTER;
-            backuped_roisram_data_size = 0;
-        }
-
-        if (NULL_POINTER != loaded_walkerror_data)
-        {
-            free(loaded_walkerror_data);
-            loaded_walkerror_data = NULL_POINTER;
-            loaded_walkerror_data_size = 0;
-        }
-
-        if (NULL_POINTER != loaded_spotoffset_data)
-        {
-            free(loaded_spotoffset_data);
-            loaded_spotoffset_data = NULL_POINTER;
-            loaded_spotoffset_data_size = 0;
-        }
-
-        if (NULL_POINTER != loaded_ref_distance_data)
-        {
-            free(loaded_ref_distance_data);
-            loaded_ref_distance_data = NULL_POINTER;
-        }
-
-        if (NULL_POINTER != loaded_lens_intrinsic_data)
-        {
-            free(loaded_lens_intrinsic_data);
-            loaded_lens_intrinsic_data = NULL_POINTER;
-        }
-
+        reset_data();
         sender_destroy();
         delete instance;
         instance = NULL_POINTER;
     }
+}
+
+void Host_Communication::reset_data()
+{
+    if (NULL_POINTER != backuped_script_buffer)
+    {
+        free(backuped_script_buffer);
+        backuped_script_buffer = NULL_POINTER;
+    }
+    backuped_script_buffer_size = 0;
+
+    if (NULL_POINTER != loaded_walkerror_data)
+    {
+        free(loaded_walkerror_data);
+        loaded_walkerror_data = NULL_POINTER;
+    }
+    loaded_walkerror_data_size = 0;
+
+    if (NULL_POINTER != loaded_spotoffset_data)
+    {
+        free(loaded_spotoffset_data);
+        loaded_spotoffset_data = NULL_POINTER;
+    }
+    loaded_spotoffset_data_size = 0;
+
+    if (NULL_POINTER != loaded_ref_distance_data)
+    {
+        free(loaded_ref_distance_data);
+        loaded_ref_distance_data = NULL_POINTER;
+    }
+    
+    if (NULL_POINTER != loaded_lens_intrinsic_data)
+    {
+        free(loaded_lens_intrinsic_data);
+        loaded_lens_intrinsic_data = NULL_POINTER;
+    }
+
+    backuped_wkmode = 0;
+    memset(&backuped_capture_req_param, 0, sizeof(capture_req_param_t));
+    txRawdataFrameCnt = 0;
+    txDepth16FrameCnt = 0;
+    firstRawdataFrameTimeUsec = 0;
+    firstDepth16FrameTimeUsec = 0;
+    eeprom_capacity = 0;
+    qApp->set_roi_sram_rolling(false);
+    qApp->set_size_4_loaded_roisram(0);
 }
 
 UINT8 Host_Communication::get_req_out_data_type()
@@ -533,6 +513,7 @@ int Host_Communication::dump_capture_req_param(capture_req_param_t* pCaptureReqP
     LOG_DEBUG("UINT8                    colOffset = %d;", pCaptureReqParam->colOffset);
     LOG_DEBUG("exposure_time_param_t    exposure_param = (0x%02x, 0x%02x, 0x%02x);", 
             pCaptureReqParam->expose_param.coarseExposure, pCaptureReqParam->expose_param.fineExposure, pCaptureReqParam->expose_param.grayExposure);
+    LOG_DEBUG("BOOLEAN                  roi_sram_rolling = %d;", pCaptureReqParam->roi_sram_rolling);
     LOG_DEBUG("BOOLEAN                  script_loaded = %d;", pCaptureReqParam->script_loaded);
     LOG_DEBUG("UINT32                   script_size = %d;           // set to 0 if script_loaded == false", pCaptureReqParam->script_size);
     LOG_DEBUG("sizeof(capture_req_param_t) = %ld", sizeof(capture_req_param_t));
@@ -574,26 +555,6 @@ void Host_Communication::adaps_set_walkerror_enable(CommandData_t* pCmdData, uin
     qApp->set_walkerror_enable(pWalkerrorEnableParam->walkerror_enable);
 }
 
-void Host_Communication::backup_roi_sram_data(roisram_data_param_t* pRoiSramParam)
-{
-    LOG_DEBUG("------roi_sram_rolling: %d, roisram_data_size: %d-----\n", pRoiSramParam->roi_sram_rolling, pRoiSramParam->roisram_data_size);
-
-    backuped_roisram_data_size = pRoiSramParam->roisram_data_size;
-    backuped_roi_sram_rolling = pRoiSramParam->roi_sram_rolling;
-
-    if (NULL_POINTER == backuped_roisram_data)
-    {
-        backuped_roisram_data = (u8 *) malloc(backuped_roisram_data_size);
-        if (NULL_POINTER == backuped_roisram_data) {
-            DBG_ERROR("Fail to malloc for backuped_blkwrite_reg_data.\n");
-            return ;
-        }
-    }
-
-    memcpy(backuped_roisram_data, &pRoiSramParam->roisram_data, backuped_roisram_data_size);
-
-}
-
 void Host_Communication::adaps_load_roi_sram(CommandData_t* pCmdData, uint32_t rxDataLen)
 {
     roisram_data_param_t* pRoiSramParam;
@@ -608,9 +569,12 @@ void Host_Communication::adaps_load_roi_sram(CommandData_t* pCmdData, uint32_t r
     pRoiSramParam = (roisram_data_param_t*) pCmdData->param;
     if (pRoiSramParam->roisram_data_size > 0 && 0 == (pRoiSramParam->roisram_data_size % PER_ROISRAM_GROUP_SIZE))
     {
+        UINT8 *mmaped_roisram_address = qApp->get_mmap_address_4_loaded_roisram();
+        qApp->set_size_4_loaded_roisram(pRoiSramParam->roisram_data_size);
         qApp->set_capture_req_from_host(true);
 
-        backup_roi_sram_data(pRoiSramParam);
+        LOG_DEBUG("------loaded_roisram_data %d bytes-----\n", pRoiSramParam->roisram_data_size);
+        memcpy(mmaped_roisram_address, &pRoiSramParam->roisram_data, pRoiSramParam->roisram_data_size);
     }
     else {
         char err_msg[128];
@@ -618,7 +582,6 @@ void Host_Communication::adaps_load_roi_sram(CommandData_t* pCmdData, uint32_t r
         report_status(CMD_HOST_SIDE_SET_ROI_SRAM_DATA, CMD_DEVICE_SIDE_ERROR_INVALID_ROI_SRAM_SIZE, err_msg, strlen(err_msg));
         return;
     }
-
 
     report_status(CMD_HOST_SIDE_SET_ROI_SRAM_DATA, CMD_DEVICE_SIDE_NO_ERROR, msg, strlen(msg));
 }
@@ -956,6 +919,7 @@ void Host_Communication::adaps_start_capture(CommandData_t* pCmdData, uint32_t r
     }
     qApp->set_spotSearchingRange(pCaptureReqParam->rowSearchingRange, pCaptureReqParam->colSearchingRange);
     qApp->set_usrCfgExposureValues(pCaptureReqParam->expose_param.coarseExposure, pCaptureReqParam->expose_param.fineExposure, pCaptureReqParam->expose_param.grayExposure);
+    qApp->set_roi_sram_rolling(pCaptureReqParam->roi_sram_rolling);
 
     memcpy(&backuped_capture_req_param, pCaptureReqParam, sizeof(capture_req_param_t));
     emit set_capture_options(pCaptureReqParam);
@@ -986,14 +950,11 @@ void Host_Communication::adaps_start_capture(CommandData_t* pCmdData, uint32_t r
     emit start_capture();
 }
 
-void Host_Communication::get_backuped_external_config_info(UINT8 *workmode, UINT8 ** script_buffer, uint32_t *script_buffer_size, UINT8 ** roisram_data, uint32_t *roisram_data_size, bool *roi_sram_rolling)
+void Host_Communication::get_backuped_external_config_script(UINT8 *workmode, UINT8 ** script_buffer, uint32_t *script_buffer_size)
 {
     *workmode = backuped_wkmode;
     *script_buffer_size = backuped_script_buffer_size;
     *script_buffer = backuped_script_buffer;
-    *roisram_data_size = backuped_roisram_data_size;
-    *roisram_data = backuped_roisram_data;
-    *roi_sram_rolling = backuped_roi_sram_rolling;
 }
 
 void Host_Communication::read_device_register(UINT16 cmd, CommandData_t* pCmdData, uint32_t rxDataLen)
@@ -1135,6 +1096,7 @@ void Host_Communication::adaps_event_process(void* pRXData, uint32_t rxDataLen)
             {
                 qApp->set_capture_req_from_host(false);
                 emit stop_capture();
+                reset_data();
             }
             break;
 
@@ -1195,6 +1157,7 @@ void Host_Communication::adaps_sender_disconnected()
         qApp->set_capture_req_from_host(false);
         emit stop_capture();
         connected = false;
+        reset_data();
     }
 
     return;
@@ -1259,29 +1222,5 @@ int Host_Communication::adaps_sender_init()
     return ret;
 }
 
-#if defined(ROI_SRAM_DATA_INJECTION_4_ROISRAM_ROLLING_TEST)
-int Host_Communication::roi_sram_rolling_data_injection()
-{
-    int ret = 0;
-    int multiple_roi_sram_test_data_size = sizeof(multiple_roi_sram_test_data);
-    roisram_data_param_t* pRoiSramParam;
-
-    pRoiSramParam = (roisram_data_param_t *) malloc(sizeof(roisram_data_param_t) + multiple_roi_sram_test_data_size);
-    if (NULL_POINTER == pRoiSramParam) {
-        DBG_ERROR("Fail to malloc.\n");
-        return 0 - __LINE__;
-    }
-
-    pRoiSramParam->roi_sram_rolling = true;
-    pRoiSramParam->roisram_data_size = multiple_roi_sram_test_data_size;
-    memcpy(pRoiSramParam->roisram_data, multiple_roi_sram_test_data, multiple_roi_sram_test_data_size);
-    backup_roi_sram_data(pRoiSramParam);
-    if (NULL_POINTER != pRoiSramParam) {
-        free(pRoiSramParam);
-    }
-
-    return ret;
-}
-#endif // defined(ROI_SRAM_DATA_INJECTION_4_ROISRAM_ROLLING_TEST)
-
 #endif // !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
+

@@ -351,7 +351,8 @@ int ADAPS_DTOF::FillSetWrapperParamFromEepromInfo(uint8_t* pEEPROMData, SetWrapp
         }
     }
 
-    p_misc_device->get_loaded_roi_sram_data_info(&loaded_roi_sram_data, &loaded_roi_sram_size);
+    loaded_roi_sram_data = qApp->get_mmap_address_4_loaded_roisram();
+    loaded_roi_sram_size = qApp->get_size_4_loaded_roisram();
 
     if (0 != loaded_roi_sram_size && NULL != loaded_roi_sram_data)
     {
@@ -379,8 +380,6 @@ int ADAPS_DTOF::FillSetWrapperParamFromEepromInfo(uint8_t* pEEPROMData, SetWrapp
             // create another buffer copy for anchorX operation to keep the original mmaped ROI sram data not be changed.
             memcpy(copied_roisram_4_anchorX, pEEPROMData + ADS6401_EEPROM_ROISRAM_DATA_OFFSET, ADS6401_EEPROM_ROISRAM_DATA_SIZE);
             setparam->spot_cali_data = copied_roisram_4_anchorX;
-            //initInputParams->pRawData = (uint8_t*) p_eeprominfo;
-            //initInputParams->rawDataSize = sizeof(swift_eeprom_data_t);
             initInputParams->pRawData = set_param.spot_cali_data;
             initInputParams->rawDataSize = ADS6401_EEPROM_ROISRAM_DATA_SIZE;
             if (MODULE_TYPE_SPOT == qApp->get_module_type())
@@ -1282,6 +1281,7 @@ int ADAPS_DTOF::dtof_frame_decode(unsigned int frm_sequence, unsigned char *frm_
     depthInput.formatParams.sliceHeight  = m_sns_param.raw_height;
 #if !defined(ENABLE_COMPATIABLE_WITH_OLD_ALGO_LIB)
     depthInput.in_image_size    = frm_rawdata_size;
+    depthInput.in_sram_id    = NULL;    // just to set to NULL for normal algo lib call
 #endif
     //DBG_INFO( "raw_width: %d raw_height: %d out_width: %d out_height: %d\n", m_sns_param.raw_width, m_sns_param.raw_height, m_sns_param.out_frm_width, m_sns_param.out_frm_height);
 

@@ -504,7 +504,6 @@ int V4L2::V4l2_initilize(void)
         }
 
         script_loaded = false;
-        qApp->set_roi_sram_rolling(false);
 
 #if !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
         if (host_comm)
@@ -513,31 +512,38 @@ int V4L2::V4l2_initilize(void)
             u8 *backuped_script_buffer;     // script buffer backup from CMD_HOST_SIDE_START_CAPTURE
             UINT8 backuped_wkmode;
             UINT32 backuped_roisram_data_sz;
-            UINT8 *backuped_roisram_data;
 
-            host_comm->get_backuped_external_config_info(&backuped_wkmode, &backuped_script_buffer, &backuped_script_buf_sz, &backuped_roisram_data, &backuped_roisram_data_sz, &roi_sram_rolling);
-            DBG_INFO("backuped_wkmode: %d, backuped_script_buf_sz: %d, backuped_roisram_data_sz: %d, roi_sram_rolling: %d...\n", backuped_wkmode, backuped_script_buf_sz, backuped_roisram_data_sz, roi_sram_rolling);
+            host_comm->get_backuped_external_config_script(&backuped_wkmode, &backuped_script_buffer, &backuped_script_buf_sz);
+            backuped_roisram_data_sz = qApp->get_size_4_loaded_roisram();
+            DBG_INFO("backuped_wkmode: %d, backuped_script_buf_sz: %d, backuped_roisram_data_sz: %d...\n", backuped_wkmode, backuped_script_buf_sz, backuped_roisram_data_sz);
 
             roi_sram_loaded = (backuped_roisram_data_sz > 0) ? true: false;
             if (backuped_roisram_data_sz <= ALL_ROISRAM_GROUP_SIZE)
             {
-                roi_sram_rolling = false;
+                qApp->set_roi_sram_rolling(false);
             }
-            qApp->set_roi_sram_rolling(roi_sram_rolling);
 
-            if (backuped_script_buf_sz || backuped_roisram_data_sz)
+            if (backuped_script_buf_sz)
             {
-                int ret = p_misc_device->send_down_external_config(backuped_wkmode, backuped_script_buf_sz, (const uint8_t* ) backuped_script_buffer, backuped_roisram_data_sz, (const uint8_t* ) backuped_roisram_data, roi_sram_rolling);
+                int ret = p_misc_device->send_down_external_config(backuped_wkmode, backuped_script_buf_sz, (const uint8_t* ) backuped_script_buffer);
                 if (0 > ret)
                 {
                     char err_msg[] = "work_mode and the register config in script buffer is mismatched";
                     host_comm->report_status(CMD_HOST_SIDE_START_CAPTURE, CMD_DEVICE_SIDE_ERROR_MISMATCHED_WORK_MODE, err_msg, strlen(err_msg));
+                    DBG_ERROR("work_mode and the register config in script buffer is mismatched");
                     return 0 - __LINE__;
                 }
 
-                if (backuped_script_buf_sz)
+                script_loaded = true;
+            }
+
+            if (backuped_roisram_data_sz)
+            {
+                int ret = p_misc_device->send_down_loaded_roisram_data_size(backuped_roisram_data_sz);
+                if (0 > ret)
                 {
-                    script_loaded = true;
+                    DBG_ERROR("Fail to send_down_loaded_roisram_data_size");
+                    return 0 - __LINE__;
                 }
             }
         }
@@ -551,6 +557,7 @@ int V4L2::V4l2_initilize(void)
         qApp->get_anchorOffset(&param.rowOffset, &param.colOffset);
         qApp->get_spotSearchingRange(&param.rowSearchingRange, &param.colSearchingRange);
         qApp->get_usrCfgExposureValues(&param.coarseExposure, &param.fineExposure, &param.grayExposure);
+        param.roi_sram_rolling = qApp->is_roi_sram_rolling();
 
         if (0 > p_misc_device->write_dtof_initial_param(&param))
         {

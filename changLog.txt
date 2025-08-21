@@ -1,3 +1,20 @@
+12. @2025/08/22 -- version update to 3.2.11_LM202500822A
+    Redmine #2611: 欢畅大FoV模组功能debug (基本功能 + ROI轮询）
+    http://gerrit.adaps.corp/c/SpadisQT/+/5098
+
+    patch set 1: align the algo lib to 3.5.4;
+    patch set 2: add reset_data() to reset some loaded data and status at cmd CMD_HOST_SIDE_STOP_CAPTURE;
+    patch set 3: add ADTOF_SET_EXTERNAL_ROISRAM_DATA ioctl cmd, set roi_sram_rolling at ADAPS_SET_DTOF_INITIAL_PARAM;
+    patch set 4: use mmaped_roi_sram_address for loaded roisram data backup, use qApp->get_size_4_loaded_roisram() 
+      and set_size_4_loaded_roisram() for global viweable;
+    patch set 5: update algo lib to 3.5.5;
+
+    1. bugfix: PC端选择ROI轮询后，下次关闭ROI轮询，但是下位机还是ROI轮询
+    2. 架构优化: 
+       a. 将roi_sram_rolling移入adaps_dtof_intial_param结构体，将外部加载ROI sram数据独立成命令ADTOF_SET_EXTERNAL_ROISRAM_DATA
+       b. 在处理CMD_HOST_SIDE_SET_ROI_SRAM_DATA命令时，直接将数据拷贝到mapped_roi_sram_data，并通过GlobalApplication类
+          里的set/get函数实现全局共享和访问，避免多个类里多个copy导致的状态不一致(停止回放后)
+
 11. @2025/08/19 -- version update to 3.2.9_LM202500819A
     redmine_2487: swift rk3568小型化下位机bug fix
     http://gerrit.adaps.corp/c/SpadisQT/+/5098

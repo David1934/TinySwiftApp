@@ -13,8 +13,8 @@
 
 #define VERSION_MAJOR                           3
 #define VERSION_MINOR                           2
-#define VERSION_REVISION                        9
-#define LAST_MODIFIED_TIME                      "202500819A"
+#define VERSION_REVISION                        11
+#define LAST_MODIFIED_TIME                      "202500822A"
 
 #define DEFAULT_DTOF_FRAMERATE                  AdapsFramerateType30FPS // AdapsFramerateType60FPS
 
@@ -88,7 +88,6 @@
 #define ENV_VAR_DEPTH16_FILE_REPLAY_ENABLE      "depth16_file_replay_enable"
 #define ENV_VAR_FRAME_DROP_CHECK_ENABLE         "frame_drop_check_enable"
 
-#define ENV_VAR_ROI_SRAM_DATA_INJECTION         "roi_sram_data_injection"
 #define ENV_VAR_FORCE_ROW_SEARCH_RANGE          "force_row_search_range"
 #define ENV_VAR_FORCE_COLUMN_SEARCH_RANGE       "force_column_search_range"
 #define ENV_VAR_FORCE_COARSE_EXPOSURE           "force_coarseExposure"
