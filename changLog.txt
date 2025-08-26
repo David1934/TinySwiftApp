@@ -1,3 +1,29 @@
+13. @2025/09/19 -- version update to 3.2.19_LM202500919A
+    swift小型化功能完善
+    http://gerrit.adaps.corp/c/SpadisQT/+/5256
+
+    patch set 1: enable to change laser_exposure_period with the Linux environment variable 'force_laserExposurePeriod';
+    patch set 2: update algo lib to 3.6.1, add ALGO_LIB_VERSION_CODE in depthmapwrapper.h to adapt the different algo lib version;
+    patch set 4: add point-cloud data output and report to PC SpadisApp;
+    patch set 5: add histogram data for specific position report to PC SpadisApp;
+    patch set 6: save the loaded data to bin files with the environment variable 'save_loaded_data_enable';
+    patch set 7: code clean: delete some legacy code;
+    patch set 8: add algo lib decode cost time trace with the environment varialble 'trace_algo_lib_decode_costtime';
+    patch set 9: sync algo lib api interface to v3.6.4 (http://gerrit.adaps.corp/c/AdapsDepthLib/+/5312) to support histogram 
+      output when ROI rolling enable;
+    patch set 10: set ROI sram size to 2KB instead of 4KB for non-roi rolling case, otherwize DepthMapWrapperProcessFrame() reture true every 8 frames (not every 4 frames);
+    patch set 14: if host side only request raw data, skip frame decode process to reduce device side's CPU cost;
+    patch set 15: enable support roi_sram_rolling if loaded roi sram size == 4096 bytes (eg. stone module);
+
+    1.支持通过 Linux 环境变量'force_laserExposurePeriod'临时修改激光曝光周期；
+    2.添加点云数据输出并上报至 PC 端 SpadisApp；
+    3.添加特定位置的直方图数据上报至PC端SpadisApp；
+    4.通过环境变量'save_loaded_data_enable' 将加载的数据保存为 bin 文件；
+    5.通过环境变量'trace_algo_lib_decode_costtime'添加算法库解码耗时跟踪；
+    6.对于非ROI滚动场景，将ROI SRAM大小设置为2KB而非4KB，否则DepthMapWrapperProcessFrame()将每8帧返回一次true（而非每 4 帧）；
+    7.如果主机端仅请求原始数据，则跳过帧解码过程以降低设备端的 CPU 负载；
+    8.如果加载的 ROI SRAM 大小为 4096 字节（如石头线阵模组），则启用对roi_sram_rolling的支持；
+
 12. @2025/08/22 -- version update to 3.2.11_LM202500822A
     Redmine #2611: 欢畅大FoV模组功能debug (基本功能 + ROI轮询）
     http://gerrit.adaps.corp/c/SpadisQT/+/5098

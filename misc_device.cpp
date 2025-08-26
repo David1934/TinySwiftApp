@@ -5,8 +5,11 @@
 #include "host_device_comm_types.h"
 #include "globalapplication.h"
 
-#define CLEAR(x) memset(&(x), 0, sizeof(x))
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
+#define CLEAR(x)                            memset(&(x), 0, sizeof(x))
+#define MAX(a, b)                           ((a) > (b) ? (a) : (b))
+
+#define REG_NULL                            0xFF
+#define REG16_NULL                          0xFFFF
 
 inline void EepromGetSwiftDeviceNumAddress(uint32_t* offset, uint32_t* length) {
     *offset = ADS6401_EEPROM_VERSION_INFO_OFFSET;

@@ -92,8 +92,8 @@ public:
 
     int get_spotSearchingRange(UINT8 *rowSearchingRange, UINT8 *colSearchingRange);
     int set_spotSearchingRange(UINT8 rowSearchingRange, UINT8 colSearchingRange);
-    int get_usrCfgExposureValues(UINT8 *coarseExposure, UINT8 *fineExposure, UINT8 *grayExposure);
-    int set_usrCfgExposureValues(UINT8 coarseExposure, UINT8 fineExposure, UINT8 grayExposure);
+    int get_usrCfgExposureValues(UINT8 *coarseExposure, UINT8 *fineExposure, UINT8 *grayExposure, UINT8 *laserExposurePeriod);
+    int set_usrCfgExposureValues(UINT8 coarseExposure, UINT8 fineExposure, UINT8 grayExposure, UINT8 laserExposurePeriod);
 #endif
 
 private:
@@ -132,6 +132,7 @@ private:
     UINT8 usrCfgGrayExposure;
     UINT8 usrCfgCoarseExposure;
     UINT8 usrCfgFineExposure;
+    UINT8 usrCfgLaserExposurePeriod;
 
     AdapsMeasurementType string_2_measurementtype(QString& str);
     AdapsEnvironmentType string_2_environmenttype(QString& str);

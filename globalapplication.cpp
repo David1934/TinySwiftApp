@@ -522,24 +522,26 @@ int GlobalApplication::set_spotSearchingRange(UINT8 rowRange, UINT8 colRange)
     return ret;
 }
 
-int GlobalApplication::get_usrCfgExposureValues(UINT8 *coarseExposure, UINT8 *fineExposure, UINT8 *grayExposure)
+int GlobalApplication::get_usrCfgExposureValues(UINT8 *coarseExposure, UINT8 *fineExposure, UINT8 *grayExposure, UINT8 *laserExposurePeriod)
 {
     int ret = 0;
 
     *coarseExposure = usrCfgCoarseExposure;
     *fineExposure = usrCfgFineExposure;
     *grayExposure = usrCfgGrayExposure;
+    *laserExposurePeriod = usrCfgLaserExposurePeriod;
 
     return ret;
 }
 
-int GlobalApplication::set_usrCfgExposureValues(UINT8 coarseExposure, UINT8 fineExposure, UINT8 grayExposure)
+int GlobalApplication::set_usrCfgExposureValues(UINT8 coarseExposure, UINT8 fineExposure, UINT8 grayExposure, UINT8 laserExposurePeriod)
 {
     int ret = 0;
 
     usrCfgCoarseExposure = coarseExposure;
     usrCfgFineExposure = fineExposure;
     usrCfgGrayExposure = grayExposure;
+    usrCfgLaserExposurePeriod = laserExposurePeriod;
 
     return ret;
 }

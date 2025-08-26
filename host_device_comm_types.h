@@ -43,6 +43,7 @@ typedef enum
     CMD_HOST_SIDE_SET_EXPOSURE_TIME                 = 0x0010,
     CMD_HOST_SIDE_SET_REF_DISTANCE_DATA             = 0x0011,
     CMD_HOST_SIDE_SET_LENS_INTRINSIC_DATA           = 0x0012,
+    CMD_HOST_SIDE_SET_HISTOGRAM_DATA_REQ_POSITION   = 0x0013,
 
     // from device side to PC side
     CMD_DEVICE_SIDE_REPORT_MODULE_STATIC_DATA       = 0x1000, // Device side sends the static_module data as requested by the client's CMD_HOST_SIDE_GET_MODULE_STATIC_DATA command
@@ -50,8 +51,9 @@ typedef enum
     CMD_DEVICE_SIDE_REPORT_SENSOR_REGISTER          = 0x1002,
     CMD_DEVICE_SIDE_REPORT_VCSLDRV_OP7020_REGISTER  = 0x1003,
     CMD_DEVICE_SIDE_REPORT_STATUS                   = 0x1004,
-    CMD_DEVICE_SIDE_REPORT_FRAME_DEPTH16_DATA       = 0x1005, // Device side sends the raw data as requested by the client's start capture command
-    CMD_DEVICE_SIDE_REPORT_FRAME_POINTCLOUD_DATA    = 0x1006, // Device side sends the raw data as requested by the client's start capture command
+    CMD_DEVICE_SIDE_REPORT_FRAME_DEPTH16_DATA       = 0x1005, // Device side sends the depth16 data as requested by the client's start capture command
+    CMD_DEVICE_SIDE_REPORT_FRAME_POINTCLOUD_DATA    = 0x1006, // Device side sends the point-cloud data as requested by the client's start capture command
+    CMD_DEVICE_SIDE_REPORT_REQ_POS_HISTOGRAM_DATA   = 0x1007,
 } cmdType_t;
 
 typedef enum
@@ -94,6 +96,7 @@ typedef enum swift_data_type {
     FRAME_DECODED_DEPTH16       = BIT(2),   // for PCM and PTM mode (FHR, PHR)
     FRAME_DECODED_POINT_CLOUD   = BIT(3),
     FRAME_DECODED_DEPTH16_XY    = BIT(4),
+    SPECIFIED_POS_HISTOGRAM     = BIT(5),
 } swift_datatype_t;
 
 enum {
@@ -172,6 +175,12 @@ typedef struct reference_distance_data_param
     float           indoorCalibRefDistance; // Calibration reference distance.
     float           outdoorCalibRefDistance; // Calibration reference distance.
 } reference_distance_data_param_t;
+
+typedef struct histogram_report_param_s
+{
+    uint16_t x;
+    uint16_t y;
+} histogram_report_param_t;
 
 typedef struct capture_req_param
 {

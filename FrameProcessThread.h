@@ -47,12 +47,12 @@ private:
     #endif
     Utils *utils;
     V4L2 *v4l2;
+#if ALGO_LIB_VERSION_CODE >= VERSION_HEX_VALUE(3, 5, 6) && defined(ENABLE_POINTCLOUD_OUTPUT)
+    pc_pkt_t* out_pcloud_buffer;
+    u32 out_pcloud_buffer_size;
+#endif
     u16 *depth_buffer;
     u32 depth_buffer_size;
-    #if 0 //defined(ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT)
-        u16 *merged_depth_buffer;
-        uint32_t merged_frame_cnt;
-    #endif
     unsigned char *rgb_buffer;
     unsigned char *confidence_map_buffer;
     uint32_t outputed_frame_cnt;

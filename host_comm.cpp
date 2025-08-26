@@ -44,8 +44,8 @@ Host_Communication::Host_Communication() {
 Host_Communication::~Host_Communication()
 {
     if (NULL_POINTER != instance) {
-        DBG_NOTICE("------communication statistics------total txRawdataFrameCnt: %ld, txDepth16FrameCnt: %ld---\n",
-            txRawdataFrameCnt, txDepth16FrameCnt);
+        DBG_NOTICE("------communication statistics------total txRawdataFrameCnt: %ld (%d fps), txDepth16FrameCnt: %ld (%d fps), txPointCloudFrameCnt: %ld (%d fps)---\n",
+            txRawdataFrameCnt, txRawdataFrame_fps, txDepth16FrameCnt, txDepth16Frame_fps, txPointCloudFrameCnt, txPointCloudFrame_fps);
 
         reset_data();
         sender_destroy();
@@ -90,9 +90,12 @@ void Host_Communication::reset_data()
     }
 
     backuped_wkmode = 0;
+    req_histogram_x = 0;
+    req_histogram_y = 0;
     memset(&backuped_capture_req_param, 0, sizeof(capture_req_param_t));
     txRawdataFrameCnt = 0;
     txDepth16FrameCnt = 0;
+    txPointCloudFrameCnt = 0;
     firstRawdataFrameTimeUsec = 0;
     firstDepth16FrameTimeUsec = 0;
     eeprom_capacity = 0;
@@ -138,6 +141,16 @@ void* Host_Communication::get_loaded_ref_distance_data()
 void* Host_Communication::get_loaded_lens_intrinsic_data()
 {
     return loaded_lens_intrinsic_data;
+}
+
+uint16_t Host_Communication::get_req_histogram_x()
+{
+    return req_histogram_x;
+}
+
+uint16_t Host_Communication::get_req_histogram_y()
+{
+    return req_histogram_y;
 }
 
 int Host_Communication::dump_buffer_data(void* dump_buf, const char *buffer_name, int callline)
@@ -238,6 +251,157 @@ int Host_Communication::dump_frame_param(frame_buffer_param_t *pDataBufferParam)
     return 0;
 }
 
+bool Host_Communication::save_data_2_bin_file(const char *prefix, void *buf, int len)
+{
+    QDateTime       localTime = QDateTime::currentDateTime();
+    QString         currentTime = localTime.toString("yyyyMMddhhmmss");
+    char *          LocalTimeStr = (char *) currentTime.toStdString().c_str();
+    char *          filename = new char[128];
+
+    sprintf(filename, "%s%s_%u_%s.bin", DATA_SAVE_PATH, prefix, len, LocalTimeStr);
+    Utils *utils = new Utils();
+    utils->save_binary_file(filename, buf, 
+        len,
+        __FUNCTION__,
+        __LINE__
+        );
+    delete utils;
+    delete[] filename;
+
+    return true;
+}
+
+int Host_Communication::report_req_histogram_data(void* pHistDataPtr, uint32_t spotHistDataSize, frame_buffer_param_t *pFrmBufParam)
+{
+    int result;
+    void *async_buf;
+    CommandData_t* pCmdData = NULL_POINTER;
+    frame_buffer_param_t *pDataBufferParam;
+    uint32_t ulCmdDataLen = sizeof(CommandData_t) + sizeof(frame_buffer_param_t);
+    uint32_t ulBufSize = ulCmdDataLen + spotHistDataSize;
+
+    if (false == qApp->is_capture_req_from_host())
+    {
+        return 0;
+    }
+
+    if (NULL_POINTER == pHistDataPtr || 0 == spotHistDataSize)
+    {
+        return 0;
+    }
+
+    if (false == connected || false == sender_is_working()) {
+        LOG_ERROR("It seems host is not connected yet or disconnected, connected: %d.\n", connected);
+        return -1;
+    }
+
+    async_buf = sender_async_buf_alloc(ulBufSize);
+    if (NULL_POINTER == async_buf) {
+        LOG_ERROR("async alloc buf fail: %u.\n", ulBufSize);
+        return -1;
+    }
+
+    pCmdData = (CommandData_t*) async_buf;
+
+    pCmdData->cmd = CMD_DEVICE_SIDE_REPORT_REQ_POS_HISTOGRAM_DATA;
+    pDataBufferParam  = (frame_buffer_param_t *) pCmdData->param;
+    memcpy(pDataBufferParam, pFrmBufParam, sizeof(frame_buffer_param_t));
+    pDataBufferParam->buffer_size = spotHistDataSize;
+    memcpy(pDataBufferParam->buffer, pHistDataPtr, spotHistDataSize);
+
+    result = sender_async_send_msg(async_buf, ulBufSize, 0);
+
+    if (result < 0) {
+        LOG_ERROR("async send histogram data fail: %d.\n", result);
+        return result;
+    }
+
+    LOG_DEBUG("%s() sucessfully, mipi_rx_fps = %d fps, req_histogram_x: %u, req_histogram_y: %u, frame_sequence: %ld.\n", 
+        __FUNCTION__, pDataBufferParam->mipi_rx_fps, req_histogram_x, req_histogram_y, pDataBufferParam->frame_sequence);
+
+    req_histogram_x = 0; // try to avoid re-send data
+    req_histogram_y = 0;
+
+    return 0;
+}
+
+int Host_Communication::report_frame_pointcloud_data(void* pFrameData, uint32_t frameData_size, frame_buffer_param_t *pFrmBufParam)
+{
+    int dump_times = 0;
+    int result;
+    void *async_buf;
+    CommandData_t* pCmdData = NULL_POINTER;
+    frame_buffer_param_t *pDataBufferParam;
+    uint32_t ulCmdDataLen = sizeof(CommandData_t) + sizeof(frame_buffer_param_t);
+    uint32_t ulBufSize = ulCmdDataLen + frameData_size;
+    struct timeval tv;
+    long currTimeUsec;
+    unsigned long streamed_timeUs;
+
+    if (false == qApp->is_capture_req_from_host())
+    {
+        return 0;
+    }
+
+    if (0 == (get_req_out_data_type() & FRAME_DECODED_POINT_CLOUD))
+    {
+        return 0;
+    }
+
+    if (false == connected || false == sender_is_working()) {
+        LOG_ERROR("It seems host is not connected yet or disconnected, connected: %d.\n", connected);
+        return -1;
+    }
+
+    async_buf = sender_async_buf_alloc(ulBufSize);
+    if (NULL_POINTER == async_buf) {
+        LOG_ERROR("async alloc buf fail: %u.\n", ulBufSize);
+        return -1;
+    }
+
+    pCmdData = (CommandData_t*) async_buf;
+
+    pCmdData->cmd = CMD_DEVICE_SIDE_REPORT_FRAME_POINTCLOUD_DATA;
+    pDataBufferParam  = (frame_buffer_param_t *) pCmdData->param;
+    memcpy(pDataBufferParam, pFrmBufParam, sizeof(frame_buffer_param_t));
+    pDataBufferParam->buffer_size = frameData_size;
+    memcpy(pDataBufferParam->buffer, pFrameData, frameData_size);
+
+    dump_times = Utils::get_env_var_intvalue(ENV_VAR_DUMP_FRAME_PARAM_TIMES);
+    if (0 != dump_times && txPointCloudFrameCnt < static_cast<unsigned long>(dump_times))
+    {
+        dump_frame_param(pDataBufferParam);
+    }
+
+    result = sender_async_send_msg(async_buf, ulBufSize, 0);
+    gettimeofday(&tv,NULL_POINTER);
+
+    if (result < 0) {
+        LOG_ERROR("async send point cloud data fail: %d.\n", result);
+        return result;
+    }
+
+    txPointCloudFrameCnt++;
+
+    if (0 == firstPointCloudFrameTimeUsec)
+    {
+        firstPointCloudFrameTimeUsec = tv.tv_sec*1000000 + tv.tv_usec;
+    }
+    else {
+        currTimeUsec = tv.tv_sec*1000000 + tv.tv_usec;
+        streamed_timeUs = (currTimeUsec - firstPointCloudFrameTimeUsec);
+        txPointCloudFrame_fps = (txPointCloudFrameCnt * 1000000) / streamed_timeUs;
+    }
+
+    if (txPointCloudFrameCnt < 3)
+    {
+        LOG_DEBUG("%s() sucessfully, mipi_rx_fps = %d fps, txPointCloudFrame_fps = %d fps, txPointCloudFrameCnt: %ld, frame_sequence: %ld, sizeof(CommandData_t): %ld, ulCmdDataLen: %d, frameData_size: %d, ulBufSize: %d.\n", 
+            __FUNCTION__, pDataBufferParam->mipi_rx_fps, txPointCloudFrame_fps, txPointCloudFrameCnt, pDataBufferParam->frame_sequence, sizeof(CommandData_t), ulCmdDataLen, frameData_size, ulBufSize);
+    }
+
+    return 0;
+}
+
 int Host_Communication::report_frame_depth16_data(void* pFrameData, uint32_t frameData_size, frame_buffer_param_t *pFrmBufParam)
 {
     int dump_times = 0;
@@ -250,7 +414,6 @@ int Host_Communication::report_frame_depth16_data(void* pFrameData, uint32_t fra
     struct timeval tv;
     long currTimeUsec;
     unsigned long streamed_timeUs;
-    int txDepth16Frame_fps;
 
     if (false == qApp->is_capture_req_from_host())
     {
@@ -291,8 +454,7 @@ int Host_Communication::report_frame_depth16_data(void* pFrameData, uint32_t fra
     gettimeofday(&tv,NULL_POINTER);
 
     if (result < 0) {
-        //sender_async_buf_free(pstrCmdData);
-        LOG_ERROR("async send raw data fail: %u.\n", ulBufSize);
+        LOG_ERROR("async send depth16 data fail: %d.\n", result);
         return result;
     }
 
@@ -330,7 +492,6 @@ int Host_Communication::report_frame_raw_data(void* pFrameData, uint32_t frameDa
     struct timeval tv;
     long currTimeUsec;
     unsigned long streamed_timeUs;
-    int txRawdataFrame_fps;
 
     if (false == qApp->is_capture_req_from_host())
     {
@@ -371,8 +532,7 @@ int Host_Communication::report_frame_raw_data(void* pFrameData, uint32_t frameDa
     gettimeofday(&tv,NULL_POINTER);
 
     if (result < 0) {
-        //sender_async_buf_free(pstrCmdData);
-        LOG_ERROR("async send raw data fail: %u.\n", ulBufSize);
+        LOG_ERROR("async send raw data fail: %d.\n", result);
         return result;
     }
 
@@ -555,6 +715,22 @@ void Host_Communication::adaps_set_walkerror_enable(CommandData_t* pCmdData, uin
     qApp->set_walkerror_enable(pWalkerrorEnableParam->walkerror_enable);
 }
 
+void Host_Communication::adaps_set_req_histogram_position(CommandData_t* pCmdData, uint32_t rxDataLen)
+{
+    histogram_report_param_t* pReqHistPosParam;
+
+    if (rxDataLen < (sizeof(CommandData_t) + sizeof(histogram_report_param_t)))
+    {
+        LOG_ERROR("adaps_set_req_histogram_position: rxDataLen %d is too short for CMD_HOST_SIDE_SET_HISTOGRAM_DATA_REQ_POSITION.\n", rxDataLen);
+        return;
+    }
+
+    pReqHistPosParam = (histogram_report_param_t*) pCmdData->param;
+
+    req_histogram_x = pReqHistPosParam->x;
+    req_histogram_y = pReqHistPosParam->y;
+}
+
 void Host_Communication::adaps_load_roi_sram(CommandData_t* pCmdData, uint32_t rxDataLen)
 {
     roisram_data_param_t* pRoiSramParam;
@@ -575,6 +751,11 @@ void Host_Communication::adaps_load_roi_sram(CommandData_t* pCmdData, uint32_t r
 
         LOG_DEBUG("------loaded_roisram_data %d bytes-----\n", pRoiSramParam->roisram_data_size);
         memcpy(mmaped_roisram_address, &pRoiSramParam->roisram_data, pRoiSramParam->roisram_data_size);
+
+        if (Utils::is_env_var_true(ENV_VAR_SAVE_LOADED_DATA_ENABLE))
+        {
+            save_data_2_bin_file("loaded_roisram", mmaped_roisram_address, pRoiSramParam->roisram_data_size);
+        }
     }
     else {
         char err_msg[128];
@@ -617,6 +798,11 @@ void Host_Communication::adaps_load_walkerror_data(CommandData_t* pCmdData, uint
         qApp->set_loaded_walkerror_data(loaded_walkerror_data);
         qApp->set_loaded_walkerror_data_size(loaded_walkerror_data_size);
         LOG_DEBUG("------loaded_walkerror_data %d bytes-----\n", loaded_walkerror_data_size);
+
+        if (Utils::is_env_var_true(ENV_VAR_SAVE_LOADED_DATA_ENABLE))
+        {
+            save_data_2_bin_file("loaded_walkerror_data", loaded_walkerror_data, loaded_walkerror_data_size);
+        }
     }
     else {
         char err_msg[128];
@@ -660,6 +846,11 @@ void Host_Communication::adaps_load_spotoffset_data(CommandData_t* pCmdData, uin
         qApp->set_loaded_spotoffset_data(loaded_spotoffset_data);
         qApp->set_loaded_spotoffset_data_size(loaded_spotoffset_data_size);
         LOG_DEBUG("------loaded_spotoffset_data %d bytes-----\n", loaded_spotoffset_data_size);
+
+        if (Utils::is_env_var_true(ENV_VAR_SAVE_LOADED_DATA_ENABLE))
+        {
+            save_data_2_bin_file("loaded_offset_data", loaded_spotoffset_data, loaded_spotoffset_data_size);
+        }
     }
     else {
         char err_msg[128];
@@ -750,11 +941,6 @@ void Host_Communication::adaps_set_rtc_time(CommandData_t* pCmdData, uint32_t rx
     rtc_time_param_t* pRtcTimeParam;
     rtc_time_param_t strTimeSyncInfo;
     struct timeval strLocalTime;
-#if 0
-    struct tm* nowTime;
-    char tmpbuf[128];
-    time_t lt;
-#endif
 
     if (rxDataLen < (sizeof(CommandData_t) + sizeof(rtc_time_param_t)))
     {
@@ -781,12 +967,6 @@ void Host_Communication::adaps_set_rtc_time(CommandData_t* pCmdData, uint32_t rx
         }
     }
 
-#if 0
-    time(&lt);
-    nowTime = localtime(&lt);
-    strftime(tmpbuf, 128, "%Y-%m-%d %H:%M:%S", nowTime);
-    LOG_DEBUG("Local Time: %s.\n", tmpbuf);
-#endif
 }
 
 void Host_Communication::adaps_load_ref_distance_data(CommandData_t* pCmdData, uint32_t rxDataLen)
@@ -818,6 +998,11 @@ void Host_Communication::adaps_load_ref_distance_data(CommandData_t* pCmdData, u
     //qApp->set_loaded_ref_distance_data(loaded_ref_distance_data);
     //qApp->set_loaded_ref_distance_data_size(loaded_ref_distance_data_size);
     LOG_DEBUG("------loaded_ref_distance_data %d bytes-----\n", loaded_ref_distance_data_size);
+
+    if (Utils::is_env_var_true(ENV_VAR_SAVE_LOADED_DATA_ENABLE))
+    {
+        save_data_2_bin_file("loaded_refdistance_data", loaded_ref_distance_data, loaded_ref_distance_data_size);
+    }
 
     report_status(CMD_HOST_SIDE_SET_REF_DISTANCE_DATA, CMD_DEVICE_SIDE_NO_ERROR, msg, strlen(msg));
 }
@@ -852,6 +1037,11 @@ void Host_Communication::adaps_load_lens_intrinsic_data(CommandData_t* pCmdData,
     //qApp->set_loaded_ref_distance_data_size(loaded_ref_distance_data_size);
     LOG_DEBUG("------loaded_lens_intrinsic_data %d bytes-----\n", loaded_lens_intrinsic_data_size);
 
+    if (Utils::is_env_var_true(ENV_VAR_SAVE_LOADED_DATA_ENABLE))
+    {
+        save_data_2_bin_file("loaded_lens_intrinsic_data", loaded_lens_intrinsic_data, loaded_lens_intrinsic_data_size);
+    }
+
     report_status(CMD_HOST_SIDE_SET_REF_DISTANCE_DATA, CMD_DEVICE_SIDE_NO_ERROR, msg, strlen(msg));
 }
 
@@ -863,6 +1053,7 @@ void Host_Communication::adaps_start_capture(CommandData_t* pCmdData, uint32_t r
     UINT8 force_coarseExposure = 0;
     UINT8 force_fineExposure = 0;
     UINT8 force_grayExposure = 0;
+    UINT8 force_laserExposurePeriod = 0;
 
     if (rxDataLen < (sizeof(CommandData_t) + sizeof(capture_req_param_t)))
     {
@@ -871,7 +1062,8 @@ void Host_Communication::adaps_start_capture(CommandData_t* pCmdData, uint32_t r
     }
 
     pCaptureReqParam = (capture_req_param_t*) pCmdData->param;
-    LOG_DEBUG("---req_out_data_type: 0x%x, anchorX = %d, anchorY = %d---\n", pCaptureReqParam->req_out_data_type, pCaptureReqParam->colOffset, pCaptureReqParam->rowOffset);
+    LOG_DEBUG("---req_out_data_type: 0x%x, anchorX = %d, anchorY = %d, roi_sram_rolling = %d---\n",
+        pCaptureReqParam->req_out_data_type, pCaptureReqParam->colOffset, pCaptureReqParam->rowOffset, pCaptureReqParam->roi_sram_rolling);
 
     force_row_search_range = Utils::get_env_var_intvalue(ENV_VAR_FORCE_ROW_SEARCH_RANGE);
     if (force_row_search_range)
@@ -903,6 +1095,8 @@ void Host_Communication::adaps_start_capture(CommandData_t* pCmdData, uint32_t r
         pCaptureReqParam->expose_param.grayExposure = force_grayExposure;
     }
 
+    force_laserExposurePeriod = Utils::get_env_var_intvalue(ENV_VAR_FORCE_LASEREXPOSUREPERIOD);
+
     if (true == Utils::is_env_var_true(ENV_VAR_DUMP_CAPTURE_REQ_PARAM))
     {
         dump_capture_req_param(pCaptureReqParam);
@@ -918,7 +1112,7 @@ void Host_Communication::adaps_start_capture(CommandData_t* pCmdData, uint32_t r
         qApp->set_anchorOffset(0, 0); // non-spot module does not need anchor preprocess
     }
     qApp->set_spotSearchingRange(pCaptureReqParam->rowSearchingRange, pCaptureReqParam->colSearchingRange);
-    qApp->set_usrCfgExposureValues(pCaptureReqParam->expose_param.coarseExposure, pCaptureReqParam->expose_param.fineExposure, pCaptureReqParam->expose_param.grayExposure);
+    qApp->set_usrCfgExposureValues(pCaptureReqParam->expose_param.coarseExposure, pCaptureReqParam->expose_param.fineExposure, pCaptureReqParam->expose_param.grayExposure, force_laserExposurePeriod);
     qApp->set_roi_sram_rolling(pCaptureReqParam->roi_sram_rolling);
 
     memcpy(&backuped_capture_req_param, pCaptureReqParam, sizeof(capture_req_param_t));
@@ -1062,6 +1256,10 @@ void Host_Communication::adaps_event_process(void* pRXData, uint32_t rxDataLen)
             adaps_set_walkerror_enable(pCmdData, rxDataLen);
             break;
 
+        case CMD_HOST_SIDE_SET_HISTOGRAM_DATA_REQ_POSITION:
+            adaps_set_walkerror_enable(pCmdData, rxDataLen);
+            break;
+
         case CMD_HOST_SIDE_SET_RTC_TIME:
             adaps_set_rtc_time(pCmdData, rxDataLen);
             break;
@@ -1096,6 +1294,8 @@ void Host_Communication::adaps_event_process(void* pRXData, uint32_t rxDataLen)
             {
                 qApp->set_capture_req_from_host(false);
                 emit stop_capture();
+                DBG_NOTICE("------communication statistics------total txRawdataFrameCnt: %ld (%d fps), txDepth16FrameCnt: %ld (%d fps), txPointCloudFrameCnt: %ld (%d fps)---\n",
+                    txRawdataFrameCnt, txRawdataFrame_fps, txDepth16FrameCnt, txDepth16Frame_fps, txPointCloudFrameCnt, txPointCloudFrame_fps);
                 reset_data();
             }
             break;

@@ -12,10 +12,10 @@ FrameProcessThread::FrameProcessThread()
     rgb_buffer = NULL_POINTER;
     confidence_map_buffer = NULL_POINTER;
     depth_buffer = NULL_POINTER;
-#if 0 //defined(ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT)
-    merged_depth_buffer = NULL_POINTER;
-    merged_frame_cnt = 0;
+#if ALGO_LIB_VERSION_CODE >= VERSION_HEX_VALUE(3, 5, 6) && defined(ENABLE_POINTCLOUD_OUTPUT)
+    out_pcloud_buffer = NULL_POINTER;
 #endif
+
     outputed_frame_cnt = 0;
     v4l2 = NULL_POINTER;
     utils = NULL_POINTER;
@@ -82,11 +82,11 @@ FrameProcessThread::~FrameProcessThread()
         depth_buffer = NULL_POINTER;
     }
 
-#if 0 //defined(ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT)
-    if (NULL_POINTER != merged_depth_buffer)
+#if ALGO_LIB_VERSION_CODE >= VERSION_HEX_VALUE(3, 5, 6) && defined(ENABLE_POINTCLOUD_OUTPUT)
+    if (NULL_POINTER != out_pcloud_buffer)
     {
-        free(merged_depth_buffer);
-        merged_depth_buffer = NULL_POINTER;
+        free(out_pcloud_buffer);
+        out_pcloud_buffer = NULL_POINTER;
     }
 #endif
 
@@ -223,10 +223,6 @@ bool FrameProcessThread::new_frame_handle(
     Q_UNUSED(buf_len);
     Q_UNUSED(total_bytes_per_line);
 
-#if 0
-    DBG_INFO("skipFrameProcess:%d, frm_sequence:%d, buf_len:%d", skip_frame_decode, frm_sequence, buf_len);
-#endif
-
     switch (ftype) {
 #if defined(RUN_ON_EMBEDDED_LINUX)
         case FDATA_TYPE_DTOF_RAW_GRAYSCALE:
@@ -257,7 +253,7 @@ bool FrameProcessThread::new_frame_handle(
                     }
                 }
                 else {
-                    decodeRet = adaps_dtof->dtof_frame_decode(frm_sequence, (unsigned char *)frm_rawdata, buf_len, depth_buffer, sns_param.work_mode);
+                    decodeRet = adaps_dtof->dtof_frame_decode(frm_sequence, (unsigned char *)frm_rawdata, buf_len, depth_buffer, NULL_POINTER, sns_param.work_mode);
                     if (0 == decodeRet)
                     {
 #if !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
@@ -360,68 +356,18 @@ bool FrameProcessThread::new_frame_handle(
                     }
                 }
                 else {
-                    decodeRet = adaps_dtof->dtof_frame_decode(frm_sequence, (unsigned char *)frm_rawdata, buf_len, depth_buffer, sns_param.work_mode);
-
-#if 0 //defined(ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT)
-                    if (frm_sequence < 80 && frm_sequence > 34)
-                    {
-                        adaps_dtof->dumpSpotCount(depth_buffer, sns_param.out_frm_width, sns_param.out_frm_height, frm_sequence, merged_frame_cnt, decodeRet, __LINE__);
-                    }
-
-                    int new_added_spot_count = adaps_dtof->DepthBufferMerge(merged_depth_buffer, depth_buffer, sns_param.out_frm_width, sns_param.out_frm_height);
-                    if (frm_sequence < 80 && frm_sequence > 34)
-                    {
-                        adaps_dtof->dumpSpotCount(merged_depth_buffer, sns_param.out_frm_width, sns_param.out_frm_height, frm_sequence, merged_frame_cnt, decodeRet, __LINE__);
-                    }
-
-                    if (0 == decodeRet)
-                    {
-                        Host_Communication *host_comm = Host_Communication::getInstance();
-
-                        merged_frame_cnt++;
-                        adaps_dtof->depthMapDump(merged_depth_buffer, sns_param.out_frm_width, sns_param.out_frm_height, merged_frame_cnt, __LINE__);
-
-                        if (host_comm)
-                        {
-                            frmBufParam.data_type = FRAME_DECODED_DEPTH16;
-                            frmBufParam.frm_width = sns_param.out_frm_width;
-                            frmBufParam.frm_height = sns_param.out_frm_height;
-                            frmBufParam.padding_bytes_per_line = 0;
-
-                            host_comm->report_frame_depth16_data(merged_depth_buffer, depth_buffer_size, &frmBufParam);
-                        }
-
-                        if (sns_param.save_frame_cnt > 0)
-                        {
-                            if (true == Utils::is_env_var_true(ENV_VAR_SAVE_FRAME_ENABLE))
-                            {
-                                save_frame(frm_sequence, merged_depth_buffer, depth_buffer_size,
-                                    sns_param.out_frm_width, sns_param.out_frm_height,
-                                    frm_timestamp, FDATA_TYPE_DTOF_DECODED_DEPTH16);
-                            }
-
-                            if (Utils::is_env_var_true(ENV_VAR_SAVE_DEPTH_TXT_ENABLE))
-                            {
-                                save_depth_txt_file(merged_depth_buffer, frm_sequence, depth_buffer_size);
-                            }
-                        }
-#if !defined(CONSOLE_APP_WITHOUT_GUI)
-                        adaps_dtof->ConvertDepthToColoredMap(merged_depth_buffer, rgb_buffer, confidence_map_buffer, sns_param.out_frm_width, sns_param.out_frm_height);
-                        if (sns_param.save_frame_cnt > 0)
-                        {
-                            if (true == Utils::is_env_var_true(ENV_VAR_SAVE_FRAME_ENABLE))
-                            {
-                                save_frame(frm_sequence,rgb_buffer,sns_param.out_frm_width*sns_param.out_frm_height*RGB_IMAGE_CHANEL,
-                                    sns_param.out_frm_width, sns_param.out_frm_height,
-                                    frm_timestamp, FDATA_TYPE_RGB888);
-                            }
-                        }
-#endif
-                    }
-                    else {
-                        //DBG_ERROR("dtof_frame_decode() return %d , errno: %s (%d), save_frame_cnt: %d...", decodeRet, strerror(errno), errno, sns_param.save_frame_cnt);
-                    }
+                    decodeRet = adaps_dtof->dtof_frame_decode(
+                        frm_sequence,
+                        (unsigned char *)frm_rawdata,
+                        buf_len,
+                        depth_buffer,
+#if ALGO_LIB_VERSION_CODE >= VERSION_HEX_VALUE(3, 5, 6) && defined(ENABLE_POINTCLOUD_OUTPUT)
+                        out_pcloud_buffer,
 #else
+                        NULL_POINTER,
+#endif
+                        sns_param.work_mode);
+
                     if (0 == decodeRet)
                     {
 #if !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
@@ -455,12 +401,33 @@ bool FrameProcessThread::new_frame_handle(
 #if !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
                         if (host_comm)
                         {
+                            uint16_t req_histogram_x = 0;
+                            uint16_t req_histogram_y = 0;
+
                             frmBufParam.data_type = FRAME_DECODED_DEPTH16;
                             frmBufParam.frm_width = sns_param.out_frm_width;
                             frmBufParam.frm_height = sns_param.out_frm_height;
                             frmBufParam.padding_bytes_per_line = 0;
 
                             host_comm->report_frame_depth16_data(depth_buffer, depth_buffer_size, &frmBufParam);
+
+    #if ALGO_LIB_VERSION_CODE >= VERSION_HEX_VALUE(3, 5, 6) && defined(ENABLE_POINTCLOUD_OUTPUT)
+                            frmBufParam.data_type = FRAME_DECODED_POINT_CLOUD;
+                            host_comm->report_frame_pointcloud_data(out_pcloud_buffer, out_pcloud_buffer_size, &frmBufParam);
+    #endif
+
+                            req_histogram_x = host_comm->get_req_histogram_x();
+                            req_histogram_y = host_comm->get_req_histogram_y();
+
+                            if (0 != (req_histogram_x + req_histogram_y)) // We don't report histogram data for position(0,0)
+                            {
+                                SpotPoint* spotPoint = adaps_dtof->get_spcific_histogram(req_histogram_x, req_histogram_y);
+
+                                if (NULL_POINTER != spotPoint) {
+                                    frmBufParam.data_type = SPECIFIED_POS_HISTOGRAM;
+                                    host_comm->report_req_histogram_data((void* ) spotPoint, sizeof(struct SpotPoint), &frmBufParam);
+                                }
+                            }
                         }
 #endif
 
@@ -494,7 +461,6 @@ bool FrameProcessThread::new_frame_handle(
                     else {
                         //DBG_ERROR("dtof_frame_decode() return %d , frm_sequence: %d, adaps_dtof: %p...", decodeRet, frm_sequence, adaps_dtof);
                     }
-#endif
                 }
             }
             else {
@@ -524,12 +490,6 @@ bool FrameProcessThread::new_frame_handle(
     }
     if (0 == decodeRet)
     {
-#if 0 //defined(ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT)
-        if (NULL_POINTER != merged_depth_buffer)
-        {
-            memset(merged_depth_buffer, 0, depth_buffer_size);
-        }
-#endif
         if (NULL_POINTER != depth_buffer)
         {
             memset(depth_buffer, 0, depth_buffer_size);
@@ -575,13 +535,6 @@ void FrameProcessThread::onThreadLoopExit()
             free(depth_buffer);
             depth_buffer = NULL_POINTER;
         }
-#if 0 //defined(ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT)
-        if (NULL_POINTER != merged_depth_buffer)
-        {
-            free(merged_depth_buffer);
-            merged_depth_buffer = NULL_POINTER;
-        }
-#endif
 
         if (NULL_POINTER != confidence_map_buffer)
         {
@@ -660,13 +613,16 @@ int FrameProcessThread::init(int index)
                     memset(depth_buffer, 0, depth_buffer_size);
                 }
 
-#if 0 //defined(ENABLE_DYNAMICALLY_UPDATE_ROI_SRAM_CONTENT)
-                merged_depth_buffer = (u16 *)malloc(depth_buffer_size);
-                if (NULL_POINTER != merged_depth_buffer)
+#if ALGO_LIB_VERSION_CODE >= VERSION_HEX_VALUE(3, 5, 6) && defined(ENABLE_POINTCLOUD_OUTPUT)
+                out_pcloud_buffer_size = sizeof(pc_pkt_t)*sns_param.out_frm_width*sns_param.out_frm_height;
+
+                out_pcloud_buffer = (pc_pkt_t *)malloc(out_pcloud_buffer_size);
+                if (NULL_POINTER != out_pcloud_buffer)
                 {
-                    memset(merged_depth_buffer, 0, depth_buffer_size);
+                    memset(out_pcloud_buffer, 0, out_pcloud_buffer_size);
                 }
 #endif
+
             }
             confidence_map_buffer = (unsigned char *)malloc(sizeof(unsigned char)*sns_param.out_frm_width*sns_param.out_frm_height*RGB_IMAGE_CHANEL);
             memset(confidence_map_buffer, 0, sns_param.out_frm_width*sns_param.out_frm_height*RGB_IMAGE_CHANEL);
