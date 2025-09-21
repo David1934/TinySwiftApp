@@ -1,4 +1,13 @@
-13. @2025/09/19 -- version update to 3.2.19_LM202500919A
+14. @2025/10/13 -- version update to 3.2.22_LM20251013A
+    redmine #2736: SpadisQT:不同模组配置对应的kernel适配
+    http://gerrit.adaps.corp/c/SpadisQT/+/5359
+
+    patch set 1: fix build error on Deepin Linux;
+    patch set 2-3: add CMD_HOST_SIDE_SET_MODULE_KERNEL_TYPE command;
+    patch set 5: bugfix: the temperature does not update to PC SpadisApp when the reported data type is raw-data;
+    patch set 6: correct the first parameter of report_status for CMD_HOST_SIDE_SET_EEPROM_DATA cmd;
+
+13. @2025/09/19 -- version update to 3.2.19_LM20250919A
     swift小型化功能完善
     http://gerrit.adaps.corp/c/SpadisQT/+/5256
 
@@ -24,7 +33,7 @@
     7.如果主机端仅请求原始数据，则跳过帧解码过程以降低设备端的 CPU 负载；
     8.如果加载的 ROI SRAM 大小为 4096 字节（如石头线阵模组），则启用对roi_sram_rolling的支持；
 
-12. @2025/08/22 -- version update to 3.2.11_LM202500822A
+12. @2025/08/22 -- version update to 3.2.11_LM20250822A
     Redmine #2611: 欢畅大FoV模组功能debug (基本功能 + ROI轮询）
     http://gerrit.adaps.corp/c/SpadisQT/+/5098
 
@@ -41,7 +50,7 @@
        b. 在处理CMD_HOST_SIDE_SET_ROI_SRAM_DATA命令时，直接将数据拷贝到mapped_roi_sram_data，并通过GlobalApplication类
           里的set/get函数实现全局共享和访问，避免多个类里多个copy导致的状态不一致(停止回放后)
 
-11. @2025/08/19 -- version update to 3.2.9_LM202500819A
+11. @2025/08/19 -- version update to 3.2.9_LM20250819A
     redmine_2487: swift rk3568小型化下位机bug fix
     http://gerrit.adaps.corp/c/SpadisQT/+/5098
 

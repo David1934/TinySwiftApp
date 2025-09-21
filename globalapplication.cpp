@@ -384,6 +384,20 @@ int GlobalApplication::set_RealDistanceMaxMappedRange(float value)
     return ret;
 }
 
+UINT8 GlobalApplication::get_module_kernel_type()
+{
+    return module_kernel_type;
+}
+
+int GlobalApplication::set_module_kernel_type(UINT8 value)
+{
+    int ret = 0;
+
+    module_kernel_type = value;
+
+    return ret;
+}
+
 UINT8* GlobalApplication::get_loaded_walkerror_data()
 {
     return loaded_walkerror_data;

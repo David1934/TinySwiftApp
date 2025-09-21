@@ -100,6 +100,7 @@ private:
     void adaps_load_ref_distance_data(CommandData_t* pCmdData, uint32_t rxDataLen);
     void adaps_load_lens_intrinsic_data(CommandData_t* pCmdData, uint32_t rxDataLen);
     void adaps_set_req_histogram_position(CommandData_t* pCmdData, uint32_t rxDataLen);
+    void adaps_set_module_kernel_type(CommandData_t* pCmdData, uint32_t rxDataLen);
 
     void adaps_event_process(void* pRXData, uint32_t rxDataLen);
     void adaps_sender_disconnected(void);

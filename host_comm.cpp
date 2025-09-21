@@ -888,6 +888,29 @@ void Host_Communication::adaps_request_device_reboot(CommandData_t* pCmdData, ui
     }
 }
 
+void Host_Communication::adaps_set_module_kernel_type(CommandData_t* pCmdData, uint32_t rxDataLen)
+{
+    module_kernel_param_t* pKernelParam;
+
+    if (rxDataLen < (sizeof(CommandData_t) + sizeof(module_kernel_param_t)))
+    {
+        LOG_ERROR("<%s>: rxDataLen %d is too short for CMD_HOST_SIDE_SET_MODULE_KERNEL_TYPE.\n", __FUNCTION__, rxDataLen);
+        return;
+    }
+
+    pKernelParam = (module_kernel_param_t*) pCmdData->param;
+    if (pKernelParam->module_kernel_type < MODULE_KERNEL_TYPE_CNT)
+    {
+        qApp->set_module_kernel_type(pKernelParam->module_kernel_type);
+    }
+    else {
+        char err_msg[128];
+        sprintf(err_msg, "Invalid module_kernel_type(%d) for CMD_HOST_SIDE_SET_MODULE_KERNEL_TYPE", pKernelParam->module_kernel_type);
+        report_status(CMD_HOST_SIDE_SET_MODULE_KERNEL_TYPE, CMD_DEVICE_SIDE_ERROR_INVALID_MODULE_KERNEL_TYPE, err_msg, strlen(err_msg));
+        return;
+    }
+}
+
 void Host_Communication::adaps_update_eeprom_data(CommandData_t* pCmdData, uint32_t rxDataLen)
 {
     int ret = -1;
@@ -926,12 +949,12 @@ void Host_Communication::adaps_update_eeprom_data(CommandData_t* pCmdData, uint3
     {
         char msg[128];
         sprintf(msg, "update %d bytes eeprom data successfully.", update_data_size);
-        report_status(CMD_HOST_SIDE_SET_SPOT_OFFSET_DATA, CMD_DEVICE_SIDE_NO_ERROR, msg, strlen(msg));
+        report_status(CMD_HOST_SIDE_SET_EEPROM_DATA, CMD_DEVICE_SIDE_NO_ERROR, msg, strlen(msg));
     }
     else {
         char msg[128];
         sprintf(msg, "Fail to update %d bytes eeprom data, check kernel log please.", update_data_size);
-        report_status(CMD_HOST_SIDE_SET_SPOT_OFFSET_DATA, CMD_DEVICE_SIDE_ERROR_FAIL_TO_UPDATE_EEPROM, msg, strlen(msg));
+        report_status(CMD_HOST_SIDE_SET_EEPROM_DATA, CMD_DEVICE_SIDE_ERROR_FAIL_TO_UPDATE_EEPROM, msg, strlen(msg));
     }
 
 }
@@ -1042,7 +1065,7 @@ void Host_Communication::adaps_load_lens_intrinsic_data(CommandData_t* pCmdData,
         save_data_2_bin_file("loaded_lens_intrinsic_data", loaded_lens_intrinsic_data, loaded_lens_intrinsic_data_size);
     }
 
-    report_status(CMD_HOST_SIDE_SET_REF_DISTANCE_DATA, CMD_DEVICE_SIDE_NO_ERROR, msg, strlen(msg));
+    report_status(CMD_HOST_SIDE_SET_LENS_INTRINSIC_DATA, CMD_DEVICE_SIDE_NO_ERROR, msg, strlen(msg));
 }
 
 void Host_Communication::adaps_start_capture(CommandData_t* pCmdData, uint32_t rxDataLen)
@@ -1250,6 +1273,10 @@ void Host_Communication::adaps_event_process(void* pRXData, uint32_t rxDataLen)
 
         case CMD_HOST_SIDE_SET_COLORMAP_RANGE_PARAM:
             adaps_set_colormap_range(pCmdData, rxDataLen);
+            break;
+
+        case CMD_HOST_SIDE_SET_MODULE_KERNEL_TYPE:
+            adaps_set_module_kernel_type(pCmdData, rxDataLen);
             break;
 
         case CMD_HOST_SIDE_SET_WALKERROR_ENABLE:

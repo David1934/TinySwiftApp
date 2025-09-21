@@ -13,8 +13,8 @@
 
 #define VERSION_MAJOR                           3
 #define VERSION_MINOR                           2
-#define VERSION_REVISION                        19
-#define LAST_MODIFIED_TIME                      "202500919A"
+#define VERSION_REVISION                        22
+#define LAST_MODIFIED_TIME                      "20251013A"
 
 #define DEFAULT_DTOF_FRAMERATE                  AdapsFramerateType30FPS // AdapsFramerateType60FPS
 

@@ -659,6 +659,10 @@ int ADAPS_DTOF::initParams(WrapperDepthInitInputParams* initInputParams, Wrapper
     set_param.mirror_frame.mirror_y = false;
 #endif
 
+#if ALGO_LIB_VERSION_CODE >= VERSION_HEX_VALUE(3, 6, 5)
+    set_param.moduleKernelType = qApp->get_module_kernel_type();
+#endif
+
     // always allow to check environment variable to change these setting for debug.
     if (true == Utils::is_env_var_true(ENV_VAR_ENABLE_EXPAND_PIXEL))
     {
@@ -730,8 +734,8 @@ int ADAPS_DTOF::initParams(WrapperDepthInitInputParams* initInputParams, Wrapper
     DBG_NOTICE("initParams success, roi_sram_size: %d, roi_sram_rolling: %d, walkerror: %d, loaded_roi_sram_size: %d, work_mode=%d env_type=%d  measure_type=%d", 
          initInputParams->rawDataSize, qApp->is_roi_sram_rolling(), set_param.walkerror, loaded_roi_sram_size, set_param.work_mode,set_param.env_type,set_param.measure_type);
 #else
-    DBG_NOTICE("initParams success, roi_sram_size: %d, roi_sram_rolling: %d, walkerror: %d, loaded_roi_sram_size: %d, adapsSpodOffsetDataLength: %d, walk_error_para_list_length: %d, work_mode=%d env_type=%d  measure_type=%d", 
-        initInputParams->rawDataSize, qApp->is_roi_sram_rolling(), set_param.walkerror, loaded_roi_sram_size, set_param.adapsSpodOffsetDataLength, set_param.walk_error_para_list_length, set_param.work_mode,set_param.env_type,set_param.measure_type);
+    DBG_NOTICE("initParams success, roi_sram_size: %d, roi_sram_rolling: %d, walkerror: %d, loaded_roi_sram_size: %d, adapsSpodOffsetDataLength: %d, walk_error_para_list_length: %d, work_mode=%d env_type=%d  measure_type=%d, moduleKernelType: %d", 
+        initInputParams->rawDataSize, qApp->is_roi_sram_rolling(), set_param.walkerror, loaded_roi_sram_size, set_param.adapsSpodOffsetDataLength, set_param.walk_error_para_list_length, set_param.work_mode,set_param.env_type,set_param.measure_type, set_param.moduleKernelType);
 #endif
 
     return 0;
@@ -789,7 +793,7 @@ void ADAPS_DTOF::PrepareFrameParam(WrapperDepthCamConfig *wrapper_depth_map_conf
 {
     float  t = 0.0f;
 
-    if (-1 == p_misc_device->read_dtof_runtime_status_param(&t)) {
+    if (-1 == p_misc_device->get_dtof_inside_temperature(&t)) {
         DBG_ERROR("Fail to read temperature, errno: %s (%d)...", 
             strerror(errno), errno);
         return;

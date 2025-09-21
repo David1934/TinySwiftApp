@@ -1021,7 +1021,7 @@ void* Misc_Device::get_dtof_runtime_status_param(void)
     return &last_runtime_status_param;
 }
 
-int Misc_Device::read_dtof_runtime_status_param(float *temperature)
+int Misc_Device::read_dtof_runtime_status_param(struct adaps_dtof_runtime_status_param **status_param)
 {
     int ret = 0;
     struct adaps_dtof_runtime_status_param param;
@@ -1036,10 +1036,17 @@ int Misc_Device::read_dtof_runtime_status_param(float *temperature)
         last_runtime_status_param.inside_temperature_x100 = param.inside_temperature_x100;
         last_runtime_status_param.expected_vop_abs_x100 = param.expected_vop_abs_x100;
         last_runtime_status_param.expected_pvdd_x100 = param.expected_pvdd_x100;
-    
-        *temperature = (float) ((double)param.inside_temperature_x100 /(double)100.0f);
-        //DBG_INFO("internal_temperature: %d, temperature: %f\n", param.inside_temperature_x100, *temperature);
+        *status_param = &last_runtime_status_param;
     }
+
+    return ret;
+}
+
+int Misc_Device::get_dtof_inside_temperature(float *temperature)
+{
+    int ret = 0;
+
+    *temperature = (float) ((double)last_runtime_status_param.inside_temperature_x100 /(double)100.0f);
 
     return ret;
 }

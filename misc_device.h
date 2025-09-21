@@ -62,7 +62,8 @@ public:
     Misc_Device();
     ~Misc_Device();
 
-    int read_dtof_runtime_status_param(float *temperature);
+    int read_dtof_runtime_status_param(struct adaps_dtof_runtime_status_param **status_param);
+    int get_dtof_inside_temperature(float *temperature);
     void* get_dtof_calib_eeprom_param(void);
     void* get_dtof_exposure_param(void);
     void* get_dtof_runtime_status_param(void);

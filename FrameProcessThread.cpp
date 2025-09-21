@@ -10,10 +10,12 @@ FrameProcessThread::FrameProcessThread()
     stopped = true;
     majorindex = -1;
     rgb_buffer = NULL_POINTER;
+#if defined(RUN_ON_EMBEDDED_LINUX)
     confidence_map_buffer = NULL_POINTER;
     depth_buffer = NULL_POINTER;
 #if ALGO_LIB_VERSION_CODE >= VERSION_HEX_VALUE(3, 5, 6) && defined(ENABLE_POINTCLOUD_OUTPUT)
     out_pcloud_buffer = NULL_POINTER;
+#endif
 #endif
 
     outputed_frame_cnt = 0;
@@ -95,18 +97,18 @@ FrameProcessThread::~FrameProcessThread()
         delete adaps_dtof;
         adaps_dtof = NULL_POINTER;
     }
+
+    if (NULL_POINTER != confidence_map_buffer)
+    {
+        free(confidence_map_buffer);
+        confidence_map_buffer = NULL_POINTER;
+    }
 #endif
 
     if (NULL_POINTER != rgb_buffer)
     {
         free(rgb_buffer);
         rgb_buffer = NULL_POINTER;
-    }
-
-    if (NULL_POINTER != confidence_map_buffer)
-    {
-        free(confidence_map_buffer);
-        confidence_map_buffer = NULL_POINTER;
     }
 
     if (NULL_POINTER != v4l2)
@@ -490,16 +492,21 @@ bool FrameProcessThread::new_frame_handle(
     }
     if (0 == decodeRet)
     {
+#if defined(RUN_ON_EMBEDDED_LINUX)
         if (NULL_POINTER != depth_buffer)
         {
             memset(depth_buffer, 0, depth_buffer_size);
         }
+#endif
+
 #if !defined(CONSOLE_APP_WITHOUT_GUI)
         QImage img = QImage(rgb_buffer, sns_param.out_frm_width, sns_param.out_frm_height, sns_param.out_frm_width*RGB_IMAGE_CHANEL,QImage::Format_RGB888);
         if (FDATA_TYPE_DTOF_RAW_DEPTH == ftype)
         {
+    #if defined(RUN_ON_EMBEDDED_LINUX)
             QImage img4confidence = QImage(confidence_map_buffer, sns_param.out_frm_width, sns_param.out_frm_height, sns_param.out_frm_width*RGB_IMAGE_CHANEL,QImage::Format_RGB888);
             emit newFrameReady4Display(img, img4confidence);
+    #endif
         }
         else {
             QImage img4confidence;
@@ -529,7 +536,6 @@ void FrameProcessThread::onThreadLoopExit()
         {
             adaps_dtof->adaps_dtof_release();
         }
-#endif
         if (NULL_POINTER != depth_buffer)
         {
             free(depth_buffer);
@@ -541,6 +547,7 @@ void FrameProcessThread::onThreadLoopExit()
             free(confidence_map_buffer);
             confidence_map_buffer = NULL_POINTER;
         }
+#endif
     }
     if (NULL_POINTER != rgb_buffer)
     {

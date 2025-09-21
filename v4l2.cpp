@@ -741,7 +741,7 @@ int V4L2::Capture_frame()
         return -1;
     }
 
-    p_runtime_status_param = (struct adaps_dtof_runtime_status_param *) p_misc_device->get_dtof_runtime_status_param();
+    p_misc_device->read_dtof_runtime_status_param(&p_runtime_status_param);
     param1.curr_temperature = p_runtime_status_param->inside_temperature_x100;
     param1.curr_exp_vop_abs = p_runtime_status_param->expected_vop_abs_x100;
     param1.curr_exp_pvdd = p_runtime_status_param->expected_pvdd_x100;

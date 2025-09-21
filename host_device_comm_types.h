@@ -44,6 +44,7 @@ typedef enum
     CMD_HOST_SIDE_SET_REF_DISTANCE_DATA             = 0x0011,
     CMD_HOST_SIDE_SET_LENS_INTRINSIC_DATA           = 0x0012,
     CMD_HOST_SIDE_SET_HISTOGRAM_DATA_REQ_POSITION   = 0x0013,
+    CMD_HOST_SIDE_SET_MODULE_KERNEL_TYPE            = 0x0014,  // for algo lib
 
     // from device side to PC side
     CMD_DEVICE_SIDE_REPORT_MODULE_STATIC_DATA       = 0x1000, // Device side sends the static_module data as requested by the client's CMD_HOST_SIDE_GET_MODULE_STATIC_DATA command
@@ -73,6 +74,7 @@ typedef enum
     CMD_DEVICE_SIDE_ERROR_INVALID_EEPROM_UPD_PARAM  = 0x000B,
     CMD_DEVICE_SIDE_ERROR_INVALID_REBOOT_REASON     = 0x000C,
     CMD_DEVICE_SIDE_ERROR_CHKSUM_MISMATCH_IN_EEPROM = 0x000D,
+    CMD_DEVICE_SIDE_ERROR_INVALID_MODULE_KERNEL_TYPE= 0x000E,
 } error_code_t;
 
 typedef enum
@@ -81,6 +83,16 @@ typedef enum
     CMD_HOST_SIDE_REBOOT_NO_REASON                  = 0x0000, // Don't allow set to this one if PC side want to reboot device really.
     CMD_HOST_SIDE_REBOOT_FOR_EEPROM_UPDATE_DONE     = 0x0001,
 } device_reboot_reason_t;
+
+typedef enum
+{
+    // from PC to device side
+    MODULE_KERNEL_TYPE_SPOT,
+    MODULE_KERNEL_TYPE_FLOOD,
+    MODULE_KERNEL_TYPE_CAMSENSE,
+    MODULE_KERNEL_TYPE_T,
+    MODULE_KERNEL_TYPE_CNT,
+} module_kernel_t;
 
 #pragma pack(1)
 
@@ -263,6 +275,11 @@ typedef struct device_reboot_request_s
     UINT8                   reboot_reason_code;
     CHAR                    reboot_reason_msg[ERROR_MSG_MAX_LENGTH];
 } device_reboot_request_t;
+
+typedef struct module_kernel_param_s
+{
+    UINT8                   module_kernel_type;
+} module_kernel_param_t;
 
 #ifndef register_op_data_type
 #define register_op_data_type
