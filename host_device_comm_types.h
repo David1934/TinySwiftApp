@@ -249,7 +249,7 @@ typedef struct frame_buffer_param_s
 typedef struct module_static_data_s
 {
     UINT8                   data_type;              // refer to enum swift_data_type of this .h file
-    UINT32                  module_type;            // refer to ADS6401_MODULE_SPOT,ADS6401_MODULE_FLOOD and ADS6401_MODULE_BIG_FOV_FLOOD of adaps_types.h file
+    UINT32                  module_type;            // refer to ADS6401_MODULE_SPOT,ADS6401_MODULE_SMALL_FLOOD and ADS6401_MODULE_BIG_FOV_FLOOD of adaps_types.h file
     UINT32                  eeprom_capacity;        // unit is byte
     UINT16                  otp_vbe25;
     UINT16                  otp_vbd;        // unit is 10mv, or the related V X 100

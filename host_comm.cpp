@@ -561,7 +561,7 @@ int Host_Communication::report_frame_raw_data(void* pFrameData, uint32_t frameDa
 int Host_Communication::dump_module_static_data(module_static_data_t *pStaticDataParam)
 {
     LOG_DEBUG("UINT8            data_type = 0x%x;               // refer to enum swift_data_type of this .h file", pStaticDataParam->data_type);
-    LOG_DEBUG("UINT32           module_type = 0x%x;             // refer to ADS6401_MODULE_SPOT and ADS6401_MODULE_FLOOD of adaps_types.h file", pStaticDataParam->module_type);
+    LOG_DEBUG("UINT32           module_type = 0x%x;             // refer to ADS6401_MODULE_SPOT and ADS6401_MODULE_SMALL_FLOOD of adaps_types.h file", pStaticDataParam->module_type);
     LOG_DEBUG("UINT32           eeprom_capacity = %d;           // unit is byte", pStaticDataParam->eeprom_capacity);
     LOG_DEBUG("UINT16           otp_vbe25 = 0x%04x;", pStaticDataParam->otp_vbe25);
     LOG_DEBUG("UINT16           otp_vbd = 0x%04x;", pStaticDataParam->otp_vbd);
@@ -1077,6 +1077,7 @@ void Host_Communication::adaps_start_capture(CommandData_t* pCmdData, uint32_t r
     UINT8 force_fineExposure = 0;
     UINT8 force_grayExposure = 0;
     UINT8 force_laserExposurePeriod = 0;
+    UINT8 force_framerate_fps = 0;
 
     if (rxDataLen < (sizeof(CommandData_t) + sizeof(capture_req_param_t)))
     {
@@ -1116,6 +1117,29 @@ void Host_Communication::adaps_start_capture(CommandData_t* pCmdData, uint32_t r
     if (force_grayExposure)
     {
         pCaptureReqParam->expose_param.grayExposure = force_grayExposure;
+    }
+
+    force_framerate_fps = Utils::get_env_var_intvalue(ENV_VAR_FORCE_FRAMERATE_FPS);
+    if (force_framerate_fps)
+    {
+        switch (force_framerate_fps)
+        {
+            case 15:
+                pCaptureReqParam->framerate_type = AdapsFramerateType15FPS;
+                break;
+
+            case 25:
+                pCaptureReqParam->framerate_type = AdapsFramerateType25FPS;
+                break;
+
+            case 60:
+                pCaptureReqParam->framerate_type = AdapsFramerateType60FPS;
+                break;
+
+            default:
+                pCaptureReqParam->framerate_type = AdapsFramerateType30FPS;
+                break;
+        }
     }
 
     force_laserExposurePeriod = Utils::get_env_var_intvalue(ENV_VAR_FORCE_LASEREXPOSUREPERIOD);

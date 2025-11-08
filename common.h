@@ -12,9 +12,9 @@
 #endif
 
 #define VERSION_MAJOR                           3
-#define VERSION_MINOR                           2
-#define VERSION_REVISION                        22
-#define LAST_MODIFIED_TIME                      "20251013A"
+#define VERSION_MINOR                           4
+#define VERSION_REVISION                        0
+#define LAST_MODIFIED_TIME                      "20251118A"
 
 #define DEFAULT_DTOF_FRAMERATE                  AdapsFramerateType30FPS // AdapsFramerateType60FPS
 
@@ -82,7 +82,6 @@
 #define ENV_VAR_DISABLE_WALK_ERROR              "disable_walk_error"      // processed in adaps decode algo lib
 #define ENV_VAR_EXPECTED_FRAME_MD5SUM           "expected_frame_md5sum"
 #define ENV_VAR_DEVELOP_DEBUGGING               "develop_debugging"
-#define ENV_VAR_TEST_PATTERN_TYPE               "test_pattern_type"
 #define ENV_VAR_ROI_SRAM_COORDINATES_CHECK      "roi_sram_coordinates_check"
 #define ENV_VAR_RAW_FILE_REPLAY_ENABLE          "raw_file_replay_enable"
 #define ENV_VAR_DEPTH16_FILE_REPLAY_ENABLE      "depth16_file_replay_enable"
@@ -95,6 +94,7 @@
 #define ENV_VAR_FORCE_FINE_EXPOSURE             "force_fineExposure"
 #define ENV_VAR_FORCE_GRAY_EXPOSURE             "force_grayExposure"
 #define ENV_VAR_FORCE_LASEREXPOSUREPERIOD       "force_laserExposurePeriod"
+#define ENV_VAR_FORCE_FRAMERATE_FPS             "force_framerate_fps"
 #define ENV_VAR_FORCE_ROI_SRAM_SIZE             "force_roi_sram_size"
 
 #define ENV_VAR_DBGINFO_ENABLE                  "debug_info_enable"
@@ -227,7 +227,7 @@ typedef unsigned long long u64;
 enum moduletype{
     MODULE_TYPE_UNINITIALIZED = 0x0,
     MODULE_TYPE_SPOT = ADS6401_MODULE_SPOT,
-    MODULE_TYPE_FLOOD = ADS6401_MODULE_FLOOD,
+    MODULE_TYPE_SMALL_FLOOD = ADS6401_MODULE_SMALL_FLOOD,
     MODULE_TYPE_BIG_FOV_FLOOD = ADS6401_MODULE_BIG_FOV_FLOOD
 };
 
@@ -289,6 +289,7 @@ struct sensor_params
 
 struct status_params1
 {
+    unsigned int frm_sequence;
     int mipi_rx_fps;
     unsigned long streamed_time_us;
 #if defined(RUN_ON_EMBEDDED_LINUX)
@@ -300,6 +301,7 @@ struct status_params1
 
 struct status_params2
 {
+    unsigned int frm_sequence;
     int mipi_rx_fps;
     unsigned long streamed_time_us;
     unsigned int sensor_type;

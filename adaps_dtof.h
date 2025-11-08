@@ -118,6 +118,8 @@ private:
     void* loaded_roi_sram_data;
     uint8_t* copied_roisram_4_anchorX;
     uint32_t loaded_roi_sram_size;
+    int sub_frame_cnt_per_image_frame;
+    volatile bool skip_frame_decode;
 
     u8 frameCoordinatesMap[OUTPUT_HEIGHT_4_DTOF_SENSOR][OUTPUT_WIDTH_4_DTOF_SENSOR];
 

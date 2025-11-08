@@ -1,3 +1,20 @@
+15. @2025/11/18 -- version update to 3.4.0_LM20251118A
+    忽略算法处理，以便进行60 FPS的功耗测试
+    http://gerrit.adaps.corp/c/SpadisQT/+/5501
+
+    patch set 1: add 'cur vbat voltage' display for Small Flood module;
+    patch set 2: add skip_frame_decode conditional handle in ADAPS_DTOF::dtof_frame_decode() to get corrected fps, 
+      and adjust skip_frame_decode's implemant in FrameProcessThread() to report depth16/point-cloud BLANK data to SpadisApp;
+    patch set 3: update algo lib to v3.6.9;
+    patch set 6: add ENV_VAR_FORCE_FRAMERATE_FPS to change frame rate temporarily;
+    patch set 7: rename MODULE_TYPE_FLOOD to MODULE_TYPE_SMALL_FLOOD for better readability;
+
+    1. 对小面阵模组，增加vbat电压的显示；
+    2. 修正忽略算法库处理的帧率显示错误bug,适应ROISRAM轮询时的帧率计算；
+    3. 更新下位机算法库到3.6.9;
+    4. 下位机可使用环境变量（export ENV_VAR_FORCE_FRAMERATE_FPS=15/25/30）来临时修改芯片的帧率配置；
+    5. 更名优化，避免客户误解: MODULE_TYPE_FLOOD 修改为 MODULE_TYPE_SMALL_FLOOD；
+
 14. @2025/10/13 -- version update to 3.2.22_LM20251013A
     redmine #2736: SpadisQT:不同模组配置对应的kernel适配
     http://gerrit.adaps.corp/c/SpadisQT/+/5359

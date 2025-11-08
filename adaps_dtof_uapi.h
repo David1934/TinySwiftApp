@@ -748,7 +748,7 @@ struct adaps_dtof_runtime_status_param {
 };
 
 struct adaps_dtof_module_static_data{
-    __u32 module_type;            // refer to ADS6401_MODULE_SPOT/ADS6401_MODULE_FLOOD/... of adaps_types.h file
+    __u32 module_type;            // refer to ADS6401_MODULE_SPOT/ADS6401_MODULE_SMALL_FLOOD/... of adaps_types.h file
     __u32 eeprom_capacity;       // unit is byte
     __u16 otp_vbe25;
     __u16 otp_vbd;        // unit is 10mv, or the related V X 100
@@ -760,7 +760,7 @@ struct adaps_dtof_module_static_data{
 };
 
 struct adaps_dtof_update_eeprom_data{
-    __u32 module_type;            // refer to ADS6401_MODULE_SPOT/ADS6401_MODULE_FLOOD/... of adaps_types.h file
+    __u32 module_type;            // refer to ADS6401_MODULE_SPOT/ADS6401_MODULE_SMALL_FLOOD/... of adaps_types.h file
     __u32 eeprom_capacity;       // unit is byte
     __u32 offset;             //eeprom data start offset
     __u32 length;                //eeprom data length

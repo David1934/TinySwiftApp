@@ -366,7 +366,7 @@ int Misc_Device::parse_items(const uint32_t ulItemsCount, const ScriptItem *pstr
     vcsel_reg_setting_cnt = 0;
     sensor_settings = (struct setting_rvd *) mapped_script_sensor_settings;
     memset(mapped_script_sensor_settings, 0, sizeof(struct setting_rvd)*MAX_REG_SETTING_COUNT);
-    if (MODULE_TYPE_FLOOD != module_static_data.module_type)
+    if (MODULE_TYPE_SMALL_FLOOD != module_static_data.module_type)
     {
         vcsel_opn7020_settings = (struct setting_rvd *) mapped_script_vcsel_settings;
         memset(mapped_script_vcsel_settings, 0, sizeof(struct setting_rvd)*MAX_REG_SETTING_COUNT);
@@ -396,7 +396,7 @@ int Misc_Device::parse_items(const uint32_t ulItemsCount, const ScriptItem *pstr
                 }
                 sensor_reg_setting_cnt++;
             }
-            else if ((VCSEL_OPN7020_I2C_ADDR_IN_SCRIPT == pstrItems[i].i2c_addr) && (MODULE_TYPE_FLOOD != module_static_data.module_type))
+            else if ((VCSEL_OPN7020_I2C_ADDR_IN_SCRIPT == pstrItems[i].i2c_addr) && (MODULE_TYPE_SMALL_FLOOD != module_static_data.module_type))
             {
                 vcsel_opn7020_settings[vcsel_reg_setting_cnt].reg = pstrItems[i].reg_addr;
                 vcsel_opn7020_settings[vcsel_reg_setting_cnt].val = pstrItems[i].reg_val;
@@ -407,7 +407,7 @@ int Misc_Device::parse_items(const uint32_t ulItemsCount, const ScriptItem *pstr
                 }
                 vcsel_reg_setting_cnt++;
             }
-            else if ((MCUCTRL_I2C_ADDR_4_FLOOD_IN_SCRIPT == pstrItems[i].i2c_addr) && (MODULE_TYPE_FLOOD == module_static_data.module_type))
+            else if ((MCUCTRL_I2C_ADDR_4_FLOOD_IN_SCRIPT == pstrItems[i].i2c_addr) && (MODULE_TYPE_SMALL_FLOOD == module_static_data.module_type))
             {
                 vcsel_PhotonIC5015_settings[vcsel_reg_setting_cnt].reg = pstrItems[i].reg_addr;
                 vcsel_PhotonIC5015_settings[vcsel_reg_setting_cnt].val = pstrItems[i].reg_val;
@@ -433,7 +433,7 @@ int Misc_Device::parse_items(const uint32_t ulItemsCount, const ScriptItem *pstr
                         }
                     }
                 }
-                else if ((VCSEL_OPN7020_I2C_ADDR_IN_SCRIPT == pstrItems[i - 1].i2c_addr) && (MODULE_TYPE_FLOOD != module_static_data.module_type))
+                else if ((VCSEL_OPN7020_I2C_ADDR_IN_SCRIPT == pstrItems[i - 1].i2c_addr) && (MODULE_TYPE_SMALL_FLOOD != module_static_data.module_type))
                 {
                     if (vcsel_reg_setting_cnt > 1)
                     {
@@ -444,7 +444,7 @@ int Misc_Device::parse_items(const uint32_t ulItemsCount, const ScriptItem *pstr
                         }
                     }
                 }
-                else if ((MCUCTRL_I2C_ADDR_4_FLOOD_IN_SCRIPT == pstrItems[i - 1].i2c_addr) && (MODULE_TYPE_FLOOD == module_static_data.module_type))
+                else if ((MCUCTRL_I2C_ADDR_4_FLOOD_IN_SCRIPT == pstrItems[i - 1].i2c_addr) && (MODULE_TYPE_SMALL_FLOOD == module_static_data.module_type))
                 {
                     if (vcsel_reg_setting_cnt > 1)
                     {
@@ -465,7 +465,7 @@ int Misc_Device::parse_items(const uint32_t ulItemsCount, const ScriptItem *pstr
     sensor_settings[sensor_reg_setting_cnt].delayUs = 0;
     sensor_reg_setting_cnt++;
 
-    if (MODULE_TYPE_FLOOD != module_static_data.module_type)
+    if (MODULE_TYPE_SMALL_FLOOD != module_static_data.module_type)
     {
         vcsel_opn7020_settings[vcsel_reg_setting_cnt].reg = REG_NULL;
         vcsel_opn7020_settings[vcsel_reg_setting_cnt].val = 0x00;
@@ -663,7 +663,7 @@ void* Misc_Device::get_dtof_calib_eeprom_param(void)
     {
         return p_spot_module_eeprom;
     }
-    else if (MODULE_TYPE_FLOOD == module_static_data.module_type) {
+    else if (MODULE_TYPE_SMALL_FLOOD == module_static_data.module_type) {
         return p_flood_module_eeprom;
     }
     else {
@@ -946,7 +946,7 @@ int Misc_Device::read_dtof_module_static_data(void)
                 p_spot_module_eeprom = (swift_spot_module_eeprom_data_t *) mapped_eeprom_data_buffer;
                 qApp->set_anchorOffset(0, 1); // set default anchor Offset (in case no host_comm) for spot module, may be changed from PC SpadisApp.
             }
-            else if (MODULE_TYPE_FLOOD == module_static_data.module_type) {
+            else if (MODULE_TYPE_SMALL_FLOOD == module_static_data.module_type) {
                 p_flood_module_eeprom = (swift_flood_module_eeprom_data_t *) mapped_eeprom_data_buffer;
                 qApp->set_anchorOffset(0, 0); // non-spot module does not need anchor preprocess
             }
@@ -963,7 +963,7 @@ int Misc_Device::read_dtof_module_static_data(void)
                     ret = check_crc8_4_spot_calib_eeprom_param();
                     ret = 0; // skip eeprom crc mismatch now, since there are some modules whose crc is mismatched.
                 }
-                else if (MODULE_TYPE_FLOOD == module_static_data.module_type) {
+                else if (MODULE_TYPE_SMALL_FLOOD == module_static_data.module_type) {
                     ret = check_crc32_4_flood_calib_eeprom_param();
                     ret = 0; // skip eeprom crc mismatch now, since there are some modules whose crc is mismatched.
                 }
@@ -986,7 +986,7 @@ int Misc_Device::get_dtof_module_static_data(void **pp_module_static_data, void 
     {
         *eeprom_data_size = sizeof(swift_spot_module_eeprom_data_t);
     }
-    else if (MODULE_TYPE_FLOOD == module_static_data.module_type) {
+    else if (MODULE_TYPE_SMALL_FLOOD == module_static_data.module_type) {
         *eeprom_data_size = sizeof(swift_flood_module_eeprom_data_t);
     }
     else {

@@ -72,7 +72,7 @@ private slots:
 signals:
 
     #if !defined(CONSOLE_APP_WITHOUT_GUI)
-        void newFrameReady4Display(QImage image, QImage img4confidence);
+        void newFrameReady4Display(unsigned int frm_sequence, QImage image, QImage img4confidence);
     #endif
     bool update_runtime_display(status_params2 param2);
     void threadLoopExit();
