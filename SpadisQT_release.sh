@@ -9,53 +9,40 @@ CURRENT_USER=$(whoami)
 
 # Define the list of files to be copied
 FILES_LST=(
-    "adapsdepthsettings.xml"
     "adaps_dtof.cpp"
     "adaps_dtof.h"
-    "host_comm.cpp"
-    "host_comm.h"
-    "host_device_comm_types.h"
-    "misc_device.cpp"
-    "misc_device.h"
     "adaps_dtof_uapi.h"
     "adaps_types.h"
-    "adaps_sender.h"
+    "adapsdepthsettings.xml"
+    "CMakeLists.txt"
     "common.h"
     "depthmapwrapper.h"
-    "FrameProcessThread.cpp"
-    "FrameProcessThread.h"
-    "globalapplication.cpp"
-    "globalapplication.h"
+    "dtof_main.cpp"
+    "dtof_main.h"
     "libadaps_swift_decode.so"
-    "libAdapsSender.so"
+    "LICENSE"
     "main.cpp"
-    "mainwindow.cpp"
-    "mainwindow.h"
-    "mainwindow.ui"
-    "SpadisQT.pro"
-    "SpadisQT_console.pro"
+    "Makefile"
+    "misc_device.cpp"
+    "misc_device.h"
+    "README.md"
+    "README_zh_CN.md"
     "utils.cpp"
     "utils.h"
     "v4l2.cpp"
     "v4l2.h"
-    "License.LGPL"
-    "README.md"
-    "README_zh_CN.md"
 )
 
-Release_content="SpadisQT App for adaps ADS6401 dToF sensor
+Release_content="TinySwiftApp for adaps ADS6401 dToF sensor
 Release version: $1
 Release time: $RELEASE_TIME2
 Released by: $CURRENT_USER
 
-  This is an demo application for ads6401 dToF sensor, named 'SpadisQT', run on embedded Linux system;
+  This is an demo application for ads6401 dToF sensor, named 'TinySwiftApp', run on embedded Linux system;
   We had tested on rk3568 Linux 5.10 system.
 
-  It can be built with QT 5.xx for Linux. (Since the app uses some v4l2 apis, the app can't run on Windows).
-  
-  Please make sure your develop board support QT before building and running the SpadisQT app,
-  you should study it yourself, we can't answer this kind of questions,-^-;
-  
+  Since the app uses some Linux v4l2 apis, the app can't run on Windows.
+
   Contact us (https://adapsphotonics.com/).
 "
 
@@ -93,7 +80,7 @@ fi
 FW_VERSION="$1"
 
 # Define the release folder name
-RELEASE_FOLDER="SpadisQT_${FW_VERSION}_Release${RELEASE_TIME}"
+RELEASE_FOLDER="TinySwiftApp_${FW_VERSION}_Release${RELEASE_TIME}"
 
 # Create the release folder
 mkdir -p "$RELEASE_FOLDER"

@@ -2,8 +2,8 @@
 #define __DEPTHMAP_WRAPPER_H__
 
 #define ALGO_LIB_VERSION_MAJOR                           3
-#define ALGO_LIB_VERSION_MINOR                           6
-#define ALGO_LIB_VERSION_REVISION                        9
+#define ALGO_LIB_VERSION_MINOR                           7
+#define ALGO_LIB_VERSION_REVISION                        0
 
 #define VERSION_HEX_VALUE(major, minor, revision)        (major << 16 | minor << 8 | revision)
 

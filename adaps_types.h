@@ -15,12 +15,37 @@ typedef float               FLOAT;
 
 typedef unsigned char       UINT8;
 typedef char                INT8;
-typedef uint16_t            UINT16;
+//typedef unsigned int16_t    UINT16;
 typedef int16_t             INT16;
-typedef uint32_t            UINT32;
+//typedef unsigned int32_t    UINT32;
 typedef int32_t             INT32;
-typedef uint64_t            UINT64;
+//typedef unsigned int64_t    UINT64;
 typedef int64_t             INT64;
+
+#if defined(_MSC_VER) && _MSC_VER < 1600
+   /* For Visual Studio before VS2010, which doesn't have <stdint.h> */
+   typedef unsigned __int16 UINT16;
+   typedef unsigned __int32 UINT32;
+   typedef unsigned __int64 UINT64;
+#elif defined(__GNUC__) && (__GNUC__ < 3)
+   /* For old GCC versions */
+   typedef unsigned short UINT16;
+   typedef unsigned int UINT32;
+   typedef unsigned long long UINT64;
+#else
+   /* For C99 and above and C++11 and above */
+   #ifdef __cplusplus
+   #include <cstdint>
+   typedef std::uint16_t UINT16;
+   typedef std::uint32_t UINT32;
+   typedef std::uint64_t UINT64;
+   #else
+   #include <stdint.h>
+   typedef uint16_t UINT16;
+   typedef uint32_t UINT32;
+   typedef uint64_t UINT64;
+   #endif
+#endif
 
 #if !defined (TRUE)
 #define TRUE                                1
@@ -39,8 +64,11 @@ typedef int64_t             INT64;
 // built-in EEPROM P24C256F-D4H-MIR, VcselDriver PhotonIC 5015, MCU HC32L110B6YA, 
 #define ADS6401_MODULE_SMALL_FLOOD          0x6401B
 
-// built-in EEPROM P24C512X-C4H-MIR, VcselDriver OPN7020
+// built-in EEPROM XXXX, VcselDriver OPN7020
 #define ADS6401_MODULE_BIG_FOV_FLOOD        0x6401C
+
+// built-in EEPROM XXXX, VcselDriver yyyy
+#define ADS6401_MODULE_BIG_FOV_FLOOD_V2     0x6401D
 
 typedef struct ADAPS_MIRROR_FRAME_SET
 {

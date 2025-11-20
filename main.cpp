@@ -1,18 +1,13 @@
-#if !defined(CONSOLE_APP_WITHOUT_GUI)
-#include <QScreen>
-#include <QDesktopWidget>
-#include <QMessageBox>
-#endif
-
-#include <QLockFile>
 #include <csignal>
 #include <unistd.h>
 #include <execinfo.h>
+#include <cstdlib>
+#include <getopt.h>
 
-#include "mainwindow.h"
-#include "globalapplication.h"
+#include "common.h"
+#include "dtof_main.h"
 
-static MainWindow* mainWindow = nullptr;
+static DToF_Main* s_dToF_main = nullptr;
 
 static void dump_stack()
 {
@@ -36,96 +31,145 @@ static void dump_stack()
     free(funs);
 }
 
-static void handleSignal(int signal)
+static void signal_handle(int signo)
 {
-    if (mainWindow) {
-        switch (signal) {
-            case SIGTSTP:
-            case SIGUSR1:
-            case SIGUSR2:
-            case SIGINT:
-            case SIGABRT:
-                //DBG_NOTICE("Catch Unix signal %d...", signal);
-                std::cout << "Received Linux signal: " << signal << std::endl;
-                // 将信号编号发送给 MainWindow
-                QMetaObject::invokeMethod(mainWindow, "unixSignalHandler", Qt::QueuedConnection, Q_ARG(int, signal));
+    DBG_NOTICE("recieve signal: %d.!!!\n", signo);
+
+    dump_stack();
+
+    if (SIGINT == signo)
+    {
+        if (NULL != s_dToF_main)
+        {
+            s_dToF_main->stop();
+        }
+    }
+    else {
+        exit(0);
+    }
+
+}
+
+static void usage(char *name)
+{
+    printf("Usage: %s options\n"
+        "         --setworkmode,            default 0,            required, sensor work mode (PHR).\n"
+        "         --dumpframe,              default 0             optional, how many frames to write files.\n\n"
+        "         --module_kernel_type,     default 0             optional, module kernel type for adaps algo lib.\n\n"
+        "         --roi_sram_rolling,                                     , enable roisram rolling.\n"
+        "         --help,                                                 , print this usage.\n",
+        name);
+}
+
+
+static int parse_args(int argc, char **argv, struct sensor_params *ctx)
+{
+    int c;
+    int ret = 0;
+
+    ctx->to_dump_frame_cnt = 0;
+
+    while (1) {
+        int option_index = 0;
+        static struct option long_options[] = {
+            {"setworkmode",              required_argument, 0, 'w' },
+            {"dumpframe",                required_argument, 0, 'd' },
+            {"module_kernel_type",       required_argument, 0, 'k' },
+            {"roi_sram_rolling",         no_argument,       0, 'r' },
+            {"help",                     no_argument,       0, 'h' },
+            {0,                          0,                 0,  0  }
+        };
+
+        c = getopt_long(argc, argv, "w:d:k:r:h:", long_options, &option_index);
+        if (c == -1)
+        {
+            break;
+        }
+
+        switch (c) {
+            case 'w':
+                ctx->work_mode = (enum sensor_workmode) atoi(optarg);
+                break;
+
+            case 'd':
+                ctx->to_dump_frame_cnt = atoi(optarg);
+                break;
+
+            case 'k':
+                ctx->module_kernel_type = atoi(optarg);
+                break;
+
+            case 'r':
+                ctx->roi_sram_rolling = atoi(optarg);
+                break;
+
+            case '?':
+            case 'h':
+                usage(argv[0]);
+                //exit(-1);
+                ret = -1;
                 break;
 
             default:
-                std::signal(signal, SIG_DFL); // restore this signal to default handle
-                //DBG_ERROR("Signal %d recieved, Call stack is printed!", signal);
-                std::cout << "Received Linux signal: " << signal << ", Call stack is printed!" << std::endl;
-                dump_stack();
-                // do nothing more to keep the last state.
-                break;
+                DBG_ERROR("?? getopt returned character code 0%o ??\n", c);
         }
     }
+
+    return ret;
 }
-
-#if !defined(CONSOLE_APP_WITHOUT_GUI)
-static void getScreenResolution()
-{
-    qreal screenWidth = QGuiApplication::primaryScreen()->geometry().width();
-    qreal screenHeight = QGuiApplication::primaryScreen()->geometry().height();
-
-    qCritical() << "QGuiApplication Screen Resolution:" << screenWidth << "x" << screenHeight;
-    DBG_INFO("QGuiApplication Screen  resolution: %f X %f...\n", screenWidth, screenHeight);
-
-    QRect screenGeometry = QApplication::desktop()->geometry();
-    int screenWidth2 = screenGeometry.width();
-    int screenHeight2 = screenGeometry.height();
-
-    //qCritical() << "QApplication Screen Resolution:" << screenWidth2 << "x" << screenHeight2;
-    DBG_INFO("QApplication Screen  resolution: %d X %d...\n", screenWidth2, screenHeight2);
-}
-#endif
 
 int main(int argc, char *argv[])
 {
-    int result;
-    GlobalApplication a(argc, argv);
+    int ret;
+    struct sensor_params sns_param;
 
-    QString tempPath = QDir::temp().absoluteFilePath(APP_NAME ".lock");
-    QLockFile lockFile(tempPath);
-    lockFile.isLocked();
+    DBG_NOTICE("%s\nVersion: %s\nBuild Time: %s,%s\n\n",
+        APP_NAME,
+        APP_VERSION,
+        __DATE__,
+        __TIME__
+        );
 
-    if (!lockFile.tryLock(100))
+    memset(&sns_param, 0, sizeof(struct sensor_params));
+
+    //parse command arguments
+    ret =parse_args(argc, argv, &sns_param);
+    if (ret <0)
+        return ret;
+
+    switch (sns_param.work_mode)
     {
-#if 0 //!defined(CONSOLE_APP_WITHOUT_GUI)
-        QMessageBox msgBox;
-        msgBox.setIcon(QMessageBox::Warning);
-        msgBox.setText("The application is already running.\n"
-            "Allowed to run only one instance of the application.");
-        msgBox.exec();
-#endif
-        DBG_NOTICE("An instance of the application is already running!");
+        case WK_DTOF_FHR:
+             sns_param.measure_type = AdapsMeasurementTypeFull;
+             sns_param.env_type = AdapsEnvTypeOutdoor;
+             sns_param.power_mode = AdapsPowerModeNormal;
+             sns_param.framerate_type = AdapsFramerateType30FPS;
+             break;
 
-        return 1;
+        case WK_DTOF_PCM:
+             sns_param.measure_type = AdapsMeasurementTypeFull;
+             sns_param.env_type = AdapsEnvTypeIndoor;
+             sns_param.power_mode = AdapsPowerModeDiv3;
+             sns_param.framerate_type = AdapsFramerateType30FPS;
+             break;
+
+        default:
+            DBG_ERROR("Invalid work mode %d.\n", sns_param.work_mode);
+            return 0 - __LINE__;
+            break;
     }
 
-    MainWindow w;
-    mainWindow = &w;
-
     // 注册信号处理函数
-    std::signal(SIGINT, handleSignal);
-    std::signal(SIGTERM, handleSignal);
-    std::signal(SIGSEGV, handleSignal);
-    std::signal(SIGABRT, handleSignal);
-    std::signal(SIGBUS, handleSignal);
-    std::signal(SIGUSR1, handleSignal);
-    std::signal(SIGUSR2, handleSignal);
-    std::signal(SIGTSTP, handleSignal);
-    DBG_INFO("sizeof(BOOL): %ld, sizeof(float): %ld, sizeof(double): %ld, sizeof(long): %ld, sizeof(long long): %ld", sizeof(BOOL), sizeof(float), sizeof(double), sizeof(long), sizeof(long long));
+    signal(SIGINT, signal_handle);
+    signal(SIGTERM, signal_handle);
+    std::signal(SIGSEGV, signal_handle);
+    std::signal(SIGABRT, signal_handle);
+    std::signal(SIGBUS, signal_handle);
+    std::signal(SIGUSR1, signal_handle);
+    std::signal(SIGUSR2, signal_handle);
 
-#if !defined(CONSOLE_APP_WITHOUT_GUI)
-    w.setWindowFlags(w.windowFlags() & ~Qt::WindowMaximizeButtonHint & ~Qt::WindowMinimizeButtonHint);
-    //w.setStyleSheet("QMainWindow::title { font-family: Arial; font-size: 21pt; }");
-    w.show();
-    getScreenResolution();
-#endif
+    DToF_Main dToF_main(sns_param);
+    s_dToF_main = &dToF_main;
 
-    result = a.exec();
-    DBG_INFO("Application exited with code:: %d", result);
-
-    return result;
+    return ret;
 }

@@ -703,6 +703,78 @@ typedef struct SwiftFloodModuleEepromData
 #define FLOOD_ONE_SPOD_OFFSET_BYTE_SIZE                    3840//240*4*4
 
 // -------------------- swift FLOOD module definition end -------------
+#define BIG_FOV_EEPROM_MAGIC                                0xEEAD6401
+#define BIG_FOV_MODULE_SN_LENGTH                            16
+#define BIG_FOV_REAL_SPOT_ZONE_COUNT                        20 // to code easily, use the MACRO replace X in the definition of swift_eeprom_v2_data_t
+#define BIG_FOV_MODULE_EEPROM_CAPACITY_SIZE                (128*1024)  // 128K, unit is bytes
+#define BIG_FOV_MODULE_EEPROM_PAGE_SIZE                    128
+
+
+#pragma pack(1)
+typedef struct SwiftEepromV2Data
+{
+    //HEAD
+    uint32_t        magic_id;                               // 数据结构头魔术字，固定为十六进制值0xEEAD6401，用于识别是否ads6401模组的eeprom数据
+    uint32_t        data_structure_version;                 // eeprom数据结构的版本，格式为最后修改的日期（十六进制值），比如0x20251117
+    uint8_t         calibrationInfo[32];                    // 标定工具软件的版本号信息
+    uint8_t         LastCalibratedTime[32];                 // 最后标定时间，比如：2025/11/27 14:59:04
+    uint32_t        data_length;                            // HEAD后的所有DATA字段（BASIC_DATA + 压缩前BIG_DATA）的长度
+    uint32_t        data_crc32;                             // HEAD后的所有DATA字段（BASIC_DATA + 压缩前BIG_DATA）的CRC32值
+    uint32_t        compressed_data_length;                 // HEAD后的所有DATA字段（BASIC_DATA + 压缩后BIG_DATA）的长度
+    uint32_t        compressed_data_crc32;                  // HEAD后的所有DATA字段（BASIC_DATA + 压缩后BIG_DATA）的CRC32值
+
+    //BASIC_DATA
+    uint8_t         real_spot_zone_count;                   // X, 本模组实际有多少个spot zone (每个zone,最多有240个散点坐标)，必须是4的整数倍(4X)
+    uint8_t         tdcDelay[2];                            // Tdc delay Max and Min值，需用来写ads6401寄存器
+    uint8_t         lensType;                               // 
+    float           indoorCalibTemperature;                 // 室内标定温度，需要传给算法库
+    float           indoorCalibRefDistance;                 // 室内标定参考距离，需要传给算法库
+    float           outdoorCalibTemperature;                // 室外标定温度，需要传给算法库
+    float           outdoorCalibRefDistance;                // 室外标定参考距离，需要传给算法库
+    uint8_t         serialNumber[BIG_FOV_MODULE_SN_LENGTH]; // 模组序列号, 16个字节长
+    float           intrinsic[9];                           // dToF镜头的内参（9个参数）
+    float           rgb_intrinsic[8];                       // RGB镜头的内参（8个参数）
+    float           common_extrinsic[7];                    // RGB及dToF镜头的联合外参（7个参数）
+    uint8_t         Reserved[36];                           // 保留空间，为了凑整到256 bytes，V2模组的EEPROM一个page是128 bytes
+
+    //BIG_DATA, 标定工具写入eeprom前需要压缩，Linux驱动读出后立即解压缩，压缩操作对应用层是不可见的
+    uint8_t          sramData[PER_CALIB_SRAM_ZONE_SIZE * BIG_FOV_REAL_SPOT_ZONE_COUNT];
+    WalkErrorParam_t walkerrorData[PER_ZONE_MAX_SPOT_COUNT * BIG_FOV_REAL_SPOT_ZONE_COUNT];
+    float            spotOffset[PER_ZONE_MAX_SPOT_COUNT * BIG_FOV_REAL_SPOT_ZONE_COUNT];
+}swift_eeprom_v2_data_t;
+#pragma pack()
+
+#define  BIG_FOV_MODULE_EEPROM_TDCDELAY_OFFSET                      OFFSET(swift_eeprom_v2_data_t, tdcDelay)
+#define  BIG_FOV_MODULE_EEPROM_TDCDELAY_SIZE                        MEMBER_SIZE(swift_eeprom_v2_data_t, tdcDelay)
+
+#define  BIG_FOV_MODULE_EEPROM_INDOOR_CALIBTEMPERATURE_OFFSET       OFFSET(swift_eeprom_v2_data_t, indoorCalibTemperature)
+#define  BIG_FOV_MODULE_EEPROM_INDOOR_CALIBTEMPERATURE_SIZE         MEMBER_SIZE(swift_eeprom_v2_data_t, indoorCalibTemperature)
+
+#define  BIG_FOV_MODULE_EEPROM_INDOOR_CALIBREFDISTANCE_OFFSET       OFFSET(swift_eeprom_v2_data_t, indoorCalibRefDistance)
+#define  BIG_FOV_MODULE_EEPROM_INDOOR_CALIBREFDISTANCE_SIZE         MEMBER_SIZE(swift_eeprom_v2_data_t, indoorCalibRefDistance)
+
+#define  BIG_FOV_MODULE_EEPROM_OUTDOOR_CALIBTEMPERATURE_OFFSET      OFFSET(swift_eeprom_v2_data_t, outdoorCalibTemperature)
+#define  BIG_FOV_MODULE_EEPROM_OUTDOOR_CALIBTEMPERATURE_SIZE        MEMBER_SIZE(swift_eeprom_v2_data_t, outdoorCalibTemperature)
+
+#define  BIG_FOV_MODULE_EEPROM_OUTDOOR_CALIBREFDISTANCE_OFFSET      OFFSET(swift_eeprom_v2_data_t, outdoorCalibRefDistance)
+#define  BIG_FOV_MODULE_EEPROM_OUTDOOR_CALIBREFDISTANCE_SIZE        MEMBER_SIZE(swift_eeprom_v2_data_t, outdoorCalibRefDistance)
+
+#define  BIG_FOV_MODULE_EEPROM_CALIBRATIONINFO_OFFSET              OFFSET(swift_spot_module_eeprom_data_t, calibrationInfo)
+#define  BIG_FOV_MODULE_EEPROM_CALIBRATIONINFO_SIZE                MEMBER_SIZE(swift_spot_module_eeprom_data_t, calibrationInfo)
+
+#define  BIG_FOV_MODULE_EEPROM_INTRINSIC_OFFSET                     OFFSET(swift_eeprom_v2_data_t, intrinsic)              /// 4160 0x1040
+#define  BIG_FOV_MODULE_EEPROM_INTRINSIC_SIZE                       MEMBER_SIZE(swift_eeprom_v2_data_t, intrinsic)         /// 9xsizeof(float)
+
+#define  BIG_FOV_MODULE_EEPROM_ROISRAM_DATA_OFFSET                  OFFSET(swift_eeprom_v2_data_t, sramData)
+#define  BIG_FOV_MODULE_EEPROM_ROISRAM_DATA_SIZE                    MEMBER_SIZE(swift_eeprom_v2_data_t, sramData)
+
+#define  BIG_FOV_MODULE_EEPROM_WALK_ERROR_OFFSET                    OFFSET(swift_eeprom_v2_data_t, walkerrorData)
+#define  BIG_FOV_MODULE_EEPROM_WALK_ERROR_SIZE                      MEMBER_SIZE(swift_eeprom_v2_data_t, walkerrorData)
+
+#define  BIG_FOV_MODULE_EEPROM_SPOTOFFSET_OFFSET                    OFFSET(swift_eeprom_v2_data_t, spotOffset)
+#define  BIG_FOV_MODULE_EEPROM_SPOTOFFSET_SIZE                      MEMBER_SIZE(swift_eeprom_v2_data_t, spotOffset)
+
+#define MMAP_BUFFER_MAX_SIZE_4_WHOLE_EEPROM_DATA                    188416  // This value should be an integer multiple of 4096 and greater than(>=) the EEPROM data size of all kinds of modules.
 
 struct adaps_dtof_intial_param {
     AdapsEnvironmentType env_type;

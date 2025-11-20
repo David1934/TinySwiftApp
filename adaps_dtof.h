@@ -82,25 +82,21 @@ public:
     ~ADAPS_DTOF();
 
     int adaps_dtof_initilize();
-    void GetDepth4watchSpot(const u16 depth16_buffer[], const int outImgWidth, u8 x, u8 y, u16 *distance, u8 *confidence);
-    void ConvertDepthToColoredMap(const u16 depth16_buffer[], u8 depth_colored_map[], u8 depth_confidence_map[], const int outImgWidth, const int outImgHeight);
-    void ConvertGreyscaleToColoredMap(u16 depth16_buffer[], u8 depth_colored_map[], int outImgWidth, int outImgHeight);
     int dtof_frame_decode(unsigned int frm_sequence, unsigned char *frm_rawdata, int frm_rawdata_size, u16 depth16_buffer[], pc_pkt_t *point_cloud_buffer, enum sensor_workmode swk);
     void adaps_dtof_release();
     int dumpSpotCount(const u16 depth16_buffer[], const int outImgWidth, const int outImgHeight, const uint32_t frm_sequence, const uint32_t out_frame_cnt, int decodeRet, int callline);
     int depthMapDump(const u16 depth16_buffer[], const int outImgWidth, const int outImgHeight, const uint32_t out_frame_cnt, int callline);
     int dump_frame_headinfo(unsigned int frm_sequence, unsigned char *frm_rawdata, int frm_rawdata_size, enum sensor_workmode swk);
-    SpotPoint* get_spcific_histogram(uint16_t x, uint16_t y);
 
 private:
     Misc_Device *p_misc_device;
+
     struct sensor_params m_sns_param;
     uint64_t m_exposure_time;
     int32_t  m_sensitivity;
     void* p_eeprominfo;
     SetWrapperParam set_param;
 
-    struct BGRColor m_basic_colors[5];
     u16 m_LimitedMaxDistance;
     u16 m_rangeHigh;
     u16 m_rangeLow;
@@ -127,9 +123,6 @@ private:
     int FillSetWrapperParamFromEepromInfo(uint8_t* pEEPROMData, SetWrapperParam* setparam, WrapperDepthInitInputParams* initInputParams);
     int initParams(WrapperDepthInitInputParams* initInputParams, WrapperDepthInitOutputParams* initOutputParams);
     void PrepareFrameParam(WrapperDepthCamConfig *wrapper_depth_map_config);
-    u8 normalizeGreyscale(u16 range);
-    void Distance_2_BGRColor(int bucketNum, float bucketSize, u16 distance, struct BGRColor *destColor);
-    int hexdump_param(void* param_ptr, int param_size, const char *param_name, int callline);
     int roiCoordinatesDumpCheck(uint8_t* roi_sram_data, int outImgWidth, int outImgHeight, int roisram_group_index);
     int multipleRoiCoordinatesDumpCheck(uint8_t* multiple_roi_sram_data, u16 length, int outImgWidth, int outImgHeight);
     void init_frame_checker(FrameLossChecker *checker);

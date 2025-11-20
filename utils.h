@@ -6,9 +6,6 @@
 #include <string.h>
 #include <sys/types.h>
 #include <stdint.h>
-#include <QDir>
-#include <QFile>
-#include <QByteArray>
 #include <iostream>
 
 #include <linux/reboot.h>
@@ -19,9 +16,6 @@
 #include "common.h"
 
 #define POLYNOMIAL 0xEDB88320
-#define REPLAY_DATA_FILE_PATH                   "/tmp"
-#define REPLAY_RAW_FILE_EXT_NAME               ".swift_raw"
-#define REPLAY_DEPTH16_FILE_EXT_NAME               ".depth16"
 
 enum test_pattern
 {
@@ -40,40 +34,14 @@ class Utils
 public:
     Utils();
     ~Utils();
-    uint32_t crc32(uint32_t initial, const unsigned char *buf, size_t len);
-    unsigned char CRC8Calculate(const unsigned char buffer[], int len);
-    QByteArray loadNextFileToBuffer();
-    int loadNextFileToBuffer(char *buffer, int max_read_size);
-    bool is_replay_data_exist();
-    void test_pattern_generate(unsigned char *write_buf, int len, int ptn_idx);
     void hexdump(const unsigned char * buf, int buf_len, const char * title);
     bool save_binary_file(const char *filename, const void *buffer, size_t size, const char *call_func, unsigned int call_line);
-    void nv12_2_rgb(unsigned char *nv12, unsigned char *rgb, int width, int height);
-    void yuyv_2_rgb(unsigned char *yuyv, unsigned char *rgb, int width, int height);
+    bool save_frame(unsigned int frm_sequence, void *frm_buf, int buf_size, int frm_w, int frm_h, enum frame_data_type);
+    void save_depth_txt_file(void *frm_buf,unsigned int frm_sequence,int frm_len, int w, int h);
+    bool save_dtof_eeprom_calib_data_2_file(void *buf, int len);
     bool IsASCII(const unsigned char c);
-    void GetRgb4watchPoint(const u8 rgb_buffer[], const int out_frm_width, u8 x, u8 y, u8 *r, u8 *g, u8 *b);
-    void GetPidTid(const char *callfunc, const int callline);
-    int MD5Check4Buffer(const unsigned char* buffer, int size, const char *expected_md5_string, const char *call_func, int call_line);
-    int MD5Calculate(const unsigned char* buffer, int size, const char *call_func, unsigned int call_line);
-
-    static int system_reboot()
-    {
-        // 为了能够重启系统，需要获得root权限
-        if (getuid() != 0)
-        {
-            DBG_ERROR("This program needs root privileges to reboot the system.\n");
-            return 1;
-        }
-    
-        // 使用reboot系统调用来重启
-        if (reboot(LINUX_REBOOT_CMD_RESTART) == -1)
-        {
-            DBG_ERROR("Fail to reboot the linux, error: %d (%s)\n", errno, strerror(errno));
-            return 1;
-        }
-    
-        return 0; // 这行代码不应该被执行，除非reboot调用失败
-    }
+    std::string getCurrentDateTime();
+    bool buffer_is_fully_same(const unsigned char *buffer, int len, unsigned char val);
 
     static bool is_env_var_true(const char *var_name)
     {
@@ -103,15 +71,7 @@ public:
     }
 
 private:
-    QStringList fileList;
-    QString replay_file_path;
-    int currentIndex;
-    uint32_t m_crc32_table[256];
-    void generate_crc32_table();
-    void loadFiles(const QString &directoryPath, const QString &fileExtension);
-    unsigned char hexCharToValue(char c);
-    void hexStringToByteArray(const char* hexString, unsigned char* byteArray, int byteArrayLength);
-    void byteArray2HexString(const unsigned char byteArray[], int byteArrayLength, char* outputHexString);
+
 };
 
 #endif // UTILS_H

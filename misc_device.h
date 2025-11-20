@@ -1,7 +1,6 @@
 #ifndef MISC_DEVICE_H
 #define MISC_DEVICE_H
 
-#if defined(RUN_ON_EMBEDDED_LINUX)
 
 #include <fcntl.h>
 #include <stdlib.h>
@@ -16,8 +15,6 @@
 #include <sys/ioctl.h>
 #include <errno.h>
 #include <semaphore.h>
-//#include <QDebug>
-#include <QDateTime>
 
 #include "common.h"
 
@@ -59,24 +56,37 @@ class Misc_Device
 {
 
 public:
-    Misc_Device();
+    // 删除拷贝构造和赋值操作（防止复制单例）
+    Misc_Device(const Misc_Device&) = delete;
+    Misc_Device& operator=(const Misc_Device&) = delete;
     ~Misc_Device();
+
+    // 获取单例实例
+    static Misc_Device* getInstance();
+    u32 get_module_type();
+    bool is_roi_sram_rolling();
+    int set_roi_sram_rolling(bool val);
+    UINT8 get_module_kernel_type();
+    int set_module_kernel_type(UINT8 value);
+    int get_anchorOffset(UINT8 *rowOffset, UINT8 *colOffset);
 
     int read_dtof_runtime_status_param(struct adaps_dtof_runtime_status_param **status_param);
     int get_dtof_inside_temperature(float *temperature);
     void* get_dtof_calib_eeprom_param(void);
     void* get_dtof_exposure_param(void);
     void* get_dtof_runtime_status_param(void);
-    int write_device_register(register_op_data_t *reg);
-    int read_device_register(register_op_data_t *reg);
     int read_dtof_exposure_param(void);
     int write_dtof_initial_param(struct adaps_dtof_intial_param *param);
     int get_dtof_module_static_data(void **pp_module_static_data, void **pp_eeprom_data_buffer, uint32_t *eeprom_data_size);
-    int send_down_loaded_roisram_data_size(const uint32_t roi_sram_size);
-    int send_down_external_config(const UINT8 workMode, const uint32_t script_buf_size, const uint8_t* script_buf);
-    int update_eeprom_data(UINT8 *buf, UINT32 offset, UINT32 length);
 
 private:
+    static Misc_Device* instance; // 静态成员变量声明
+
+    u32 module_type = 0;
+    bool roi_sram_rolling = false;
+    UINT8 module_kernel_type = 0;
+    UINT8 anchor_rowOffset = 0;
+    UINT8 anchor_colOffset = 0;
 
     void* mmap_buffer_base;
     u32 mmap_buffer_max_size;
@@ -86,30 +96,23 @@ private:
     int         fd_4_misc;
     swift_spot_module_eeprom_data_t *p_spot_module_eeprom;
     swift_flood_module_eeprom_data_t *p_flood_module_eeprom;
+    swift_eeprom_v2_data_t *p_bigfov_module_eeprom;
     struct adaps_dtof_module_static_data module_static_data;
     struct adaps_dtof_runtime_status_param last_runtime_status_param;
     struct adaps_dtof_exposure_param exposureParam;
     u8* mapped_eeprom_data_buffer;
     u8* mapped_script_sensor_settings;
-    uint16_t sensor_reg_setting_cnt;
-    uint16_t vcsel_reg_setting_cnt;
+//    uint16_t sensor_reg_setting_cnt;
+//    uint16_t vcsel_reg_setting_cnt;
     u8* mapped_script_vcsel_settings;           // opn7020 for spot module, PhotonIC5015 for flood module
     u8* mapped_roi_sram_data;
 
+    Misc_Device(); // 私有构造函数（防止外部实例化）
+
     int read_dtof_module_static_data(void);
-    int check_crc32_4_flood_calib_eeprom_param(void);
-    bool save_dtof_calib_eeprom_param(void *buf, int len);
-    bool check_crc8_4_eeprom_item(uint8_t *pEEPROMData, uint32_t offset, uint32_t length, uint8_t savedCRC, const char *tag);
-    int check_crc8_4_spot_calib_eeprom_param(void);
-    int get_next_line(const uint8_t *buffer, size_t buffer_len, size_t *pos, char *line, size_t line_len);
-    int LoadItemsFromBuffer(const uint32_t ulBufferLen, const uint8_t* pucBuffer, ScriptItem* items, uint32_t* number);
-    int parse_items(const uint32_t ulItemsCount, const ScriptItem *pstrItems);
-    int write_external_config_script(external_config_script_param_t *param);
-    int write_external_roisram_data_size(external_roisram_data_size_t *param);
 
 };
 
-#endif // RUN_ON_EMBEDDED_LINUX
 
 #endif // MISC_DEVICE_H
 

@@ -4,20 +4,15 @@
 #include "v4l2.h"
 #include "utils.h"
 #include "misc_device.h"
-#include <globalapplication.h>
 
 #define CLEAR(x) memset(&(x), 0, sizeof(x))
 
 V4L2::V4L2(struct sensor_params params)
 {
-#if defined(RUN_ON_EMBEDDED_LINUX)
     fd_4_dtof = 0;
-#if !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
-    host_comm = Host_Communication::getInstance();
-#endif
     utils = new Utils();
-    p_misc_device = NULL_POINTER;
-#endif
+    p_misc_device = Misc_Device::getInstance();
+
     buffers = NULL_POINTER;
     sensordata = NULL_POINTER;
     fd = 0;
@@ -43,7 +38,6 @@ V4L2::V4L2(struct sensor_params params)
     snr_param.raw_height = sensordata[params.work_mode].raw_h;
     pixel_format = sensordata[params.work_mode].pixfmt;
     frame_buffer_count = sensordata[params.work_mode].frm_buf_cnt;
-    snr_param.sensor_type = sensordata[params.work_mode].stype;
     frm_type = sensordata[params.work_mode].ftype;
     snr_param.out_frm_width = sensordata[params.work_mode].out_frm_width;
     snr_param.out_frm_height = sensordata[params.work_mode].out_frm_height;
@@ -55,19 +49,16 @@ V4L2::V4L2(struct sensor_params params)
     DBG_INFO("preset height: %d", snr_param.raw_height);
     DBG_INFO("preset pixel_format: 0x%x", pixel_format);
     DBG_INFO("preset frame_buffer_count: %d", frame_buffer_count);
-    DBG_INFO("preset sensor_type: %d", snr_param.sensor_type);
 }
 
 
 V4L2::~V4L2()
 {
-#if defined(RUN_ON_EMBEDDED_LINUX)
     if (NULL_POINTER != utils)
     {
         delete utils;
         utils = NULL_POINTER;
     }
-#endif
 
     if (NULL_POINTER != sensordata)
     {
@@ -93,7 +84,6 @@ int V4L2::init()
         OUTPUT_HEIGHT_4_DTOF_SENSOR,
         PIXELFORMAT_4_DTOF_SENSOR,
         BUFFER_COUNT_4_DTOF_SENSOR,
-        SENSOR_TYPE_DTOF,
         FDATA_TYPE_DTOF_RAW_DEPTH
     };
 
@@ -107,7 +97,6 @@ int V4L2::init()
         OUTPUT_HEIGHT_4_DTOF_SENSOR,
         PIXELFORMAT_4_DTOF_SENSOR,
         BUFFER_COUNT_4_DTOF_SENSOR,
-        SENSOR_TYPE_DTOF,
         FDATA_TYPE_DTOF_RAW_GRAYSCALE
     };
 
@@ -121,52 +110,13 @@ int V4L2::init()
         OUTPUT_HEIGHT_4_DTOF_SENSOR,
         PIXELFORMAT_4_DTOF_SENSOR,
         BUFFER_COUNT_4_DTOF_SENSOR,
-        SENSOR_TYPE_DTOF,
         FDATA_TYPE_DTOF_RAW_DEPTH
-    };
-
-    sensordata[WK_RGB_NV12] = {
-        NULL_POINTER,
-        MEDIA_DEVNAME_4_RGB_SENSOR,
-        VIDEO_DEV_4_RGB_RK3588,
-        640,
-        480,
-        640,
-        480,
-        V4L2_PIX_FMT_NV12,
-        BUFFER_COUNT_4_RGB_SENSOR,
-        SENSOR_TYPE_RGB,
-        FDATA_TYPE_NV12
-    };
-
-    sensordata[WK_RGB_YUYV] = {
-        NULL_POINTER,
-        MEDIA_DEVNAME_4_RGB_SENSOR,
-        VIDEO_DEV_4_RGB_SENSOR,
-        640,
-        480,
-        640,
-        480,
-        V4L2_PIX_FMT_YUYV,
-        BUFFER_COUNT_4_RGB_SENSOR,
-        SENSOR_TYPE_RGB,
-        FDATA_TYPE_YUYV
     };
 
     return 0;
 }
 
-bool V4L2::get_power_on_state()
-{
-    return power_on;
-}
-
-bool V4L2::get_stream_on_state()
-{
-    return stream_on;
-}
-
-int V4L2::get_videodev_fd()
+int V4L2::Get_videodev_fd()
 {
     return fd;
 }
@@ -243,10 +193,8 @@ int V4L2::get_subdev_node_4_sensor()
         DBG_INFO("   %2d:%2d      %2d    %16s   %s", entity_desc.v4l.major, entity_desc.v4l.minor, id,entity_desc.name,cur_devnode);
         if(strcmp(sensor_sd_name, entity_desc.name) == 0)
         {
-#if defined(RUN_ON_EMBEDDED_LINUX)
             strcpy(sd_devnode_4_dtof, cur_devnode);
             DBG_INFO("sd_devnode_4_dtof: %s", sd_devnode_4_dtof);
-#endif
             ret = 0;
             break;
         }
@@ -255,7 +203,6 @@ int V4L2::get_subdev_node_4_sensor()
     return ret;
 }
 
-#if defined(RUN_ON_EMBEDDED_LINUX)
 int V4L2::set_param_4_sensor_sub_device(int raw_w_4_curr_wkmode, int raw_h_4_curr_wkmode)
 {
     int ret = 0;
@@ -277,7 +224,6 @@ int V4L2::set_param_4_sensor_sub_device(int raw_w_4_curr_wkmode, int raw_h_4_cur
 
     return ret;
 }
-#endif
 
 bool V4L2::alloc_buffers(void)
 {
@@ -381,38 +327,26 @@ void V4L2::free_buffers(void)
     }
 }
 
-UINT64 V4L2::timestamp_convert_from_timeval_to_us(struct timeval timestamp)
-{
-    return timestamp.tv_sec * 1000000LL + timestamp.tv_usec;
-}
-
 int V4L2::V4l2_initilize(void)
 {
     struct v4l2_capability	cap;
     struct v4l2_format      fmt;
-//    struct v4l2_frmsizeenum frmsize;
-//    struct v4l2_fmtdesc fmtdesc;
+    struct adaps_dtof_intial_param param;
 
-    if (SENSOR_TYPE_DTOF == snr_param.sensor_type)
+    int ret = 0;
+    
+    ret = get_subdev_node_4_sensor();
+    if (ret < 0)
     {
-#if defined(RUN_ON_EMBEDDED_LINUX)
-        int ret = 0;
-
-        ret = get_subdev_node_4_sensor();
-        if (ret < 0)
-        {
-            DBG_ERROR("Fail to get subdev node for dtof sensor...");
-            return 0 - __LINE__;
-        }
-
-        if ((fd_4_dtof = open(sd_devnode_4_dtof, O_RDWR)) == -1)
-        {
-            DBG_ERROR("Fail to open device %s , errno: %s (%d)...", 
-                sd_devnode_4_dtof, strerror(errno), errno);
-            return 0 - __LINE__;
-        }
-
-#endif
+        DBG_ERROR("Fail to get subdev node for dtof sensor...");
+        return 0 - __LINE__;
+    }
+    
+    if ((fd_4_dtof = open(sd_devnode_4_dtof, O_RDWR)) == -1)
+    {
+        DBG_ERROR("Fail to open device %s , errno: %s (%d)...", 
+            sd_devnode_4_dtof, strerror(errno), errno);
+        return 0 - __LINE__;
     }
 
     if ((fd = open(video_dev, O_RDWR)) == -1)
@@ -461,80 +395,35 @@ int V4L2::V4l2_initilize(void)
     }
 
     // when config swift work mode, need TDC delay min/max need to know which environment, which measurement is used, so I move this the following lines before set sensor fmt;
-#if defined(RUN_ON_EMBEDDED_LINUX)
-    if (SENSOR_TYPE_DTOF == snr_param.sensor_type)
+    if (NULL_POINTER == p_misc_device)
     {
-        struct adaps_dtof_intial_param param;
-        p_misc_device = qApp->get_misc_dev_instance();
-        if (NULL_POINTER == p_misc_device)
-        {
-            DBG_ERROR("p_misc_device is NULL");
-            return -1;
-        }
-
-        script_loaded = false;
-
-#if !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
-        if (host_comm)
-        {
-            UINT32 backuped_script_buf_sz;
-            u8 *backuped_script_buffer;     // script buffer backup from CMD_HOST_SIDE_START_CAPTURE
-            UINT8 backuped_wkmode;
-            UINT32 backuped_roisram_data_sz;
-
-            host_comm->get_backuped_external_config_script(&backuped_wkmode, &backuped_script_buffer, &backuped_script_buf_sz);
-            backuped_roisram_data_sz = qApp->get_size_4_loaded_roisram();
-            DBG_INFO("backuped_wkmode: %d, backuped_script_buf_sz: %d, backuped_roisram_data_sz: %d...\n", backuped_wkmode, backuped_script_buf_sz, backuped_roisram_data_sz);
-
-            roi_sram_loaded = (backuped_roisram_data_sz > 0) ? true: false;
-            if (backuped_roisram_data_sz <= PER_ROISRAM_GROUP_SIZE)
-            {
-                qApp->set_roi_sram_rolling(false);
-            }
-
-            if (backuped_script_buf_sz)
-            {
-                int ret = p_misc_device->send_down_external_config(backuped_wkmode, backuped_script_buf_sz, (const uint8_t* ) backuped_script_buffer);
-                if (0 > ret)
-                {
-                    char err_msg[] = "work_mode and the register config in script buffer is mismatched";
-                    host_comm->report_status(CMD_HOST_SIDE_START_CAPTURE, CMD_DEVICE_SIDE_ERROR_MISMATCHED_WORK_MODE, err_msg, strlen(err_msg));
-                    DBG_ERROR("work_mode and the register config in script buffer is mismatched");
-                    return 0 - __LINE__;
-                }
-
-                script_loaded = true;
-            }
-
-            if (backuped_roisram_data_sz)
-            {
-                int ret = p_misc_device->send_down_loaded_roisram_data_size(backuped_roisram_data_sz);
-                if (0 > ret)
-                {
-                    DBG_ERROR("Fail to send_down_loaded_roisram_data_size");
-                    return 0 - __LINE__;
-                }
-            }
-        }
+        DBG_ERROR("p_misc_device is NULL");
+        return -1;
+    }
+    
+    script_loaded = false;
+    
+    
+    param.env_type = snr_param.env_type;
+    param.measure_type = snr_param.measure_type;
+    param.framerate_type = snr_param.framerate_type;
+    param.vcselzonecount_type = AdapsVcselZoneCount4;
+    param.power_mode = snr_param.power_mode;
+#if 1
+    param.roi_sram_rolling = p_misc_device->is_roi_sram_rolling();
+#else
+    qApp->get_anchorOffset(&param.rowOffset, &param.colOffset);
+    qApp->get_spotSearchingRange(&param.rowSearchingRange, &param.colSearchingRange);
+    qApp->get_usrCfgExposureValues(&param.coarseExposure, &param.fineExposure, &param.grayExposure, &param.laserExposurePeriod);
+    param.roi_sram_rolling = qApp->is_roi_sram_rolling();
 #endif
 
-        param.env_type = snr_param.env_type;
-        param.measure_type = snr_param.measure_type;
-        param.framerate_type = snr_param.framerate_type;
-        param.vcselzonecount_type = AdapsVcselZoneCount4;
-        param.power_mode = snr_param.power_mode;
-        qApp->get_anchorOffset(&param.rowOffset, &param.colOffset);
-        qApp->get_spotSearchingRange(&param.rowSearchingRange, &param.colSearchingRange);
-        qApp->get_usrCfgExposureValues(&param.coarseExposure, &param.fineExposure, &param.grayExposure, &param.laserExposurePeriod);
-        param.roi_sram_rolling = qApp->is_roi_sram_rolling();
-
-        if (0 > p_misc_device->write_dtof_initial_param(&param))
-        {
-            return 0 - __LINE__;
-        }
+    if (0 > p_misc_device->write_dtof_initial_param(&param))
+    {
+        return 0 - __LINE__;
     }
 
-#if defined(RUN_ON_EMBEDDED_LINUX) && !defined(VIDIOC_S_FMT_INCLUDE_VIDIOC_SUBDEV_S_FMT)
+#if !defined(VIDIOC_S_FMT_INCLUDE_VIDIOC_SUBDEV_S_FMT)
     if (0 != fd_4_dtof)
     {
         int ret = 0;
@@ -546,7 +435,6 @@ int V4L2::V4l2_initilize(void)
             return ret;
         }
     }
-#endif
 #endif
 
     DBG_INFO("VIDIOC_S_FMT %d X %d, pixel_format: 0x%x, raw_width:%d, raw_height:%d...\n",
@@ -591,6 +479,8 @@ int V4L2::V4l2_initilize(void)
 
 int V4L2::Start_streaming(void)
 {
+    struct adaps_dtof_exposure_param *p_exposure_param;
+
     firstFrameTimeUsec = 0;
     rxFrameCnt = 0;
     mipi_rx_fps = 0;
@@ -605,54 +495,39 @@ int V4L2::Start_streaming(void)
     stream_on = true;
     DBG_INFO("Start to streaming for dev %s", video_dev);
 
-#if defined(RUN_ON_EMBEDDED_LINUX)
-    if (SENSOR_TYPE_DTOF == snr_param.sensor_type)
+    if (NULL_POINTER == p_misc_device)
     {
-        struct adaps_dtof_exposure_param *p_exposure_param;
-
-        p_misc_device = qApp->get_misc_dev_instance();
-        if (NULL_POINTER == p_misc_device)
-        {
-            DBG_ERROR("p_misc_device is NULL");
-            return -1;
-        }
-
-        if (0 > p_misc_device->read_dtof_exposure_param())
-        {
-            return 0 - __LINE__;
-        }
-
-        p_exposure_param = (struct adaps_dtof_exposure_param *) p_misc_device->get_dtof_exposure_param();
-        if (NULL_POINTER == p_exposure_param) {
-            DBG_ERROR("p_exposure_param is NULL");
-            return 0 - __LINE__;
-        }
-
-        snr_param.exposureParam.exposure_period= p_exposure_param->exposure_period;
-        snr_param.exposureParam.ptm_coarse_exposure_value = p_exposure_param->ptm_coarse_exposure_value;
-        snr_param.exposureParam.ptm_fine_exposure_value = p_exposure_param->ptm_fine_exposure_value;
-        snr_param.exposureParam.pcm_gray_exposure_value = p_exposure_param->pcm_gray_exposure_value;
+        DBG_ERROR("p_misc_device is NULL");
+        return -1;
     }
-#endif
+
+    if (0 > p_misc_device->read_dtof_exposure_param())
+    {
+        return 0 - __LINE__;
+    }
+
+    p_exposure_param = (struct adaps_dtof_exposure_param *) p_misc_device->get_dtof_exposure_param();
+    if (NULL_POINTER == p_exposure_param) {
+        DBG_ERROR("p_exposure_param is NULL");
+        return 0 - __LINE__;
+    }
+
+    snr_param.exposureParam.exposure_period= p_exposure_param->exposure_period;
+    snr_param.exposureParam.ptm_coarse_exposure_value = p_exposure_param->ptm_coarse_exposure_value;
+    snr_param.exposureParam.ptm_fine_exposure_value = p_exposure_param->ptm_fine_exposure_value;
+    snr_param.exposureParam.pcm_gray_exposure_value = p_exposure_param->pcm_gray_exposure_value;
 
     return 0;
 }
 
-int V4L2::Capture_frame()
+int V4L2::Capture_frame(struct frame_decode_param *param)
 {
     struct v4l2_buffer  v4l2_buf;
     struct v4l2_plane v4l2_planes[FMT_NUM_PLANES];
     int bytesused;
     struct timeval tv;
     long currTimeUsec;
-    status_params1 param1;
-#if defined(RUN_ON_EMBEDDED_LINUX)
-#if !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
-    frame_buffer_param_t param;
-#endif
     struct adaps_dtof_runtime_status_param *p_runtime_status_param;
-    p_misc_device = qApp->get_misc_dev_instance();
-#endif
 
     CLEAR(v4l2_buf);
 
@@ -714,17 +589,10 @@ int V4L2::Capture_frame()
         total_bytes_per_line = bytesused/snr_param.raw_height;
         payload_bytes_per_line = (snr_param.raw_width * bits_per_pixel)/8;
         padding_bytes_per_line = total_bytes_per_line - payload_bytes_per_line;
-#if defined(RUN_ON_EMBEDDED_LINUX)
         DBG_NOTICE("------script_loaded: %d, workmode: %d, frame raw size: %d X %d, bits_per_pixel: %d, payload_bytes_per_line: %d, total_bytes_per_line: %d, padding_bytes_per_line: %d, frame_buffer_size: %d---\n",
             script_loaded, snr_param.work_mode,
             snr_param.raw_width, snr_param.raw_height,
             bits_per_pixel, payload_bytes_per_line, total_bytes_per_line, padding_bytes_per_line, bytesused);
-#else
-        DBG_NOTICE("------workmode: %d, frame raw size: %d X %d, bits_per_pixel: %d, payload_bytes_per_line: %d, total_bytes_per_line: %d, padding_bytes_per_line: %d, frame_buffer_size: %d---\n",
-            snr_param.work_mode,
-            snr_param.raw_width, snr_param.raw_height,
-            bits_per_pixel, payload_bytes_per_line, total_bytes_per_line, padding_bytes_per_line, bytesused);
-#endif
     }
     else {
         currTimeUsec = tv.tv_sec*1000000 + tv.tv_usec;
@@ -732,9 +600,6 @@ int V4L2::Capture_frame()
         mipi_rx_fps = (rxFrameCnt * 1000000) / streamed_timeUs;
     }
 
-    param1.mipi_rx_fps = mipi_rx_fps;
-    param1.streamed_time_us = streamed_timeUs;
-#if defined(RUN_ON_EMBEDDED_LINUX)
     if (NULL_POINTER == p_misc_device)
     {
         DBG_ERROR("p_misc_device is NULL");
@@ -742,69 +607,13 @@ int V4L2::Capture_frame()
     }
 
     p_misc_device->read_dtof_runtime_status_param(&p_runtime_status_param);
-    param1.curr_temperature = p_runtime_status_param->inside_temperature_x100;
-    param1.curr_exp_vop_abs = p_runtime_status_param->expected_vop_abs_x100;
-    param1.curr_exp_pvdd = p_runtime_status_param->expected_pvdd_x100;
 
-    if (Utils::is_env_var_true(ENV_VAR_RAW_FILE_REPLAY_ENABLE))
-    {
-        if (true == utils->is_replay_data_exist())
-        {
-            int ret = utils->loadNextFileToBuffer((char *) buffers[v4l2_buf.index].start, bytesused);
-            if (ret != bytesused)
-            {
-                DBG_ERROR("Fail to loadNextFileToBuffer, ret: %d, bytesused: %d!", ret, bytesused);
-            }
-        }
-    }
-
-#if !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
-    if (host_comm)
-    {
-        param.work_mode = snr_param.work_mode;
-        param.data_type = FRAME_RAW_DATA;
-        param.frm_width = snr_param.raw_width;
-        param.frm_height = snr_param.raw_height;
-        param.padding_bytes_per_line = padding_bytes_per_line;
-        param.env_type = snr_param.env_type;
-        param.measure_type = snr_param.measure_type;
-        param.framerate_type = snr_param.framerate_type;
-        param.power_mode = snr_param.power_mode;
-        param.curr_pvdd = p_runtime_status_param->expected_pvdd_x100;
-        param.curr_vop_abs = p_runtime_status_param->expected_vop_abs_x100;
-        param.curr_inside_temperature = p_runtime_status_param->inside_temperature_x100;
-        param.exposure_period = snr_param.exposureParam.exposure_period;
-        param.ptm_coarse_exposure_value = snr_param.exposureParam.ptm_coarse_exposure_value;
-        param.ptm_fine_exposure_value = snr_param.exposureParam.ptm_fine_exposure_value;
-        param.pcm_gray_exposure_value = snr_param.exposureParam.pcm_gray_exposure_value;
-        param.frame_sequence = v4l2_buf.sequence;
-        param.frame_timestamp_us = timestamp_convert_from_timeval_to_us(v4l2_buf.timestamp);
-        param.mipi_rx_fps = mipi_rx_fps;
-
-        host_comm->report_frame_raw_data(buffers[v4l2_buf.index].start, bytesused, &param);
-    }
-#endif
-#endif
-
-    if ((true == Utils::is_env_var_true(ENV_VAR_SKIP_FRAME_PROCESS))            // if skip frame proceess with the environment variable
-#if defined(CONSOLE_APP_WITHOUT_GUI)
-        || (host_comm && FRAME_RAW_DATA == host_comm->get_req_out_data_type())  // or if host side only request raw data, skip frame decode process
-#endif
-        )
-    {
-        if (1 == v4l2_buf.sequence % FRAME_INTERVAL_4_PROGRESS_REPORT)
-        {
-            DBG_NOTICE("%s() mipi_rx_fps = %d fps, rxFrameCnt: %ld\n",  __FUNCTION__, mipi_rx_fps, rxFrameCnt);
-        }
-    }
-    else {
-        emit update_info(param1);
-#if defined(RUN_ON_EMBEDDED_LINUX) && !defined(STANDALONE_APP_WITHOUT_HOST_COMMUNICATION)
-        emit rx_new_frame(v4l2_buf.sequence, buffers[v4l2_buf.index].start, bytesused, v4l2_buf.timestamp, frm_type, total_bytes_per_line, param);
-#else
-        emit rx_new_frame(v4l2_buf.sequence, buffers[v4l2_buf.index].start, bytesused, v4l2_buf.timestamp, frm_type, total_bytes_per_line);
-#endif
-    }
+    param->frm_sequence = v4l2_buf.sequence;
+    param->frm_buffer = buffers[v4l2_buf.index].start;
+    param->frm_buf_len = bytesused;
+    param->frm_timestamp = v4l2_buf.timestamp;
+    param->frm_type = frm_type;
+    param->total_bytes_per_line = total_bytes_per_line;
 
 error_exit:
     if (0 == fd || -1 == ioctl(fd, VIDIOC_QBUF, &v4l2_buf)) {
@@ -843,18 +652,13 @@ void V4L2::Stop_streaming(void)
 
 void V4L2::V4l2_close(void)
 {
-    if (SENSOR_TYPE_DTOF == snr_param.sensor_type)
-    {
-#if defined(RUN_ON_EMBEDDED_LINUX)
-        if (0 != fd_4_dtof){
-            if (-1 == close(fd_4_dtof)) {
-                DBG_ERROR("Fail to close device %d (%s), errno: %s (%d)...", fd_4_dtof, sd_devnode_4_dtof,
-                    strerror(errno), errno);
-                return;
-            }
-            fd_4_dtof = 0;
+    if (0 != fd_4_dtof){
+        if (-1 == close(fd_4_dtof)) {
+            DBG_ERROR("Fail to close device %d (%s), errno: %s (%d)...", fd_4_dtof, sd_devnode_4_dtof,
+                strerror(errno), errno);
+            return;
         }
-#endif
+        fd_4_dtof = 0;
     }
 
     free_buffers();
