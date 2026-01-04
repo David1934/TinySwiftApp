@@ -386,24 +386,15 @@ int V4L2::V4l2_initilize(void)
         return 0 - __LINE__;
     }
 
-    if (cap.capabilities & V4L2_CAP_VIDEO_CAPTURE) {
-        buf_type                = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-        DBG_INFO("Buffer type:\tV4L2_BUF_TYPE_VIDEO_CAPTURE");
-    } else if (cap.capabilities & V4L2_CAP_VIDEO_CAPTURE_MPLANE) {
-        buf_type                = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
-        DBG_INFO("Buffer type:\tV4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE");
-    }
-
     // when config swift work mode, need TDC delay min/max need to know which environment, which measurement is used, so I move this the following lines before set sensor fmt;
     if (NULL_POINTER == p_misc_device)
     {
         DBG_ERROR("p_misc_device is NULL");
         return -1;
     }
-    
+
     script_loaded = false;
-    
-    
+
     param.env_type = snr_param.env_type;
     param.measure_type = snr_param.measure_type;
     param.framerate_type = snr_param.framerate_type;
@@ -440,30 +431,65 @@ int V4L2::V4l2_initilize(void)
     DBG_INFO("VIDIOC_S_FMT %d X %d, pixel_format: 0x%x, raw_width:%d, raw_height:%d...\n",
     snr_param.raw_width, snr_param.raw_height, pixel_format, snr_param.raw_width, snr_param.raw_height);
     CLEAR(fmt);
-    fmt.type            = buf_type;
-    fmt.fmt.pix.pixelformat = pixel_format;
-    fmt.fmt.pix.width  = snr_param.raw_width;
-    fmt.fmt.pix.height   = snr_param.raw_height;
-    //fmt.fmt.pix.field   = V4L2_FIELD_INTERLACED;
-    //fmt.fmt.pix.quantization = V4L2_QUANTIZATION_FULL_RANGE;
 
-    if (ioctl(fd, VIDIOC_S_FMT, &fmt) == -1) {
-        DBG_ERROR("Fail to set format for dev: %s (%d), errno: %s (%d)...", video_dev, fd,
-            strerror(errno), errno);
-        return 0 - __LINE__;
-    }
+    if (cap.capabilities & V4L2_CAP_VIDEO_CAPTURE) {
+        buf_type                = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        DBG_INFO("Buffer type:\tV4L2_BUF_TYPE_VIDEO_CAPTURE");
 
-    if (ioctl(fd, VIDIOC_G_FMT, &fmt) == -1) //重新读取 结构体，以确认完成设置
-    {
-        DBG_ERROR("Fail to get format , errno: %s (%d)...", 
-            strerror(errno), errno);
-        return 0 - __LINE__;
-    }
-    else {
-        DBG_INFO("fmt.type:\t%d", fmt.type);
-        DBG_INFO("pix.width:\t%d", fmt.fmt.pix.width);
-        DBG_INFO("pix.height:\t%d", fmt.fmt.pix.height);
-        DBG_INFO("pix.field:\t%d", fmt.fmt.pix.field);
+        fmt.type            = buf_type;
+        fmt.fmt.pix.pixelformat = pixel_format;
+        fmt.fmt.pix.width  = snr_param.raw_width;
+        fmt.fmt.pix.height   = snr_param.raw_height;
+        //fmt.fmt.pix.field   = V4L2_FIELD_INTERLACED;
+        //fmt.fmt.pix.quantization = V4L2_QUANTIZATION_FULL_RANGE;
+
+        if (ioctl(fd, VIDIOC_S_FMT, &fmt) == -1) {
+            DBG_ERROR("Fail to set format for dev: %s (%d), errno: %s (%d)...", video_dev, fd,
+                strerror(errno), errno);
+            return 0 - __LINE__;
+        }
+
+        if (ioctl(fd, VIDIOC_G_FMT, &fmt) == -1) //重新读取 结构体，以确认完成设置
+        {
+            DBG_ERROR("Fail to get format , errno: %s (%d)...", 
+                strerror(errno), errno);
+            return 0 - __LINE__;
+        }
+        else {
+            DBG_INFO("fmt.type:\t%d", fmt.type);
+            DBG_INFO("pix.width:\t%d", fmt.fmt.pix.width);
+            DBG_INFO("pix.height:\t%d", fmt.fmt.pix.height);
+            DBG_INFO("pix.field:\t%d", fmt.fmt.pix.field);
+        }
+    } 
+    else if (cap.capabilities & V4L2_CAP_VIDEO_CAPTURE_MPLANE) {
+        buf_type                = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+        DBG_INFO("Buffer type:\tV4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE");
+
+        fmt.type            = buf_type;
+        fmt.fmt.pix_mp.pixelformat = pixel_format;
+        fmt.fmt.pix_mp.width  = snr_param.raw_width;
+        fmt.fmt.pix_mp.height   = snr_param.raw_height;
+        fmt.fmt.pix_mp.num_planes = 1;
+
+        if (ioctl(fd, VIDIOC_S_FMT, &fmt) == -1) {
+            DBG_ERROR("Fail to set format for dev: %s (%d), errno: %s (%d)...", video_dev, fd,
+                strerror(errno), errno);
+            return 0 - __LINE__;
+        }
+
+        if (ioctl(fd, VIDIOC_G_FMT, &fmt) == -1) //重新读取 结构体，以确认完成设置
+        {
+            DBG_ERROR("Fail to get format , errno: %s (%d)...", 
+                strerror(errno), errno);
+            return 0 - __LINE__;
+        }
+        else {
+            DBG_INFO("fmt.type:\t%d", fmt.type);
+            DBG_INFO("pix.width:\t%d", fmt.fmt.pix_mp.width);
+            DBG_INFO("pix.height:\t%d", fmt.fmt.pix_mp.height);
+            DBG_INFO("pix.field:\t%d", fmt.fmt.pix_mp.field);
+        }
     }
 
     if (false == alloc_buffers())

@@ -39,9 +39,10 @@ public:
     bool save_frame(unsigned int frm_sequence, void *frm_buf, int buf_size, int frm_w, int frm_h, enum frame_data_type);
     void save_depth_txt_file(void *frm_buf,unsigned int frm_sequence,int frm_len, int w, int h);
     bool save_dtof_eeprom_calib_data_2_file(void *buf, int len);
-    bool IsASCII(const unsigned char c);
-    std::string getCurrentDateTime();
     bool buffer_is_fully_same(const unsigned char *buffer, int len, unsigned char val);
+    int check_dir_exist_and_writable(const char *dir_path);
+    int check_file_exist(const char *file_path);
+    int check_regular_file_exist(const char *file_path);
 
     static bool is_env_var_true(const char *var_name)
     {
@@ -71,6 +72,8 @@ public:
     }
 
 private:
+    bool IsASCII(const unsigned char c);
+    std::string getCurrentDateTime();
 
 };
 

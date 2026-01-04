@@ -2,8 +2,10 @@
 #include <time.h>
 #include <unistd.h>
 #include <sys/syscall.h>
-#include <pthread.h>
 #include <cinttypes>
+#include <stdlib.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include "utils.h"
 
@@ -191,4 +193,93 @@ std::string Utils::getCurrentDateTime() {
     strftime(buffer, sizeof(buffer), "%Y%m%d%H%M%S", &timeinfo);
     return std::string(buffer);
 }
+
+/**
+ * @brief Check if a directory exists and is writable
+ * @param dir_path Path to the directory
+ * @return 0: Exists and writable; -1: Does not exist; -2: Exists but not writable; -3: Not a directory; Other negative values: System call error
+ */
+int Utils::check_dir_exist_and_writable(const char *dir_path)
+{
+    if (dir_path == NULL) {
+        DBG_ERROR("Error: Directory path can't be blank\n");
+        return -4;
+    }
+
+    struct stat stat_buf;
+    int ret = stat(dir_path, &stat_buf);
+
+    // Check if directory exists
+    if (ret == -1) {
+        DBG_ERROR("Directory <%s> does not exist", dir_path);
+        return -1;  // Directory does not exist
+    }
+
+    // Verify it's a directory (not a file)
+    if (!S_ISDIR(stat_buf.st_mode)) {
+        DBG_ERROR("Error: <%s> is not a directory\n", dir_path);
+        return -3;
+    }
+
+    // Check write permission for current process
+    ret = access(dir_path, W_OK);
+    if (ret == -1) {
+        DBG_ERROR("Directory <%s> is not writable", dir_path);
+        return -2;  // Exists but no write permission
+    }
+
+    // All checks passed
+    return 0;
+}
+
+/**
+ * @brief Check if a file/path exists (does not distinguish file types)
+ * @param file_path Path to the file
+ * @return 0: Exists; -1: Does not exist; Other negative values: System call error
+ */
+int Utils::check_file_exist(const char *file_path)
+{
+    if (file_path == NULL) {
+        DBG_ERROR("Error: File path can't be blank\n");
+        return -2;
+    }
+
+    // Use F_OK to only check existence (no permission check)
+    int ret = access(file_path, F_OK);
+    if (ret == -1) {
+        DBG_ERROR("File %s does not exist", file_path);
+        return -1;
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Enhanced check: Verify if path is a regular file and exists
+ * @param file_path Path to the file
+ * @return 0: Regular file and exists; -1: Does not exist; -2: Not a regular file; Other negative values: System call error
+ */
+int Utils::check_regular_file_exist(const char *file_path)
+{
+    if (file_path == NULL) {
+        DBG_ERROR("Error: File path is a null pointer\n");
+        return -3;
+    }
+
+    struct stat stat_buf;
+    int ret = stat(file_path, &stat_buf);
+    if (ret == -1) {
+        DBG_ERROR("stat file failed");
+        return -1;  // Does not exist
+    }
+
+    // Check if it's a regular file (exclude directories, symlinks, devices, etc.)
+    if (!S_ISREG(stat_buf.st_mode)) {
+        DBG_ERROR("Error: %s is not a regular file\n", file_path);
+        return -2;
+    }
+
+    return 0;
+}
+
 

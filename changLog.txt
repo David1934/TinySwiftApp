@@ -1,4 +1,4 @@
-1. @2025/11/30 -- version update to 1.0.0_LM20251130A
+1. @2025/12/01 -- version update to 1.0.0_LM20251201A
     redmine #2832: SpadisQT极限精简到TinySwiftApp
     http://gerrit.adaps.corp/c/SpadisQT/+/5539
 
@@ -16,3 +16,5 @@
     patch set 12: reduce more and update CMakeLists.txt file;
     patch set 13: add code to save decode output point-cloud buffer to binary files;
     patch set 14: enable algo lib dump data;
+    patch set 16: add requirement_check() and improve command line handle;
+

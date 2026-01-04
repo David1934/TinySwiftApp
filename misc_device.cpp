@@ -14,8 +14,17 @@ Misc_Device* Misc_Device::instance = NULL_POINTER;
 Misc_Device* Misc_Device::getInstance() {
     if (!instance) {
         instance = new Misc_Device();
+        // 注册清理函数，程序退出时自动调用
+        std::atexit(destroyInstance);
     }
     return instance;
+}
+
+void Misc_Device::destroyInstance() {
+    if (instance) {
+        delete instance;
+        instance = nullptr;
+    }
 }
 
 Misc_Device::Misc_Device()
@@ -73,6 +82,9 @@ Misc_Device::Misc_Device()
 
 Misc_Device::~Misc_Device()
 {
+    DBG_NOTICE("------------fd_4_misc: %d, instance: %p---\n",
+        fd_4_misc, instance);
+
     if (NULL_POINTER != mmap_buffer_base)
     {
         if (munmap(mmap_buffer_base, mmap_buffer_max_size)) {
@@ -94,10 +106,14 @@ Misc_Device::~Misc_Device()
         p_bigfov_module_eeprom = NULL_POINTER;
     }
 
-    if ((0 != fd_4_misc) && (-1 == close(fd_4_misc))) {
-        DBG_ERROR("Fail to close device %d (%s), errno: %s (%d)...", fd_4_misc, devnode_4_misc,
-            strerror(errno), errno);
-        return;
+    if (0 != fd_4_misc)
+    {
+        if (-1 == close(fd_4_misc)) {
+            DBG_ERROR("Fail to close device %d (%s), errno: %s (%d)...", fd_4_misc, devnode_4_misc,
+                strerror(errno), errno);
+            return;
+        }
+        fd_4_misc = 0;
     }
     sem_destroy(&misc_semLock);
 }

@@ -81,6 +81,8 @@ public:
 
 private:
     static Misc_Device* instance; // 静态成员变量声明
+    Misc_Device(); // 私有构造函数（防止外部实例化）
+    static void destroyInstance();
 
     u32 module_type = 0;
     bool roi_sram_rolling = false;
@@ -106,8 +108,6 @@ private:
 //    uint16_t vcsel_reg_setting_cnt;
     u8* mapped_script_vcsel_settings;           // opn7020 for spot module, PhotonIC5015 for flood module
     u8* mapped_roi_sram_data;
-
-    Misc_Device(); // 私有构造函数（防止外部实例化）
 
     int read_dtof_module_static_data(void);
 

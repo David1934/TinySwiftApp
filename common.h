@@ -9,16 +9,14 @@
 #include "adaps_types.h"
 #include "adaps_dtof_uapi.h"
 
-#define MAX_CALIB_SRAM_DATA_GROUP_CNT           9
-
 #define VERSION_MAJOR                           1
 #define VERSION_MINOR                           0
-#define VERSION_REVISION                        0
-#define LAST_MODIFIED_TIME                      "20251130A"
+#define VERSION_REVISION                        2
+#define LAST_MODIFIED_TIME                      "20251225A"
 
 #define DEFAULT_DTOF_FRAMERATE                  AdapsFramerateType30FPS // AdapsFramerateType60FPS
 
-#define DEPTH_LIB_DATA_DUMP_PATH                "./RawData/DumpData/"
+#define DEPTH_LIB_DATA_DUMP_PATH                "./OfflineData/"
 #define DEPTH_LIB_CONFIG_PATH                   "/vendor/etc/camera/adapsdepthsettings.xml"
 #define DATA_SAVE_PATH                          "/tmp/" // "/sdcard/"
 #define DEFAULT_SAVE_FRAME_CNT                  0
@@ -42,6 +40,7 @@
 #define FRAME_INTERVAL_4_PROGRESS_REPORT        500   // every X frames, report a progress
 
 #define WAIT_TIME_4_THREAD_EXIT                 10  // unit is  milliseconds
+#define POLL_TIMEOUT                            100  // unit is  milliseconds
 
 #define DEFAULT_ENVIRONMENT_TYPE            AdapsEnvTypeIndoor
 #define DEFAULT_MEASUREMENT_TYPE            AdapsMeasurementTypeFull
@@ -56,7 +55,9 @@
 #define DEBUG_PRO
 #define ENV_VAR_SAVE_EEPROM_ENABLE              "save_eeprom_enable"
 #define ENV_VAR_SAVE_DEPTH_TXT_ENABLE           "save_depth_txt_enable"
-#define ENV_VAR_SAVE_FRAME_ENABLE               "save_frame_enable"
+#define ENV_VAR_SAVE_FRAME_RAW_DATA_ENABLE      "save_frame_raw_data_enable"
+#define ENV_VAR_SAVE_FRAME_DEPTH16_ENABLE       "save_frame_depth16_enable"
+#define ENV_VAR_SAVE_FRAME_POINTCLOUD_ENABLE    "save_frame_pointcloud_enable"
 #define ENV_VAR_SKIP_FRAME_DECODE               "skip_frame_decode"
 #define ENV_VAR_ENABLE_EXPAND_PIXEL             "enable_expand_pixel"      // processed in adaps decode algo lib
 #define ENV_VAR_DISABLE_COMPOSE_SUBFRAME        "disable_compose_subframe"  // processed in adaps decode algo lib
@@ -135,45 +136,25 @@ inline bool env_var_is_true(const char *var_name)
 #endif
 
 #if defined(DEBUG_PRO)
-#define DBG_PRINTK(fmt, args ...)                                                                            \
-    do {                                                                                                    \
-        printf("<%s-%s() %d> " fmt "\n",                                                         \
-            get_filename(__FILE__), __func__, __LINE__, ##args);                                   \
+#define DBG_PRINTK(fmt, args ...)                                                                       \
+    do {                                                                                                \
+        printf("<%s-%s() %d> " fmt "\n",                                                                \
+            get_filename(__FILE__), __func__, __LINE__, ##args);                                        \
     }while(0)
 
-#define DBG_ERROR(fmt, args ...)                                                                    \
-    do {                                                                                            \
-        struct timespec ts;                                                                         \
-        clock_gettime(CLOCK_REALTIME, &ts);                                                         \
-        struct tm tm = *localtime(&ts.tv_sec);                                                      \
-        char timestamp[120];                                                                        \
-        strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", &tm);                           \
-        printf("[%s.%03ld.%03ld.%03ld] ERROR: <%s-%s() %d> " fmt "\n", timestamp, ts.tv_nsec/1000000,    \
-            (ts.tv_nsec/1000)%1000, ts.tv_nsec%1000, get_filename(__FILE__), __func__, __LINE__, ##args);                   \
+#define DBG_ERROR(fmt, args ...)                                                                        \
+    do {                                                                                                \
+        printf("ERROR: <%s-%s() %d> " fmt "\n", get_filename(__FILE__), __func__, __LINE__, ##args);    \
     }while(0)
 
 #define DBG_NOTICE(fmt, args ...)                                           \
-    do {                                                                                            \
-        struct timespec ts;                                                                     \
-        clock_gettime(CLOCK_REALTIME, &ts);                                                     \
-        struct tm tm = *localtime(&ts.tv_sec);                                                  \
-        char timestamp[120];                                                                    \
-        sprintf(timestamp, "%4d-%02d-%02d %02d:%02d:%02d.%03ld.%03ld.%03ld", tm.tm_year+1900,   \
-            tm.tm_mon+1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec,                          \
-            ts.tv_nsec/1000000, (ts.tv_nsec/1000)%1000, ts.tv_nsec%1000);                       \
-        printf("[%s] NOTICE: <%s-%s() %d> " fmt "\n", timestamp, get_filename(__FILE__), __func__, __LINE__, ##args);                \
+    do {                                                                                                \
+        printf("NOTICE: <%s-%s() %d> " fmt "\n", get_filename(__FILE__), __func__, __LINE__, ##args);   \
     }while(0)
 
-#define DBG_INFO(fmt, args ...)                                                                 \
-    if (env_var_is_true(ENV_VAR_DBGINFO_ENABLE)) {                                                \
-        struct timespec ts;                                                                     \
-        clock_gettime(CLOCK_REALTIME, &ts);                                                     \
-        struct tm tm = *localtime(&ts.tv_sec);                                                  \
-        char timestamp[120];                                                                    \
-        sprintf(timestamp, "%4d-%02d-%02d %02d:%02d:%02d.%03ld.%03ld.%03ld", tm.tm_year+1900,   \
-            tm.tm_mon+1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec,                          \
-            ts.tv_nsec/1000000, (ts.tv_nsec/1000)%1000, ts.tv_nsec%1000);                       \
-        printf("[%s] INFO: <%s-%s() %d> " fmt "\n", timestamp, get_filename(__FILE__), __func__, __LINE__, ##args);                \
+#define DBG_INFO(fmt, args ...)                                                                         \
+    if (env_var_is_true(ENV_VAR_DBGINFO_ENABLE)) {                                                      \
+        printf("INFO: <%s-%s() %d> " fmt "\n", get_filename(__FILE__), __func__, __LINE__, ##args);     \
     }
 #else
 #define DBG_PRINTK      printf
@@ -206,6 +187,14 @@ enum sensor_workmode{
     WK_UNINITIALIZED,
     WK_COUNT = WK_UNINITIALIZED,
 };
+
+typedef enum {
+    SPOT_MODULE,
+    FLOOD_MODULE,
+    CAMSENSE_MODULE,
+    T_MODULE,
+    CNT_MODULE,
+} model_type_t;
 
 struct sensor_params
 {

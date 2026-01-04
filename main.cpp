@@ -7,6 +7,8 @@
 #include "common.h"
 #include "dtof_main.h"
 
+#define DEPTH_LIB_SO_PATH                   "/vendor/lib64/libadaps_swift_decode.so"
+
 static DToF_Main* s_dToF_main = nullptr;
 
 static void dump_stack()
@@ -33,18 +35,18 @@ static void dump_stack()
 
 static void signal_handle(int signo)
 {
-    DBG_NOTICE("recieve signal: %d.!!!\n", signo);
-
-    dump_stack();
+    DBG_NOTICE("recieve signal: %d.\n", signo);
 
     if (SIGINT == signo)
     {
         if (NULL != s_dToF_main)
         {
+            DBG_NOTICE("CTRL-C is detected, streaming will be stopped!\n");
             s_dToF_main->stop();
         }
     }
     else {
+        dump_stack();
         exit(0);
     }
 
@@ -53,21 +55,21 @@ static void signal_handle(int signo)
 static void usage(char *name)
 {
     printf("Usage: %s options\n"
-        "         --setworkmode,            default 0,            required, sensor work mode (PHR).\n"
-        "         --dumpframe,              default 0             optional, how many frames to write files.\n\n"
-        "         --module_kernel_type,     default 0             optional, module kernel type for adaps algo lib.\n\n"
-        "         --roi_sram_rolling,                                     , enable roisram rolling.\n"
-        "         --help,                                                 , print this usage.\n",
+        "         -w, --setworkmode,          required, sensor work mode (PCM=1, FHR=2).\n"
+        "         -d, --dumpframe,            optional, how many frames to write files.\n"
+        "         -k, --module_kernel_type,   optional, module kernel type for adaps algo lib.\n"
+        "         -r, --roi_sram_rolling,             , enable roisram rolling (TRUE=1, FALSE=0).\n"
+        "         -h, --help,                         , print this usage.\n\n",
         name);
 }
 
 
-static int parse_args(int argc, char **argv, struct sensor_params *ctx)
+static int parse_args(int argc, char **argv, struct sensor_params *sns_param)
 {
     int c;
     int ret = 0;
 
-    ctx->to_dump_frame_cnt = 0;
+    sns_param->to_dump_frame_cnt = 0;
 
     while (1) {
         int option_index = 0;
@@ -88,19 +90,19 @@ static int parse_args(int argc, char **argv, struct sensor_params *ctx)
 
         switch (c) {
             case 'w':
-                ctx->work_mode = (enum sensor_workmode) atoi(optarg);
+                sns_param->work_mode = (enum sensor_workmode) atoi(optarg);
                 break;
 
             case 'd':
-                ctx->to_dump_frame_cnt = atoi(optarg);
+                sns_param->to_dump_frame_cnt = atoi(optarg);
                 break;
 
             case 'k':
-                ctx->module_kernel_type = atoi(optarg);
+                sns_param->module_kernel_type = atoi(optarg);
                 break;
 
             case 'r':
-                ctx->roi_sram_rolling = atoi(optarg);
+                sns_param->roi_sram_rolling = atoi(optarg);
                 break;
 
             case '?':
@@ -118,12 +120,48 @@ static int parse_args(int argc, char **argv, struct sensor_params *ctx)
     return ret;
 }
 
+int requirement_check()
+{
+    int ret = 0;
+    Utils *utils;
+    utils = new Utils();
+
+    ret = utils->check_regular_file_exist(DEPTH_LIB_SO_PATH);
+    if (ret < 0)
+    {
+        DBG_ERROR("Adaps algo lib <%s> does not exist, please check it!\n", DEPTH_LIB_SO_PATH);
+        goto error_exit;
+    }
+
+    ret = utils->check_regular_file_exist(DEPTH_LIB_CONFIG_PATH);
+    if (ret < 0)
+    {
+        DBG_ERROR("Adaps algo lib config file <%s> does not exist, please check it!\n", DEPTH_LIB_CONFIG_PATH);
+        goto error_exit;
+    }
+
+    if (true == Utils::is_env_var_true(ENV_VAR_ENABLE_ALGO_LIB_DUMP_DATA))
+    {
+        ret = utils->check_dir_exist_and_writable(DEPTH_LIB_DATA_DUMP_PATH);
+        if (ret < 0)
+        {
+            DBG_ERROR("dump directory <%s> does not exist or not writable, please check it!\n", DEPTH_LIB_DATA_DUMP_PATH);
+            goto error_exit;
+        }
+    }
+
+error_exit:
+    delete utils;
+
+    return ret;
+}
+
 int main(int argc, char *argv[])
 {
     int ret;
     struct sensor_params sns_param;
 
-    DBG_NOTICE("%s\nVersion: %s\nBuild Time: %s,%s\n\n",
+    printf("%s\nVersion: %s\nBuild Time: %s,%s\n\n",
         APP_NAME,
         APP_VERSION,
         __DATE__,
@@ -131,11 +169,19 @@ int main(int argc, char *argv[])
         );
 
     memset(&sns_param, 0, sizeof(struct sensor_params));
+    sns_param.module_kernel_type = 0xFF;
 
     //parse command arguments
     ret =parse_args(argc, argv, &sns_param);
     if (ret <0)
         return ret;
+
+    if (sns_param.module_kernel_type >= CNT_MODULE)
+    {
+        DBG_ERROR("Invalid module_kernel_type %d.\n", sns_param.module_kernel_type);
+        usage(argv[0]);
+        return 0 - __LINE__;
+    }
 
     switch (sns_param.work_mode)
     {
@@ -155,9 +201,14 @@ int main(int argc, char *argv[])
 
         default:
             DBG_ERROR("Invalid work mode %d.\n", sns_param.work_mode);
+            usage(argv[0]);
             return 0 - __LINE__;
             break;
     }
+
+    ret =requirement_check();
+    if (ret < 0)
+        return ret;
 
     // 注册信号处理函数
     signal(SIGINT, signal_handle);

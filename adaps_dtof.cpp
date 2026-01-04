@@ -25,8 +25,11 @@ ADAPS_DTOF::~ADAPS_DTOF()
     DBG_NOTICE("------decode statistics------work_mode: %d, m_input_frame_cnt: %d, m_output_frame_cnt: %d, decoded_rate: %d, flc.total_frames: %d, flc.dropped_frames: %d---\n",
         set_param.work_mode, m_input_frame_cnt, m_output_frame_cnt, m_input_frame_cnt/m_output_frame_cnt, flc.total_frames, flc.dropped_frames);
     p_misc_device = NULL_POINTER;
-    free(copied_roisram_4_anchorX);
-    copied_roisram_4_anchorX = NULL_POINTER;
+    if (NULL_POINTER != copied_roisram_4_anchorX)
+    {
+        free(copied_roisram_4_anchorX);
+        copied_roisram_4_anchorX = NULL_POINTER;
+    }
 }
 
 int ADAPS_DTOF::dump_frame_headinfo(unsigned int frm_sequence, unsigned char *frm_rawdata, int frm_rawdata_size, enum sensor_workmode swk)
@@ -875,7 +878,7 @@ int ADAPS_DTOF::dtof_frame_decode(unsigned int frm_sequence, unsigned char *frm_
         depthInput.in_image_size    = frm_rawdata_size;
         depthInput.in_sram_id    = NULL;    // just to set to NULL for normal algo lib call
         //DBG_INFO( "raw_width: %d raw_height: %d out_width: %d out_height: %d\n", m_sns_param.raw_width, m_sns_param.raw_height, m_sns_param.out_frm_width, m_sns_param.out_frm_height);
-        // if (true == Utils::is_env_var_true(ENV_VAR_ENABLE_ALGO_LIB_DUMP_DATA))
+        if (true == Utils::is_env_var_true(ENV_VAR_ENABLE_ALGO_LIB_DUMP_DATA))
         {
             depthInput.dump_data    = true;
             depthInput.save_path    = DEPTH_LIB_DATA_DUMP_PATH;

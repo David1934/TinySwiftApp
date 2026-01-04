@@ -51,6 +51,10 @@ private:
     V4L2 *v4l2 = NULL_POINTER;
     ADAPS_DTOF *adaps_dtof = NULL_POINTER;
 
+#if defined(EEPROM_PARAMETER_FETCH_DEMO)
+    void* p_eeprominfo = NULL_POINTER;
+#endif
+
     pthread_t frame_process_thread_id = PTHREAD_INVALID;
 
     static void* FrameProcessThread(void* arg);
