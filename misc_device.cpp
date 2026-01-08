@@ -42,7 +42,7 @@ Misc_Device::Misc_Device()
     mmap_buffer_max_size = MMAP_BUFFER_MAX_SIZE_4_WHOLE_EEPROM_DATA
         + REG_SETTING_BUF_MAX_SIZE_PER_SEG
         + REG_SETTING_BUF_MAX_SIZE_PER_SEG
-        + (PER_CALIB_SRAM_ZONE_SIZE * ZONE_COUNT_PER_SRAM_GROUP * MAX_CALIB_SRAM_ROTATION_GROUP_CNT);
+        + (PER_CALIB_SRAM_ZONE_SIZE * ZONE_COUNT_PER_SRAM_GROUP * MAX_CALIB_SRAM_ROLLING_GROUP_CNT);
     memset((void *) &last_runtime_status_param, 0, sizeof(struct adaps_dtof_runtime_status_param));
     fd_4_misc = 0;
     memset(devnode_4_misc, 0, DEV_NODE_LEN);
@@ -66,7 +66,7 @@ Misc_Device::Misc_Device()
         }
         mapped_eeprom_data_buffer = (u8* ) mmap_buffer_base;
         mapped_script_sensor_settings = (u8*)(mapped_eeprom_data_buffer + MMAP_BUFFER_MAX_SIZE_4_WHOLE_EEPROM_DATA);
-        mapped_script_vcsel_settings = (u8* ) (mapped_script_sensor_settings + ROI_SRAM_BUF_MAX_SIZE);
+        mapped_script_vcsel_settings = (u8* ) (mapped_script_sensor_settings + REG_SETTING_BUF_MAX_SIZE_PER_SEG);
         mapped_roi_sram_data = mapped_script_vcsel_settings + REG_SETTING_BUF_MAX_SIZE_PER_SEG;
         //qApp->set_mmap_address_4_loaded_roisram(mapped_roi_sram_data);
 
@@ -169,6 +169,122 @@ void* Misc_Device::get_dtof_calib_eeprom_param(void)
 
 }
 
+int Misc_Device::dump_eeprom_data(u8* pEEPROM_Data)
+{
+    if (ADS6401_MODULE_SPOT == module_static_data.module_type)
+    {
+        swift_spot_module_eeprom_data_t *spot_module_eeprom = (swift_spot_module_eeprom_data_t *) pEEPROM_Data;
+
+        DBG_NOTICE("char    deviceName[64]                  = [%s]", spot_module_eeprom->deviceName);
+        DBG_NOTICE("float   intrinsic[9]                    = [%f,%f,%f,%f,%f,%f,%f,%f,%f]", 
+            spot_module_eeprom->intrinsic[0],
+            spot_module_eeprom->intrinsic[1],
+            spot_module_eeprom->intrinsic[2],
+            spot_module_eeprom->intrinsic[3],
+            spot_module_eeprom->intrinsic[4],
+            spot_module_eeprom->intrinsic[5],
+            spot_module_eeprom->intrinsic[6],
+            spot_module_eeprom->intrinsic[7],
+            spot_module_eeprom->intrinsic[8]
+            );
+        DBG_NOTICE("float   offset                          = %f", spot_module_eeprom->offset);
+        DBG_NOTICE("__u32   refSpadSelection                = 0x%08x", spot_module_eeprom->refSpadSelection);
+        DBG_NOTICE("__u32   driverChannelOffset[4]          = [0x%x,0x%x,0x%x,0x%x]", 
+            spot_module_eeprom->driverChannelOffset[0],
+            spot_module_eeprom->driverChannelOffset[1],
+            spot_module_eeprom->driverChannelOffset[2],
+            spot_module_eeprom->driverChannelOffset[3]);
+        DBG_NOTICE("__u32   distanceTemperatureCoefficient  = 0x%08x", spot_module_eeprom->distanceTemperatureCoefficient);
+        DBG_NOTICE("__u32   tdcDelay[16]                    = [0x%x,0x%x,...]", spot_module_eeprom->tdcDelay[0], spot_module_eeprom->tdcDelay[1]);
+        DBG_NOTICE("float   indoorCalibTemperature          = %f", spot_module_eeprom->indoorCalibTemperature);
+        DBG_NOTICE("float   indoorCalibRefDistance          = %f", spot_module_eeprom->indoorCalibRefDistance);
+        DBG_NOTICE("float   outdoorCalibTemperature         = %f", spot_module_eeprom->outdoorCalibTemperature);
+        DBG_NOTICE("float   outdoorCalibRefDistance         = %f", spot_module_eeprom->outdoorCalibRefDistance);
+        DBG_NOTICE("float   pxyDepth                        = %f", spot_module_eeprom->pxyDepth);
+        DBG_NOTICE("float   pxyNumberOfPulse                = %f", spot_module_eeprom->pxyNumberOfPulse);
+        DBG_NOTICE("char    moduleInfo[16]                  = [%s]", spot_module_eeprom->moduleInfo);
+    }
+    else if (ADS6401_MODULE_SMALL_FLOOD == module_static_data.module_type) {
+        swift_flood_module_eeprom_data_t *small_flood_module_eeprom = (swift_flood_module_eeprom_data_t *) pEEPROM_Data;
+
+        DBG_NOTICE("char    Version[6]                      = [%s]", small_flood_module_eeprom->Version);
+        DBG_NOTICE("char    SerialNumber[16]                = [%s]", small_flood_module_eeprom->SerialNumber);
+        DBG_NOTICE("char    ModuleInfo[60]                  = [%s]", small_flood_module_eeprom->ModuleInfo);
+        DBG_NOTICE("uint8_t tdcDelay[2]                     = [0x%x,0x%x]", small_flood_module_eeprom->tdcDelay[0], small_flood_module_eeprom->tdcDelay[1]);
+        DBG_NOTICE("float   intrinsic[9]                    = [%f,%f,%f,%f,%f,%f,%f,%f,%f]", 
+            small_flood_module_eeprom->intrinsic[0],
+            small_flood_module_eeprom->intrinsic[1],
+            small_flood_module_eeprom->intrinsic[2],
+            small_flood_module_eeprom->intrinsic[3],
+            small_flood_module_eeprom->intrinsic[4],
+            small_flood_module_eeprom->intrinsic[5],
+            small_flood_module_eeprom->intrinsic[6],
+            small_flood_module_eeprom->intrinsic[7],
+            small_flood_module_eeprom->intrinsic[8]
+            );
+        DBG_NOTICE("float   indoorCalibTemperature          = %f", small_flood_module_eeprom->indoorCalibTemperature);
+        DBG_NOTICE("float   indoorCalibRefDistance          = %f", small_flood_module_eeprom->indoorCalibRefDistance);
+        DBG_NOTICE("float   outdoorCalibTemperature         = %f", small_flood_module_eeprom->outdoorCalibTemperature);
+        DBG_NOTICE("float   outdoorCalibRefDistance         = %f", small_flood_module_eeprom->outdoorCalibRefDistance);
+    }
+    else {
+        swift_eeprom_v2_data_t *bigfov_module_eeprom = (swift_eeprom_v2_data_t *) pEEPROM_Data;
+        
+        DBG_NOTICE("//HEAD");
+        DBG_NOTICE("uint32_t    magic_id                                = 0x%x", bigfov_module_eeprom->magic_id);
+        DBG_NOTICE("uint32_t    data_structure_version                  = 0x%x", bigfov_module_eeprom->data_structure_version);
+        DBG_NOTICE("uint8_t     calibrationInfo[32]                     = [%s]", bigfov_module_eeprom->calibrationInfo);
+        DBG_NOTICE("uint8_t     LastCalibratedTime[32]                  = [%s]", bigfov_module_eeprom->LastCalibratedTime);
+        DBG_NOTICE("uint8_t     serialNumber[BIG_FOV_MODULE_SN_LENGTH]  = [%s]", bigfov_module_eeprom->serialNumber);
+        DBG_NOTICE("uint32_t    data_length                             = %d", bigfov_module_eeprom->data_length);
+        DBG_NOTICE("uint32_t    data_crc32                              = 0x%x", bigfov_module_eeprom->data_crc32);
+        DBG_NOTICE("uint32_t    compressed_data_length                  = %d", bigfov_module_eeprom->compressed_data_length);
+        DBG_NOTICE("uint32_t    compressed_data_crc32                   = 0x%x\n", bigfov_module_eeprom->compressed_data_crc32);
+        
+        DBG_NOTICE("//BASIC_DATA");
+        DBG_NOTICE("uint8_t     real_spot_zone_count                    = %d", bigfov_module_eeprom->real_spot_zone_count);
+        DBG_NOTICE("uint8_t     tdcDelay[2]                             = [0x%x,0x%x]", bigfov_module_eeprom->tdcDelay[0], bigfov_module_eeprom->tdcDelay[1]);
+        DBG_NOTICE("uint8_t     lensType                                = %d", bigfov_module_eeprom->lensType);
+        DBG_NOTICE("float       indoorCalibTemperature                  = %f", bigfov_module_eeprom->indoorCalibTemperature);
+        DBG_NOTICE("float       indoorCalibRefDistance                  = %f", bigfov_module_eeprom->indoorCalibRefDistance);
+        DBG_NOTICE("float       outdoorCalibTemperature                 = %f", bigfov_module_eeprom->outdoorCalibTemperature);
+        DBG_NOTICE("float       outdoorCalibRefDistance                 = %f", bigfov_module_eeprom->outdoorCalibRefDistance);
+        DBG_NOTICE("float       intrinsic[9]                            = [%f,%f,%f,%f,%f,%f,%f,%f,%f]", 
+            bigfov_module_eeprom->intrinsic[0],
+            bigfov_module_eeprom->intrinsic[1],
+            bigfov_module_eeprom->intrinsic[2],
+            bigfov_module_eeprom->intrinsic[3],
+            bigfov_module_eeprom->intrinsic[4],
+            bigfov_module_eeprom->intrinsic[5],
+            bigfov_module_eeprom->intrinsic[6],
+            bigfov_module_eeprom->intrinsic[7],
+            bigfov_module_eeprom->intrinsic[8]
+            );
+        DBG_NOTICE("float       rgb_intrinsic[8]                        = [%f,%f,%f,%f,%f,%f,%f,%f]", 
+            bigfov_module_eeprom->rgb_intrinsic[0],
+            bigfov_module_eeprom->rgb_intrinsic[1],
+            bigfov_module_eeprom->rgb_intrinsic[2],
+            bigfov_module_eeprom->rgb_intrinsic[3],
+            bigfov_module_eeprom->rgb_intrinsic[4],
+            bigfov_module_eeprom->rgb_intrinsic[5],
+            bigfov_module_eeprom->rgb_intrinsic[6],
+            bigfov_module_eeprom->rgb_intrinsic[7]
+            );
+        DBG_NOTICE("float       common_extrinsic[8]                     = [%f,%f,%f,%f,%f,%f,%f]", 
+            bigfov_module_eeprom->common_extrinsic[0],
+            bigfov_module_eeprom->common_extrinsic[1],
+            bigfov_module_eeprom->common_extrinsic[2],
+            bigfov_module_eeprom->common_extrinsic[3],
+            bigfov_module_eeprom->common_extrinsic[4],
+            bigfov_module_eeprom->common_extrinsic[5],
+            bigfov_module_eeprom->common_extrinsic[6]
+            );
+        DBG_NOTICE("uint8_t     Reserved[20]\n");
+    }
+
+    return 0;
+}
+
 int Misc_Device::read_dtof_module_static_data(void)
 {
     int ret = 0;
@@ -186,6 +302,11 @@ int Misc_Device::read_dtof_module_static_data(void)
             int eeprom_data_size;
 
             module_type = module_static_data.module_type;
+
+            if (true == Utils::is_env_var_true(ENV_VAR_DUMP_EEPROM_DATA))
+            {
+                dump_eeprom_data(mapped_eeprom_data_buffer);
+            }
 
             if (ADS6401_MODULE_SPOT == module_static_data.module_type)
             {
@@ -208,6 +329,7 @@ int Misc_Device::read_dtof_module_static_data(void)
             }
             else {
                 p_bigfov_module_eeprom = (swift_eeprom_v2_data_t *) mapped_eeprom_data_buffer;
+                if (true == Utils::is_env_var_true(ENV_VAR_DUMP_EEPROM_DATA))
                 anchor_rowOffset = 0;
                 anchor_colOffset = 0;
 

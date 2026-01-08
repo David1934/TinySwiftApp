@@ -1,3 +1,20 @@
+2. @2026/01/05 -- version update to 1.0.3_LM20260105A
+    improve TinySwiftApp.
+    http://gerrit.adaps.corp/c/SpadisQT/+/5607
+
+    patch set 1: Do not Stop_streaming() and v4l2_close() until frame_process_thread is end;
+    patch set 2: check the different environment variables to save frame rawdata/depth16/point-clound data;
+    patch set 5: should use pix_mp instead of pix for V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE in v4l2.cpp;
+    patch set 6: do not dump callstack for CTRL-C;
+    patch set 7: bugfix: PCM mode does not work(tree project);
+    patch set 8: sync adaps_dtof_uapi.h with Linux kernel gerrit;
+    patch set 10: update algo lib to 3.7.5;
+    patch set 14: improve code to release some resource when exit the app;
+    patch set 16: add EEPROM_PARAMETER_FETCH_DEMO code with build option EEPROM_PARAMETER_FETCH_DEMO;
+                  sync code from SpadisQT, EEPROM data struct update 20251229;
+    patch set 17: update swift algo lib to 3.7.6, rename MAX_CALIB_SRAM_ROTATION_GROUP_CNT to MAX_CALIB_SRAM_ROLLING_GROUP_CNT;
+
+
 1. @2025/12/01 -- version update to 1.0.0_LM20251201A
     redmine #2832: SpadisQT极限精简到TinySwiftApp
     http://gerrit.adaps.corp/c/SpadisQT/+/5539

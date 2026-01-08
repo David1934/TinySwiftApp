@@ -11,8 +11,8 @@
 
 #define VERSION_MAJOR                           1
 #define VERSION_MINOR                           0
-#define VERSION_REVISION                        2
-#define LAST_MODIFIED_TIME                      "20251225A"
+#define VERSION_REVISION                        4
+#define LAST_MODIFIED_TIME                      "20260107A"
 
 #define DEFAULT_DTOF_FRAMERATE                  AdapsFramerateType30FPS // AdapsFramerateType60FPS
 
@@ -87,6 +87,7 @@
 #define ENV_VAR_DUMP_WALKERROR_PARAM_COUNT      "dump_walkerror_param_count"
 #define ENV_VAR_DUMP_OFFSETDATA_PARAM_COUNT     "dump_offsetdata_param_count"
 #define ENV_VAR_DUMP_CALIB_REFERENCE_DISTANCE   "dump_calib_reference_distance"
+#define ENV_VAR_DUMP_EEPROM_DATA                "dump_eeprom_data"
 #define ENV_VAR_ENABLE_ALGO_LIB_DUMP_DATA       "enable_algo_lib_dump_data"
 
 #define __tostr(x)                          #x

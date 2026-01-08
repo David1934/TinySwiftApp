@@ -110,6 +110,7 @@ private:
     u8* mapped_roi_sram_data;
 
     int read_dtof_module_static_data(void);
+    int dump_eeprom_data(u8* pEEPROM_Data);
 
 };
 

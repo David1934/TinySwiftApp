@@ -380,8 +380,6 @@ struct hawk_sensor_cfg_data
 
 #include "adaps_types.h"
 
-#define MAX_CALIB_SRAM_ROTATION_GROUP_CNT   9
-
 #define FW_VERSION_LENGTH                   12
 
 // There are two group Calibration SRAM for spod address, every group has 4 calibration registers.
@@ -393,9 +391,8 @@ struct hawk_sensor_cfg_data
 
 #define PER_CALIB_SRAM_ZONE_SIZE            512     //unit is bytes, actual use size is 480 bytes, the remaining 32 bytes is 0
 #define ZONE_COUNT_PER_SRAM_GROUP           4
-#define CALIB_SRAM_GROUP_COUNT              2
+#define CALIB_SRAM_GROUP_COUNT              2       // swift has 2 ROI SRAM registers, which are 0xFB and 0xF7
 
-#define ROI_SRAM_BUF_MAX_SIZE               (2*1024)   // 2x1024, unit is bytes
 #define REG_SETTING_BUF_MAX_SIZE_PER_SEG    2048       // unit is bytes, there may be 2 segments
 
 #define PER_ROISRAM_GROUP_SIZE              (PER_CALIB_SRAM_ZONE_SIZE * ZONE_COUNT_PER_SRAM_GROUP) //unit is bytes
@@ -576,7 +573,7 @@ typedef struct SwiftSpotModuleEepromData
 
 // -------------------- swift SPOT module definition end -------------
 
-// -------------------- swift FLOOD module definition start -------------
+// -------------------- swift SMALL_FLOOD module definition start -------------
 
 // EEPROM-I2C--P24C256F-D4H-MIR
 #define FLOOD_MODULE_EEPROM_CAPACITY_SIZE                   (32*1024)  // 32*1024, unit is bytes
@@ -702,14 +699,20 @@ typedef struct SwiftFloodModuleEepromData
 
 #define FLOOD_ONE_SPOD_OFFSET_BYTE_SIZE                    3840//240*4*4
 
-// -------------------- swift FLOOD module definition end -------------
-#define BIG_FOV_EEPROM_DATA_STRUCT_VERSION                  0x20251208
+// -------------------- swift SMALL_FLOOD module definition end -------------
+
+// -------------------- swift BIG_FOV FLOOD module definition start -------------
+
+
+#define MAX_CALIB_SRAM_ROLLING_GROUP_CNT                    9
+
+#define BIG_FOV_EEPROM_DATA_STRUCT_VERSION                  0x20251229
 #define BIG_FOV_EEPROM_MAGIC                                0xEEAD6401
 
 #define BIG_FOV_MODULE_SN_LENGTH                            32
-#define BIG_FOV_REAL_SPOT_ZONE_COUNT                        20 // to code easily, use the MACRO replace X in the definition of swift_eeprom_v2_data_t
-#define BIG_FOV_MODULE_EEPROM_CAPACITY_SIZE                (128*1024)  // 128K, unit is bytes
-#define BIG_FOV_MODULE_EEPROM_PAGE_SIZE                    256
+#define BIG_FOV_MAX_SPOT_ZONE_COUNT                         (ZONE_COUNT_PER_SRAM_GROUP * MAX_CALIB_SRAM_ROLLING_GROUP_CNT) // 36
+#define BIG_FOV_MODULE_EEPROM_CAPACITY_SIZE                 (128*1024)  // 128K, unit is bytes
+#define BIG_FOV_MODULE_EEPROM_PAGE_SIZE                     256
 
 
 #pragma pack(1)
@@ -737,12 +740,12 @@ typedef struct SwiftEepromV2Data
     float           intrinsic[9];                           // dToF镜头的内参（9个参数）
     float           rgb_intrinsic[8];                       // RGB镜头的内参（8个参数）
     float           common_extrinsic[7];                    // RGB及dToF镜头的联合外参（7个参数）
-    uint8_t         Reserved[20];                           // 保留空间，为了凑整到256 bytes，V2模组的EEPROM一个page是256 bytes
+    uint8_t         Reserved[20];                           // 保留空间，为了凑整到256 bytes
 
     //BIG_DATA, 标定工具写入eeprom前需要压缩，Linux驱动读出后立即解压缩，压缩操作对应用层是不可见的
-    uint8_t          sramData[PER_CALIB_SRAM_ZONE_SIZE * BIG_FOV_REAL_SPOT_ZONE_COUNT];
-    WalkErrorParam_t walkerrorData[PER_ZONE_MAX_SPOT_COUNT * BIG_FOV_REAL_SPOT_ZONE_COUNT];
-    float            spotOffset[PER_ZONE_MAX_SPOT_COUNT * BIG_FOV_REAL_SPOT_ZONE_COUNT];
+    uint8_t          sramData[PER_CALIB_SRAM_ZONE_SIZE * BIG_FOV_MAX_SPOT_ZONE_COUNT];
+    WalkErrorParam_t walkerrorData[PER_ZONE_MAX_SPOT_COUNT * BIG_FOV_MAX_SPOT_ZONE_COUNT];
+    float            spotOffset[PER_ZONE_MAX_SPOT_COUNT * BIG_FOV_MAX_SPOT_ZONE_COUNT];
 }swift_eeprom_v2_data_t;
 #pragma pack()
 
@@ -783,16 +786,16 @@ typedef struct SwiftEepromV2Data
 #define  BIG_FOV_MODULE_EEPROM_COMMON_EXTRINSIC_SIZE                MEMBER_SIZE(swift_eeprom_v2_data_t, common_extrinsic)         /// 7xsizeof(float)
 
 #define  BIG_FOV_MODULE_EEPROM_ROISRAM_DATA_OFFSET                  OFFSET(swift_eeprom_v2_data_t, sramData)
-#define  BIG_FOV_MODULE_EEPROM_ROISRAM_DATA_SIZE                    MEMBER_SIZE(swift_eeprom_v2_data_t, sramData)
+#define  BIG_FOV_MODULE_EEPROM_ROISRAM_DATA_MAX_SIZE                MEMBER_SIZE(swift_eeprom_v2_data_t, sramData)
 
 #define  BIG_FOV_MODULE_EEPROM_WALK_ERROR_OFFSET                    OFFSET(swift_eeprom_v2_data_t, walkerrorData)
-#define  BIG_FOV_MODULE_EEPROM_WALK_ERROR_SIZE                      MEMBER_SIZE(swift_eeprom_v2_data_t, walkerrorData)
+#define  BIG_FOV_MODULE_EEPROM_WALK_ERROR_MAX_SIZE                  MEMBER_SIZE(swift_eeprom_v2_data_t, walkerrorData)
 
 #define  BIG_FOV_MODULE_EEPROM_SPOTOFFSET_OFFSET                    OFFSET(swift_eeprom_v2_data_t, spotOffset)
-#define  BIG_FOV_MODULE_EEPROM_SPOTOFFSET_SIZE                      MEMBER_SIZE(swift_eeprom_v2_data_t, spotOffset)
+#define  BIG_FOV_MODULE_EEPROM_SPOTOFFSET_MAX_SIZE                  MEMBER_SIZE(swift_eeprom_v2_data_t, spotOffset)
 
 // WARNING: This value should be an integer multiple of 4096 and greater than(>=) the EEPROM data size of all kinds of modules.
-#define MMAP_BUFFER_MAX_SIZE_4_WHOLE_EEPROM_DATA                    188416
+#define MMAP_BUFFER_MAX_SIZE_4_WHOLE_EEPROM_DATA                    278528
 
 
 #define  BIG_FOV_MODULE_EEPROM_BASICDATA_OFFSET                     OFFSET(swift_eeprom_v2_data_t, real_spot_zone_count)
@@ -800,7 +803,9 @@ typedef struct SwiftEepromV2Data
 
 #define  BIG_FOV_MODULE_EEPROM_HEAD_SIZE                            BIG_FOV_MODULE_EEPROM_BASICDATA_OFFSET
 #define  BIG_FOV_MODULE_EEPROM_BASICDATA_SIZE                       (BIG_FOV_MODULE_EEPROM_BIGDATA_OFFSET - BIG_FOV_MODULE_EEPROM_BASICDATA_OFFSET)
-#define  BIG_FOV_MODULE_EEPROM_BIGDATA_SIZE                         (BIG_FOV_MODULE_EEPROM_ROISRAM_DATA_SIZE + BIG_FOV_MODULE_EEPROM_WALK_ERROR_SIZE + BIG_FOV_MODULE_EEPROM_SPOTOFFSET_SIZE)
+#define  BIG_FOV_MODULE_EEPROM_BIGDATA_MAX_SIZE                     (BIG_FOV_MODULE_EEPROM_ROISRAM_DATA_MAX_SIZE + BIG_FOV_MODULE_EEPROM_WALK_ERROR_MAX_SIZE + BIG_FOV_MODULE_EEPROM_SPOTOFFSET_MAX_SIZE)
+
+// -------------------- swift BIG_FOV FLOOD module definition end -------------
 
 struct adaps_dtof_intial_param {
     AdapsEnvironmentType env_type;

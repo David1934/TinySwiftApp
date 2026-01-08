@@ -356,7 +356,8 @@ int ADAPS_DTOF::FillSetWrapperParamFromEepromInfo(uint8_t* pEEPROMData, SetWrapp
         }
         else
         {
-            initInputParams->rawDataSize = BIG_FOV_MODULE_EEPROM_ROISRAM_DATA_SIZE;
+            swift_eeprom_v2_data_t *p_bigfov_module_eeprom = (swift_eeprom_v2_data_t *) pEEPROMData;
+            initInputParams->rawDataSize = p_bigfov_module_eeprom->real_spot_zone_count * PER_CALIB_SRAM_ZONE_SIZE;
 
             setparam->spot_cali_data          = pEEPROMData + BIG_FOV_MODULE_EEPROM_ROISRAM_DATA_OFFSET;
             initInputParams->pRawData = set_param.spot_cali_data;
@@ -391,8 +392,10 @@ int ADAPS_DTOF::FillSetWrapperParamFromEepromInfo(uint8_t* pEEPROMData, SetWrapp
     }
     else
     {
-        setparam->adapsSpodOffsetData     = reinterpret_cast<float*>(pEEPROMData + BIG_FOV_MODULE_EEPROM_SPOTOFFSET_OFFSET);
-        setparam->adapsSpodOffsetDataLength = BIG_FOV_MODULE_EEPROM_SPOTOFFSET_SIZE;
+            swift_eeprom_v2_data_t *p_bigfov_module_eeprom = (swift_eeprom_v2_data_t *) pEEPROMData;
+
+            setparam->adapsSpodOffsetData     = reinterpret_cast<float*>(pEEPROMData + BIG_FOV_MODULE_EEPROM_SPOTOFFSET_OFFSET);
+            setparam->adapsSpodOffsetDataLength = p_bigfov_module_eeprom->real_spot_zone_count * PER_ZONE_MAX_SPOT_COUNT * sizeof(float);
     }
 
     if (dump_offsetdata_param_cnt > 0 && NULL != setparam->adapsSpodOffsetData)
@@ -486,18 +489,20 @@ int ADAPS_DTOF::FillSetWrapperParamFromEepromInfo(uint8_t* pEEPROMData, SetWrapp
                     DBG_NOTICE("force walk error to FALSE since swift flood module has no walkerror parameters in eeprom.");
                 }
                 else {
+                    swift_eeprom_v2_data_t *p_bigfov_module_eeprom = (swift_eeprom_v2_data_t *) pEEPROMData;
+
                     setparam->walkerror = true;
                     setparam->calibrationInfo = pEEPROMData + BIG_FOV_MODULE_EEPROM_CALIBRATIONINFO_OFFSET;
                     setparam->walk_error_para_list = pEEPROMData + BIG_FOV_MODULE_EEPROM_WALK_ERROR_OFFSET;
-                    setparam->walk_error_para_list_length = BIG_FOV_MODULE_EEPROM_WALK_ERROR_SIZE;
+                    setparam->walk_error_para_list_length = p_bigfov_module_eeprom->real_spot_zone_count * PER_ZONE_MAX_SPOT_COUNT * sizeof(WalkErrorParam_t);
                 }
             }
-    
+
             if (dump_walkerror_param_cnt > 0 && NULL != setparam->walk_error_para_list)
             {
                 uint32_t i;
                 WalkErrorParam_t *pWalkErrParam = (WalkErrorParam_t *) setparam->walk_error_para_list;
-            
+
                 DBG_PRINTK("ParamIndex zoneId   spotId      x    y    paramD        paramX      paramY      paramZ      param0    sizeof(WalkErrorParam_t): %ld\n", sizeof(WalkErrorParam_t));
                 for (i = 0; i < dump_walkerror_param_cnt; i++)
                 {
@@ -870,7 +875,7 @@ int ADAPS_DTOF::dtof_frame_decode(unsigned int frm_sequence, unsigned char *frm_
         depthOutputs[0].out_depth_image = (uint8_t*) depth16_buffer;
         depthOutputs[0].out_pcloud_image = point_cloud_buffer;
         req_output_stream_cnt = 1;
-    
+
         depthInput.in_image    = (const int8_t*)frm_rawdata;
         depthInput.formatParams.bitsPerPixel = 8;
         depthInput.formatParams.strideBytes  = m_sns_param.raw_width;
